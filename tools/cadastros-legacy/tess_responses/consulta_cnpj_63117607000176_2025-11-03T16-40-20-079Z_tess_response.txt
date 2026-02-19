@@ -1,0 +1,31 @@
+=== Resposta TESS para consulta_cnpj_63117607000176_2025-11-03T16-40-20-079Z.pdf ===
+Data: 2025-11-03T16:40:21.695Z
+File ID: 733325
+Créditos utilizados: 1.941481
+
+=== Conteúdo Processado ===
+Os dados extraídos do relatório de consulta CNPJ 63.117.607/0001-76 são os seguintes:
+
+**Empresa:**
+- CNPJ: 63.117.607/0001-76
+- Razão Social: Não informado
+- Situação do CNPJ: Não informado
+- Data de atualização: 2025-11-03T13:37:51
+- Data de fundação: 2025-10-09
+- Endereço: WALKIR VERGANI, 270, BOICUCANGA, SAO SEBASTIAO, ESTADO SP, 11618-107
+- Telefones fixos: Nenhum informado
+- Telefones celulares: Nenhum informado
+- Emails: Nenhum informado
+
+**Sócios:**
+- Nenhum sócio listado.
+
+**Participações societárias:**
+- Nenhuma informação disponível.
+
+**Quadro Administrativo:**
+- Nenhum administrador listado.
+
+Se desejar, posso ajudar a estruturar esses dados em um formato específico ou realizar outras análises.
+
+=== Fim da Resposta ===

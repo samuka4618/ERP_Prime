@@ -1,0 +1,141 @@
+=== Resposta TESS para consulta_cnpj_71451926000656_2025-10-31T17-06-40-038Z.pdf ===
+Data: 2025-10-31T17:06:42.467Z
+File ID: 726763
+Créditos utilizados: 4.095556
+
+=== Conteúdo Processado ===
+```json
+{
+  "consulta": {
+    "operador": "ISABELA LISBOA SILVA",
+    "data_hora": "2025-10-31T14:04:00",
+    "produto": "SPC + POSITIVO AVANÇADO PJ",
+    "protocolo": "015.018.135.426-1"
+  },
+  "empresa": {
+    "cnpj": "71.451.926/0006-56",
+    "razao_social": "REAL ALIMENTOS LTDA",
+    "situacao_cnpj": "ATIVA",
+    "atualizacao": "2025-10-31T14:04:30",
+    "fundacao": "2025-09-08",
+    "endereco": {
+      "logradouro": "JOSE CARLOS DE PAULA",
+      "numero": "80",
+      "complemento": "Não informado",
+      "bairro": "PARQUE EMPRESARIAL DAS MANGUEIRAS",
+      "cidade": "SOROCABA",
+      "estado": "SP",
+      "cep": "18086-428"
+    },
+    "telefones": {
+      "fixos": [
+        "Não informado"
+      ],
+      "celulares": [
+        "Não informado"
+      ]
+    },
+    "emails": [
+      "Não informado"
+    ]
+  },
+  "ocorrencias": {
+    "score_pj": 495,
+    "dados_contato": 0,
+    "historico_scr": 1,
+    "historico_pagamentos_positivo": 1,
+    "limite_credito_pj": 13288209,
+    "quadro_administrativo": 1,
+    "consultas_realizadas": 43,
+    "gasto_financeiro_estimado": 0,
+    "controle_societario": 2
+  },
+  "controle_societario": [
+    {
+      "cpf": "Não informado",
+      "nome": "GESTAO COM PROPOSITO PARTICIPACOES LTDA",
+      "entrada": "2015-05-21",
+      "participacao": {
+        "valor": 1333568,
+        "percentual": 34.40
+      },
+      "cargo": "SOCIO"
+    },
+    {
+      "cpf": "070.067.998-72",
+      "nome": "JOSE VICENTE DE SOUZA",
+      "entrada": "1999-02-18",
+      "participacao": {
+        "valor": 2542698,
+        "percentual": 65.60
+      },
+      "cargo": "SOCIO"
+    }
+  ],
+  "quadro_administrativo": [
+    {
+      "cpf": "070.067.998-72",
+      "nome": "JOSE VICENTE DE SOUZA",
+      "cargo": "ADMINISTR",
+      "eleito_em": "1999-02-18"
+    }
+  ],
+  "historico_pagamento_positivo": {
+    "compromissos_ativos": "150501.00 - 250500.00",
+    "contratos_ativos": 53,
+    "credores": 8,
+    "parcelas": {
+      "a_vencer_percentual": 17.75,
+      "pagas_percentual": 80.22,
+      "abertas_percentual": 2.03
+    },
+    "contratos_pagos": "1806001.00 - 3006000.00",
+    "contratos_abertos": "6001.00 - 12000.00",
+    "uso_cheque_especial": 2
+  },
+  "score_credito": {
+    "score": 495,
+    "risco": "ALTO",
+    "probabilidade_inadimplencia": 31.72
+  },
+  "consultas": {
+    "ultimos_30_dias": 19,
+    "ultimos_90_dias": 43,
+    "registros": [
+      {
+        "data_hora": "2025-10-31T13:56:23",
+        "associado": "PRIME CATER",
+        "cidade": "LOUVEIRA / SP",
+        "origem": "CDL - SAO PAULO / SP"
+      }
+    ]
+  },
+  "limite_credito": {
+    "valor": 13288209,
+    "metodologia": "Referenciais de negócios ponderado pela classificação de risco de crédito"
+  },
+  "gasto_financeiro_estimado": {
+    "valor": 0,
+    "observacao": "Informação estimada do gasto anual não informada"
+  },
+  "scr": {
+    "atualizacao": "2025-07-26",
+    "quantidade_operacoes": 288,
+    "inicio_relacionamento": "1989-12-01",
+    "valor_contratado": "10177125.60 - 23746626.40",
+    "instituicoes": 5,
+    "carteira_ativa_total": "Não informado",
+    "vencimento_ultima_parcela": "2027-01-01",
+    "garantias": {
+      "quantidade_maxima": 26,
+      "tipos": [
+        "Caução",
+        "Penhor",
+        "Hipotéca"
+      ]
+    }
+  }
+}
+```
+
+=== Fim da Resposta ===

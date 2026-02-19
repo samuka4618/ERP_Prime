@@ -1,0 +1,54 @@
+=== Resposta TESS para consulta_cnpj_63117607000176_2025-11-03T16-47-01-337Z.pdf ===
+Data: 2025-11-03T16:47:03.050Z
+File ID: 733361
+Créditos utilizados: 2.156296
+
+=== Conteúdo Processado ===
+```json
+{
+  "empresa": {
+    "cnpj": "63.117.607/0001-76",
+    "razao_social": "COSTA SUL COMERCIO DE CARNES LTDA",
+    "situacao_cnpj": "ATIVA",
+    "data_atualizacao": "2025-11-03T13:44:31.593",
+    "data_fundacao": "2025-10-09",
+    "endereco": {
+      "logradouro": "WALKIR VERGANI",
+      "numero": "270",
+      "complemento": "",
+      "bairro": "BOICUCANGA",
+      "cidade": "SAO SEBASTIAO",
+      "estado": "SP",
+      "cep": "11618-107"
+    },
+    "telefones": {
+      "fixos": [],
+      "celulares": []
+    },
+    "emails": []
+  },
+  "controle_societario": [
+    {
+      "cpf": "625.516.673-21",
+      "nome": "DAVID RYAN NUNES DA SILVA",
+      "data_entrada": "2025-10-09",
+      "participacao_percentual": 100.0,
+      "tipo_relacionamento": "SÓCIO",
+      "cargo_direcao": null,
+      "cargo_administracao": "SÓCIO",
+      "data_saida": null
+    }
+  ],
+  "quadro_administrativo": [
+    {
+      "cpf": "625.516.673-21",
+      "nome": "DAVID RYAN NUNES DA SILVA",
+      "cargo": "ADMINISTR",
+      "eleito_em": "2025-10-09",
+      "eleito_ate": null
+    }
+  ]
+}
+```
+
+=== Fim da Resposta ===

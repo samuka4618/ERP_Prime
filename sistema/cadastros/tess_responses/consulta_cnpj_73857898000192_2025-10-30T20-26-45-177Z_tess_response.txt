@@ -1,0 +1,216 @@
+=== Resposta TESS para consulta_cnpj_73857898000192_2025-10-30T20-26-45-177Z.pdf ===
+Data: 2025-10-30T20:26:47.757Z
+File ID: 724010
+Créditos utilizados: 5.173704
+
+=== Conteúdo Processado ===
+```json
+{
+  "consulta": {
+    "operador": "ISABELA LISBOA SILVA",
+    "data_hora": "2025-10-30T17:24:00",
+    "produto": "SPC + POSITIVO AVANÇADO PJ",
+    "protocolo": "015.017.507.643-3"
+  },
+  "empresa": {
+    "cnpj": "73.857.898/0001-92",
+    "razao_social": "POUSADA DO VALE LTDA",
+    "situacao_cnpj": "ATIVA",
+    "atualizacao": "2025-10-30T17:24:31.936",
+    "fundacao": "1993-12-09",
+    "endereco": {
+      "logradouro": "PESCADOR SERGIO LINO",
+      "numero": "18",
+      "complemento": "Não informado",
+      "bairro": "VILA DOS REMEDIOS",
+      "cidade": "FERNANDO DE NORONHA",
+      "estado": "PE",
+      "cep": "53990-000"
+    },
+    "telefones": {
+      "fixos": [
+        "81 3619-1132"
+      ],
+      "celulares": [
+        "81 99719-6816",
+        "81 99719-8516",
+        "81 99613-1001"
+      ]
+    },
+    "emails": [
+      "marcelo@pousadadovale.com",
+      "info@pousadadovale.com"
+    ]
+  },
+  "ocorrencias": {
+    "score_pj": 550,
+    "dados_contato": 2,
+    "historico_scr": 1,
+    "historico_pagamentos_positivo": 1,
+    "limite_credito_pj": 420750,
+    "quadro_administrativo": 2,
+    "consultas_realizadas": 8,
+    "gasto_financeiro_estimado": 3699787,
+    "controle_societario": 6
+  },
+  "controle_societario": [
+    {
+      "cpf": "952.677.944-49",
+      "nome": "EDGENE DE BARROS GOMES LINS",
+      "entrada": "2017-11-20",
+      "participacao": {
+        "valor": 0,
+        "percentual": 5.00
+      },
+      "cargo": "SOCIO"
+    },
+    {
+      "cpf": "157.704.338-33",
+      "nome": "MARCELO LEDERMAN",
+      "entrada": "2002-11-01",
+      "participacao": {
+        "valor": 0,
+        "percentual": 25.00
+      },
+      "cargo": "SOCIO"
+    },
+    {
+      "cpf": "008.631.914-01",
+      "nome": "MARIA RENATA REIS LINS",
+      "entrada": "2017-11-20",
+      "participacao": {
+        "valor": 0,
+        "percentual": 2.50
+      },
+      "cargo": "SOCIO"
+    },
+    {
+      "cpf": "008.631.924-83",
+      "nome": "MARIA ROBERTA REIS LINS",
+      "entrada": "2017-11-20",
+      "participacao": {
+        "valor": 0,
+        "percentual": 2.50
+      },
+      "cargo": "SOCIO"
+    },
+    {
+      "cpf": "090.752.948-83",
+      "nome": "ROBERTO DE MESQUITA PEREIRA",
+      "entrada": "2011-09-19",
+      "participacao": {
+        "valor": 0,
+        "percentual": 25.00
+      },
+      "cargo": "SOCIO"
+    },
+    {
+      "cpf": "302.294.804-20",
+      "nome": "SOLON PEREIRA SANTOS",
+      "entrada": "1994-01-13",
+      "participacao": {
+        "valor": 0,
+        "percentual": 40.00
+      },
+      "cargo": "SOCIO"
+    }
+  ],
+  "quadro_administrativo": [
+    {
+      "cpf": "157.704.338-33",
+      "nome": "MARCELO LEDERMAN",
+      "cargo": "ADMINISTR",
+      "eleito_em": "2002-11-01"
+    },
+    {
+      "cpf": "090.752.948-83",
+      "nome": "ROBERTO DE MESQUITA PEREIRA",
+      "cargo": "ADMINISTR",
+      "eleito_em": "2011-09-19"
+    }
+  ],
+  "historico_pagamento_positivo": {
+    "compromissos_ativos": "65501.00 - 100500.00",
+    "contratos_ativos": 3,
+    "credores": 3,
+    "parcelas": {
+      "a_vencer_percentual": 0,
+      "pagas_percentual": 91.67,
+      "abertas_percentual": 8.33
+    },
+    "contratos_pagos": "390001.00 - 786000.00",
+    "contratos_abertos": "6001.00 - 12000.00",
+    "uso_cheque_especial": 1
+  },
+  "score_credito": {
+    "score": 550,
+    "risco": "ALTO",
+    "probabilidade_inadimplencia": 31.72
+  },
+  "consultas": {
+    "ultimos_30_dias": 5,
+    "ultimos_90_dias": 8,
+    "registros": [
+      {
+        "data_hora": "2025-10-30T17:11:41",
+        "associado": "PRIME CATER",
+        "cidade": "LOUVEIRA / SP",
+        "origem": "CDL - SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-30T16:01:09",
+        "associado": "PRIME CATER",
+        "cidade": "LOUVEIRA / SP",
+        "origem": "CDL - SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-24T00:00:00",
+        "associado": "KLIMAQUIP S",
+        "cidade": "POUSO ALEGRE / MG",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-08T10:20:48",
+        "associado": "BNB - DIRECAO GERAL",
+        "cidade": "FORTALEZA / CE",
+        "origem": "CDL - FORTALEZA / CE"
+      },
+      {
+        "data_hora": "2025-10-08T00:00:00",
+        "associado": "BANCO DO NORDESTE DO BRASIL SA BNB",
+        "cidade": "SAO LUIS / MA",
+        "origem": "SAO PAULO / SP"
+      }
+    ]
+  },
+  "limite_credito": {
+    "valor": 420750,
+    "metodologia": "Calculado com base em referenciais de negócios ponderado pela classificação de risco de crédito."
+  },
+  "gasto_financeiro_estimado": {
+    "valor": 3699787,
+    "observacao": "O Valor informado é apenas uma estimativa do gasto anual do CNPJ consultado."
+  },
+  "scr": {
+    "atualizacao": "2025-07-26",
+    "quantidade_operacoes": 3,
+    "inicio_relacionamento": "2002-11-01",
+    "valor_contratado": "153000.00 - 357000.00",
+    "instituicoes": 1,
+    "carteira_ativa_total": "Não informado",
+    "vencimento_ultima_parcela": "2026-05-01",
+    "garantias": {
+      "quantidade_maxima": 0,
+      "tipos": [
+        "Caução",
+        "Penhor",
+        "Hipotéca",
+        "Anticrese",
+        "Outros"
+      ]
+    }
+  }
+}
+```
+
+=== Fim da Resposta ===

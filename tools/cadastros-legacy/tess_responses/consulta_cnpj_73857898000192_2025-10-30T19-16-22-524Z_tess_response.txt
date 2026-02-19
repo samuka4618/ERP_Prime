@@ -1,0 +1,79 @@
+=== Resposta TESS para consulta_cnpj_73857898000192_2025-10-30T19-16-22-524Z.pdf ===
+Data: 2025-10-30T19:16:25.105Z
+File ID: 723494
+Créditos utilizados: 3.231111
+
+=== Conteúdo Processado ===
+```json
+{
+  "empresa": {
+    "cnpj": "73.857.898/0001-92",
+    "razao_social": "POUSADA DO VALE LTDA",
+    "situacao_cnpj": "ATIVA",
+    "atualizacao": "2025-10-30T16:14:09.067",
+    "fundacao": "1993-12-09",
+    "endereco": {
+      "logradouro": "R PESCADOR SERGIO LINO",
+      "numero": "18",
+      "complemento": "",
+      "bairro": "VILA DOS REMEDIOS",
+      "cidade": "FERNANDO DE NORONHA",
+      "estado": "PE",
+      "cep": "53990-000"
+    },
+    "telefones": {
+      "fixos": [
+        "81 36191293",
+        "81 3619-1132"
+      ],
+      "celulares": [
+        "81 999210185",
+        "81 99719-6816",
+        "81 99719-8516",
+        "81 99613-1001"
+      ]
+    },
+    "emails": [
+      "administrativo@pousadadovale.com",
+      "marcelo@pousadadovale.com",
+      "info@pousadadovale.com"
+    ]
+  },
+  "controle_societario": [
+    {
+      "cpf": "952.677.944-49",
+      "nome": "EDGENE DE BARROS GOMES LINS",
+      "entrada": "2017-11-20",
+      "participacao": {
+        "percentual": 5.0
+      },
+      "cargo": "SOCIO"
+    },
+    {
+      "cpf": "157.704.338-33",
+      "nome": "MARCELO LEDERMAN",
+      "entrada": "2002-11-01",
+      "participacao": {
+        "percentual": 25.0
+      },
+      "cargo": "SOCIO"
+    }
+  ],
+  "quadro_administrativo": [
+    {
+      "cpf": "157.704.338-33",
+      "nome": "MARCELO LEDERMAN",
+      "cargo": "ADMINISTR",
+      "eleito_em": "2002-11-01"
+    },
+    {
+      "cpf": "090.752.948-83",
+      "nome": "ROBERTO DE MESQUITA PEREIRA",
+      "cargo": "ADMINISTR",
+      "eleito_em": "2011-09-19"
+    }
+  ]
+}
+```
+
+=== Fim da Resposta ===

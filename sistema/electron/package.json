@@ -1,0 +1,71 @@
+{
+  "name": "sistema-chamados-electron",
+  "version": "1.0.0",
+  "description": "Aplicativo Electron para Sistema de Chamados Financeiro",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "build:win:unsigned": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "pack": "electron-builder --dir",
+    "clean:cache": "powershell -ExecutionPolicy Bypass -File build-fix.ps1",
+    "reset:config": "reset-config.bat",
+    "test:backend": "node test-backend.js",
+    "check:frontend": "node check-frontend.js"
+  },
+  "keywords": [
+    "electron",
+    "chamados",
+    "financeiro"
+  ],
+  "author": "Samuel",
+  "license": "MIT",
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.sistema.chamados",
+    "productName": "Sistema de Chamados",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "config-manager.js",
+      "../frontend/dist/**/*",
+      "../frontend/dist/index.html"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "build/icon.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

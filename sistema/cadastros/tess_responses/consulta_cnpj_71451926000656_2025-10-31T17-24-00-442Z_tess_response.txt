@@ -1,0 +1,269 @@
+=== Resposta TESS para consulta_cnpj_71451926000656_2025-10-31T17-24-00-442Z.pdf ===
+Data: 2025-10-31T17:24:02.975Z
+File ID: 726850
+Créditos utilizados: 6.281111
+
+=== Conteúdo Processado ===
+```json
+{
+  "consulta": {
+    "operador": "ISABELA LISBOA SILVA",
+    "data_hora": "2025-10-31T14:22:00",
+    "produto": "SPC + POSITIVO AVANÇADO PJ",
+    "protocolo": "015.018.140.553-2"
+  },
+  "empresa": {
+    "cnpj": "71.451.926/0006-56",
+    "razao_social": "REAL ALIMENTOS LTDA .",
+    "situacao_cnpj": "ATIVA",
+    "atualizacao": "2025-10-31T14:21:50.785",
+    "fundacao": "2025-09-08",
+    "endereco": {
+      "logradouro": "JOSE CARLOS DE PAULA",
+      "numero": "80",
+      "complemento": "Não informado",
+      "bairro": "PARQUE EMPRESARIAL DAS MANGUEIRAS",
+      "cidade": "SOROCABA",
+      "estado": "SP",
+      "cep": "18086-428"
+    },
+    "telefones": {
+      "fixos": [
+        "Não informado"
+      ],
+      "celulares": [
+        "Não informado"
+      ]
+    },
+    "emails": [
+      "Não informado"
+    ]
+  },
+  "ocorrencias": {
+    "score_pj": 495,
+    "dados_contato": 0,
+    "historico_scr": 1,
+    "historico_pagamentos_positivo": {
+      "compromissos_ativos": "R$ 150.501,00 a R$ 250.500,00",
+      "contratos_ativos": 53,
+      "credores": 8,
+      "parcelas": {
+        "a_vencer_percentual": 17.75,
+        "pagas_percentual": 80.22,
+        "abertas_percentual": 2.03
+      },
+      "contratos_pagos": "R$ 1.806.001,00 a R$ 3.006.000,00",
+      "contratos_abertos": "R$ 6.001,00 a R$ 12.000,00",
+      "uso_cheque_especial": 2
+    },
+    "limite_credito_pj": 13288209,
+    "quadro_administrativo": 1,
+    "consultas_realizadas": 44,
+    "gasto_financeiro_estimado": 1,
+    "controle_societario": 2
+  },
+  "controle_societario": [
+    {
+      "cpf": "Não informado",
+      "nome": "GESTAO COM PROPOSITO PARTICIPACOES LTDA",
+      "entrada": "2015-05-21",
+      "participacao": {
+        "valor": 1333568,
+        "percentual": 34.40
+      },
+      "cargo": "SOCIO"
+    },
+    {
+      "cpf": "070.067.998-72",
+      "nome": "JOSE VICENTE DE SOUZA",
+      "entrada": "1999-02-18",
+      "participacao": {
+        "valor": 2542698,
+        "percentual": 65.60
+      },
+      "cargo": "SOCIO"
+    }
+  ],
+  "quadro_administrativo": [
+    {
+      "cpf": "070.067.998-72",
+      "nome": "JOSE VICENTE DE SOUZA",
+      "cargo": "ADMINISTR",
+      "eleito_em": "1999-02-18"
+    }
+  ],
+  "historico_pagamento_positivo": {
+    "compromissos_ativos": "R$ 150.501,00 a R$ 250.500,00",
+    "contratos_ativos": 53,
+    "credores": 8,
+    "parcelas": {
+      "a_vencer_percentual": 17.75,
+      "pagas_percentual": 80.22,
+      "abertas_percentual": 2.03
+    },
+    "contratos_pagos": "R$ 1.806.001,00 a R$ 3.006.000,00",
+    "contratos_abertos": "R$ 6.001,00 a R$ 12.000,00",
+    "uso_cheque_especial": 2
+  },
+  "score_credito": {
+    "score": 495,
+    "risco": "ALTO",
+    "probabilidade_inadimplencia": 31.72
+  },
+  "consultas": {
+    "ultimos_30_dias": 20,
+    "ultimos_90_dias": 44,
+    "registros": [
+      {
+        "data_hora": "2025-10-31T14:04:42",
+        "associado": "PRIME CATER",
+        "cidade": "LOUVEIRA / SP",
+        "origem": "CDL - SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-31T13:56:23",
+        "associado": "PRIME CATER",
+        "cidade": "LOUVEIRA / SP",
+        "origem": "CDL - SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-30T00:00:00",
+        "associado": "CIELO S/A",
+        "cidade": "BARUERI / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-30T00:00:00",
+        "associado": "DAYCOVAL",
+        "cidade": "SAO PAULO / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-30T00:00:00",
+        "associado": "QUALIMPOR IMPORT E EXPORT DE PRODS ALIMENTICIOS LTDA",
+        "cidade": "SAO PAULO / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-29T09:13:51",
+        "associado": "ITA ACOS SERVICOS",
+        "cidade": "ITAPETININGA / SP",
+        "origem": "CDL - SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-28T10:17:18",
+        "associado": "ITA ACOS SERVICOS",
+        "cidade": "ITAPETININGA / SP",
+        "origem": "CDL - SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-22T00:00:00",
+        "associado": "DAYHOME COMERCIAL",
+        "cidade": "SAO PAULO / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-22T00:00:00",
+        "associado": "CONFEDERACAO DAS COOPERATIVAS DO SICREDI - CONFEDERACAO SICREDI",
+        "cidade": "PORTO ALEGRE / RS",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-21T00:00:00",
+        "associado": "DAYHOME COMERCIAL",
+        "cidade": "SAO PAULO / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-21T00:00:00",
+        "associado": "CORRECTA INDUSTRIA E COMERCIO LTDA",
+        "cidade": "SAO PAULO / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-15T14:23:46",
+        "associado": "ALMAPLAST",
+        "cidade": "CAMPINAS / SP",
+        "origem": "CDL - SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-13T00:00:00",
+        "associado": "VINICOLA PERINI LTDA",
+        "cidade": "PORTO ALEGRE / RS",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-09T00:00:00",
+        "associado": "EPICE IMPORTACAO COMERCIO",
+        "cidade": "GUARULHOS / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-09T00:00:00",
+        "associado": "DAYCOVAL",
+        "cidade": "SAO PAULO / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-09T00:00:00",
+        "associado": "INVISTA CREDITO E INVEST.",
+        "cidade": "SAO PAULO / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-09T00:00:00",
+        "associado": "CLARO",
+        "cidade": "SAO PAULO / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-08T00:00:00",
+        "associado": "EPICE IMPORTACAO COMERCIO",
+        "cidade": "GUARULHOS / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-06T00:00:00",
+        "associado": "DAMM",
+        "cidade": "OSASCO / SP",
+        "origem": "SAO PAULO / SP"
+      },
+      {
+        "data_hora": "2025-10-01T00:00:00",
+        "associado": "VIVEIROS EM CAMPINAS",
+        "cidade": "SAO PAULO / SP",
+        "origem": "SAO PAULO / SP"
+      }
+    ]
+  },
+  "limite_credito": {
+    "valor": 13288209,
+    "metodologia": "O Limite de Crédito PJ foi calculado com base em referenciais de negócios* ponderado pela classificação de risco de crédito da empresa medida pela tecnologia de ratings e scorings."
+  },
+  "gasto_financeiro_estimado": {
+    "valor": 13288209,
+    "observacao": "O Valor informado é apenas uma estimativa do gasto anual do CNPJ consultado."
+  },
+  "scr": {
+    "atualizacao": "2025-07-26",
+    "quantidade_operacoes": 288,
+    "inicio_relacionamento": "1989-12-01",
+    "valor_contratado": "R$ 10.177.125,60 a R$ 23.746.626,40",
+    "instituicoes": 5,
+    "carteira_ativa_total": "0",
+    "vencimento_ultima_parcela": "2027-01-01",
+    "garantias": {
+      "quantidade_maxima": 26,
+      "tipos": [
+        "Caução",
+        "Penhor",
+        "Hipotéca",
+        "Anticrese",
+        "Outros"
+      ]
+    }
+  }
+}
+```
+
+=== Fim da Resposta ===

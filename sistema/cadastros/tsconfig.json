@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020", "DOM"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/analisar-suframa-consultas.ts",
+    "src/analisar-suframa-arquivos.ts",
+    "src/simple-watcher-new.ts",
+    "src/sistema-integrado-completo.ts",
+    "src/sistema-integrado-principal.ts",
+    "src/sistema-integrado.ts",
+    "src/test-integracao-cnpja.ts",
+    "src/test-cnpja-final.ts",
+    "src/test-cnpja-parametros.ts",
+    "src/services/sistemaIntegrado.ts",
+    "src/services/sistemaIntegradoCompleto.ts",
+    "src/services/integratedService.ts"
+  ]
+}

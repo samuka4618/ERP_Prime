@@ -1,0 +1,168 @@
+# =========================
+# Dependências
+# =========================
+node_modules/
+jspm_packages/
+bower_components/
+
+# =========================
+# Build e compilação
+# =========================
+dist/
+build/
+*.tsbuildinfo
+out/
+.next/
+.nuxt/
+.parcel-cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Frontend (Vite/React)
+frontend/dist/
+frontend/node_modules/
+
+# Mobile (React Native / Expo)
+mobile/node_modules/
+mobile/.expo/
+mobile/.expo-shared/
+mobile/dist/
+mobile/web-build/
+mobile/android/app/build/
+mobile/android/.gradle/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.metro-health-check*
+
+# =========================
+# Variáveis de ambiente e segredos
+# =========================
+.env
+.env.local
+.env.*.local
+.env.backup
+.env.test
+.env.production
+.env.*.backup
+!.env.example
+
+# =========================
+# Logs e runtime
+# =========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# =========================
+# Banco de dados
+# =========================
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+data/database/*.db
+data/database/*.db-shm
+data/database/*.db-wal
+data/database/*.sqlite
+data/database/*.sqlite-shm
+data/database/*.sqlite-wal
+data/backups/*
+!data/database/.gitkeep
+!data/backups/.gitkeep
+
+# =========================
+# Armazenamento e uploads
+# =========================
+storage/uploads/*
+storage/images/*
+storage/avatars/*
+!storage/uploads/.gitkeep
+!storage/images/.gitkeep
+!storage/avatars/.gitkeep
+
+# =========================
+# IDE e editores
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# =========================
+# Sistema operacional
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Testes e cobertura
+# =========================
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+
+# =========================
+# Cache e temporários
+# =========================
+.cache/
+.tmp/
+*.tmp
+*.temp
+.temp
+.npm
+.node_repl_history
+*.tgz
+.yarn-integrity
+.eslintcache
+.grunt
+.lock-wscript
+build/Release
+
+# =========================
+# PM2 e processos
+# =========================
+.pm2/
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# =========================
+# Subprojetos e ferramentas
+# =========================
+tools/cadastros-legacy/node_modules/
+tools/cadastros-legacy/dist/
+tools/cadastros-legacy/logs/
+tools/cadastros-legacy/.env
+sistema/cadastros/node_modules/
+sistema/cadastros/dist/
+sistema/electron/node_modules/
+sistema/electron/dist/
+
+# =========================
+# Arquivos acidentais (raiz)
+# =========================
+/cls
+/echo
+/npm
+/{
+/erp-prime@*

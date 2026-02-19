@@ -1,0 +1,58 @@
+{
+  "name": "spc-cnpj-bot",
+  "version": "1.0.0",
+  "description": "Bot automatizado para consulta de CNPJ no SPC usando Playwright",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "playwright test",
+    "install-browsers": "playwright install",
+    "logs": "ts-node src/view-logs.ts",
+    "cache": "ts-node src/view-cache.ts",
+    "tess": "ts-node src/process-tess.ts",
+    "spc-tess": "ts-node src/spc-tess-integration.ts",
+    "sistema-integrado": "ts-node src/sistema-integrado.ts",
+    "sistema-completo": "ts-node src/sistema-integrado-completo.ts",
+    "test-db": "ts-node src/test-tess-database.ts",
+    "test-parser": "ts-node src/test-tess-parser.ts",
+    "debug-tess": "ts-node src/debug-tess-data.ts",
+    "verificar-banco": "ts-node src/verificar-dados-banco.ts",
+    "verificar-schema": "ts-node src/verificar-schema-banco.ts",
+    "test-cnpja": "ts-node src/test-integracao-cnpja.ts",
+    "test-cnpja-params": "ts-node src/test-cnpja-parametros.ts",
+    "test-cnpja-final": "ts-node src/test-cnpja-final.ts",
+    "sistema-completo": "ts-node src/sistema-integrado-principal.ts",
+    "analisar-suframa": "ts-node src/analisar-suframa-arquivos.ts",
+    "migrate:atak": "ts-node src/run-atak-migration.ts",
+    "test:atak": "ts-node src/test-atak-registration.ts",
+    "test:atak-auth": "ts-node src/test-atak-auth.ts",
+    "test:ibge": "ts-node src/test-ibge.ts"
+  },
+  "keywords": [
+    "spc",
+    "cnpj",
+    "playwright",
+    "automation",
+    "bot"
+  ],
+  "author": "Samuel",
+  "license": "MIT",
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "axios": "^1.12.2",
+    "chokidar": "^3.6.0",
+    "dotenv": "^16.3.1",
+    "form-data": "^4.0.4",
+    "mssql": "^10.0.4",
+    "playwright": "^1.40.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/mssql": "^9.1.8",
+    "@types/node": "^20.8.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  }
+}

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'attendant', 'admin')),
     is_active BOOLEAN DEFAULT 1,
+    last_activity DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -70,6 +71,18 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+-- Tabela de rastreamento de atividade do usuário (métricas/admin)
+CREATE TABLE IF NOT EXISTS user_activity_tracking (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    activity VARCHAR(100) NOT NULL,
+    timestamp DATETIME NOT NULL,
+    session_id VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_activity_tracking_user_id ON user_activity_tracking(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_activity_tracking_timestamp ON user_activity_tracking(timestamp);
 
 -- Tabela de categorias de chamados
 CREATE TABLE IF NOT EXISTS ticket_categories (

@@ -75,6 +75,31 @@ export { db };
  */
 async function runSchemaMigrations(): Promise<void> {
   try {
+    // Tabela de rastreamento de atividade (métricas) - criar se não existir
+    const activityTable = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_activity_tracking'");
+    if (!activityTable) {
+      await dbRun(`
+        CREATE TABLE user_activity_tracking (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          activity VARCHAR(100) NOT NULL,
+          timestamp DATETIME NOT NULL,
+          session_id VARCHAR(255),
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+      `);
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_user_activity_tracking_user_id ON user_activity_tracking(user_id)');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_user_activity_tracking_timestamp ON user_activity_tracking(timestamp)');
+      console.log('Migração: tabela user_activity_tracking criada');
+    }
+
+    // Coluna last_activity em users (para rastreamento de atividade)
+    const usersCols = await dbAll('PRAGMA table_info(users)') as { name: string }[];
+    if (Array.isArray(usersCols) && !usersCols.some((c) => c.name === 'last_activity')) {
+      await dbRun('ALTER TABLE users ADD COLUMN last_activity DATETIME');
+      console.log('Migração: coluna last_activity adicionada em users');
+    }
+
     const tableInfo = await dbAll('PRAGMA table_info(aprovacoes_orcamento)') as { name: string; notnull: number }[];
     if (!Array.isArray(tableInfo)) return;
 

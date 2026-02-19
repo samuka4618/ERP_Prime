@@ -1,6 +1,11 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import os from 'os'
+import path from 'path'
+
+// Carregar .env da raiz do projeto (onde está PORT, BACKEND_PORT, FRONTEND_PORT)
+const rootEnv = loadEnv('development', path.resolve(__dirname, '..'), '')
+const env = { ...rootEnv, ...process.env }
 
 // Função para obter o IP local da rede
 function getLocalIP(): string {
@@ -32,15 +37,16 @@ function getLocalIP(): string {
   return 'localhost';
 }
 
-const backendHost = process.env.BACKEND_HOST || getLocalIP();
-const backendPort = process.env.BACKEND_PORT || '3004'; // Porta padrão do servidor
+const backendHost = env.BACKEND_HOST || getLocalIP();
+const backendPort = env.BACKEND_PORT || env.PORT || '3004';
+const frontendPort = parseInt(env.FRONTEND_PORT || '3001', 10);
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0', // Permitir acesso de outros computadores na rede
-    port: 3001,
+    port: frontendPort,
     https: false,
     proxy: {
       '/api': {

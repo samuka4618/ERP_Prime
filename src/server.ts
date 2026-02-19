@@ -435,7 +435,19 @@ async function startServer() {
 
     // Inicializar WebSocket
     initializeWebSocket(server);
-  } catch (error) {
+  } catch (error: any) {
+    const isCorrupt = error?.code === 'SQLITE_CORRUPT' || (error?.message && String(error.message).includes('malformed'));
+    if (isCorrupt) {
+      const dbPath = path.isAbsolute(config.database.path)
+        ? config.database.path
+        : path.resolve(process.cwd(), config.database.path);
+      console.error('\n❌ Banco de dados SQLite corrompido.');
+      console.error(`   Arquivo: ${dbPath}`);
+      console.error('\n   Para recomeçar do zero (todos os dados locais serão perdidos):');
+      console.error('   1. Apague o arquivo acima ou renomeie (ex.: chamados.db.bak)');
+      console.error('   2. Reinicie o servidor (um novo banco será criado automaticamente)\n');
+      process.exit(1);
+    }
     console.error('Erro ao iniciar servidor:', error);
     process.exit(1);
   }

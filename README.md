@@ -189,6 +189,15 @@ Sistema de cadastro de clientes e análise de crédito com:
 - Consulta CNPJ automatizada
 - Integração com sistemas externos
 
+
+npm run create-user
+
+Campo	Valor
+Email	admin@localhost.com
+Senha	Admin@123456
+Nome	Administrador
+Perfil	admin
+
 ## 📝 Licença
 
 MIT

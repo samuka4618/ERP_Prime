@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PermissionsProvider } from './contexts/PermissionsContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -140,30 +140,42 @@ const App: React.FC = () => {
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
               <AppRoutes />
               <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: 'var(--toast-bg)',
-                  color: 'var(--toast-color)',
-                  border: '1px solid var(--toast-border)',
-                },
-                success: {
-                  duration: 3000,
-                  iconTheme: {
-                    primary: '#10B981',
-                    secondary: '#fff',
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: 'var(--toast-bg)',
+                    color: 'var(--toast-color)',
+                    border: '1px solid var(--toast-border)',
                   },
-                },
-                error: {
-                  duration: 5000,
-                  iconTheme: {
-                    primary: '#EF4444',
-                    secondary: '#fff',
+                  success: {
+                    duration: 3000,
+                    iconTheme: {
+                      primary: '#10B981',
+                      secondary: '#fff',
+                    },
                   },
-                },
-              }}
-            />
+                  error: {
+                    duration: 5000,
+                    iconTheme: {
+                      primary: '#EF4444',
+                      secondary: '#fff',
+                    },
+                  },
+                }}
+              >
+                {(t) => (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toast.dismiss(t.id)}
+                    onKeyDown={(e) => e.key === 'Enter' && toast.dismiss(t.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <ToastBar toast={t} />
+                  </div>
+                )}
+              </Toaster>
           </div>
         </Router>
           </SystemConfigProvider>

@@ -5,6 +5,14 @@ import { User, UserRole, LoginRequest, AuthResponse, CreateUserRequest } from '.
 import { config } from '../../config/database';
 import { tokenCacheService } from './TokenCacheService';
 import { logger } from '../../shared/utils/logger';
+import type { AppError } from '../../shared/middleware/errorHandler';
+
+function authError(message: string, statusCode: number = 401): AppError {
+  const err = new Error(message) as AppError;
+  err.statusCode = statusCode;
+  err.isOperational = true;
+  return err;
+}
 
 // Função auxiliar para gerar token JWT
 function generateToken(payload: any, secret: string, expiresIn: string): string {
@@ -18,7 +26,7 @@ export class AuthService {
     
     if (!user) {
       logger.warn('Usuário não encontrado', { email: credentials.email }, 'AUTH');
-      throw new Error('Credenciais inválidas');
+      throw authError('Credenciais inválidas');
     }
     
     logger.debug('Usuário encontrado', { 
@@ -32,7 +40,7 @@ export class AuthService {
         userId: user.id, 
         email: user.email 
       }, 'AUTH');
-      throw new Error('Credenciais inválidas');
+      throw authError('Credenciais inválidas');
     }
 
     logger.debug('Verificando senha', { userId: user.id }, 'AUTH');
@@ -40,7 +48,7 @@ export class AuthService {
     
     if (!isValidPassword) {
       logger.warn('Senha incorreta', { userId: user.id, email: user.email }, 'AUTH');
-      throw new Error('Credenciais inválidas');
+      throw authError('Credenciais inválidas');
     }
     
     logger.debug('Senha verificada com sucesso', { userId: user.id }, 'AUTH');

@@ -1,10 +1,13 @@
-
 import dotenv from 'dotenv';
+import path from 'path';
 
-dotenv.config();
+// Garantir que o .env da raiz do projeto seja carregado (independente do cwd)
+const envPath = path.resolve(__dirname, '..', '..', '.env');
+dotenv.config({ path: envPath });
+dotenv.config(); // fallback: .env no cwd atual
 
 export const config = {
-  port: process.env.PORT || 3000,
+  port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   database: {
     path: process.env.DB_PATH || './data/database/chamados.db'

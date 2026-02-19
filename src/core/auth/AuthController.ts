@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { AuthService } from './AuthService';
 import { UserModel } from '../users/User';
 import { LoginRequest, CreateUserRequest } from '../../shared/types';
-import { asyncHandler } from '../../shared/middleware/errorHandler';
+import { asyncHandler, type AppError } from '../../shared/middleware/errorHandler';
 import { tokenCacheService } from './TokenCacheService';
 import { config } from '../../config/database';
 import { logger } from '../../shared/utils/logger';
@@ -67,12 +67,22 @@ export class AuthController {
         data: result
       });
     } catch (error) {
-      logger.error('Falha no login', { 
-        requestId, 
-        email: credentials.email, 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        responseTime: Date.now() - startTime
-      }, 'AUTH');
+      const err = error as AppError;
+      const isInvalidCredentials = err?.message === 'Credenciais inválidas' || err?.statusCode === 401;
+      if (isInvalidCredentials) {
+        logger.warn('Credenciais inválidas', { 
+          requestId, 
+          email: credentials.email, 
+          responseTime: Date.now() - startTime
+        }, 'AUTH');
+      } else {
+        logger.error('Falha no login', { 
+          requestId, 
+          email: credentials.email, 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          responseTime: Date.now() - startTime
+        }, 'AUTH');
+      }
       throw error;
     }
   });

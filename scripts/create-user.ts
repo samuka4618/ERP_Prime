@@ -4,14 +4,14 @@ import { CreateUserRequest, UserRole } from '../src/shared/types';
 
 async function createUser() {
   const userData: CreateUserRequest = {
-    name: 'Samuel',
-    email: 'samuel.nassilva@gmail.com',
-    password: '46184635Avs1978$',
-    role: UserRole.ADMIN,
+    name: process.env.CREATE_USER_NAME || 'Administrador',
+    email: process.env.CREATE_USER_EMAIL || 'admin@localhost.com',
+    password: process.env.CREATE_USER_PASSWORD || 'Admin@123456',
+    role: (process.env.CREATE_USER_ROLE as UserRole) || UserRole.ADMIN,
     is_active: true
   };
-  
-  console.log(`\n🔨 Criando usuário: ${userData.email}\n`);
+
+  console.log(`\n🔨 Criando usuário administrador: ${userData.email}\n`);
   
   try {
     // Verificar se o usuário já existe

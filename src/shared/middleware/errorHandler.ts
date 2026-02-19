@@ -13,16 +13,6 @@ export const errorHandler = (
 ): void => {
   let { statusCode = 500, message } = error;
 
-  // Log do erro
-  console.error('Erro:', {
-    message: error.message,
-    stack: error.stack,
-    url: req.url,
-    method: req.method,
-    ip: req.ip,
-    userAgent: req.get('User-Agent')
-  });
-
   // Se for erro de validação do Joi
   if (error.name === 'ValidationError') {
     statusCode = 400;
@@ -46,9 +36,23 @@ export const errorHandler = (
     message = 'Token expirado';
   }
 
+  const isOperational = statusCode >= 400 && statusCode < 500 && (error.isOperational ?? error.statusCode != null);
+  const logPayload = {
+    message: error.message,
+    url: req.url,
+    method: req.method,
+    statusCode,
+    ...(isOperational ? {} : { stack: error.stack, ip: req.ip, userAgent: req.get('User-Agent') })
+  };
+  if (isOperational) {
+    console.warn('Erro operacional (4xx):', logPayload);
+  } else {
+    console.error('Erro:', logPayload);
+  }
+
   res.status(statusCode).json({
     error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    ...(process.env.NODE_ENV === 'development' && !isOperational && { stack: error.stack })
   });
 };
 

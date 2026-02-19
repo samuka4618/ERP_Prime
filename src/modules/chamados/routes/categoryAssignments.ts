@@ -34,6 +34,12 @@ router.get('/category/:category_id/assigned', requirePermission('tickets.assignm
 // Obter resumo das atribuições (para tela de configuração)
 router.get('/summary', requirePermission('tickets.assignments.manage'), CategoryAssignmentController.getAssignmentSummary);
 
+// Regras de atribuição por resposta (por categoria)
+router.get('/category/:category_id/rules', requirePermission('tickets.assignments.manage'), CategoryAssignmentController.getAssignmentRules);
+router.post('/category/:category_id/rules', requirePermission('tickets.assignments.manage'), CategoryAssignmentController.createAssignmentRule);
+router.put('/rules/:id', requirePermission('tickets.assignments.manage'), CategoryAssignmentController.updateAssignmentRule);
+router.delete('/rules/:id', requirePermission('tickets.assignments.manage'), CategoryAssignmentController.deleteAssignmentRule);
+
 // Deletar atribuição por ID
 router.delete('/:id', requirePermission('tickets.assignments.manage'), CategoryAssignmentController.delete);
 

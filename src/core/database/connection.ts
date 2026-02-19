@@ -100,6 +100,34 @@ async function runSchemaMigrations(): Promise<void> {
       console.log('Migração: coluna last_activity adicionada em users');
     }
 
+    // Coluna custom_fields em ticket_categories (campos personalizados do formulário)
+    const catCols = await dbAll('PRAGMA table_info(ticket_categories)') as { name: string }[];
+    if (Array.isArray(catCols) && !catCols.some((c) => c.name === 'custom_fields')) {
+      await dbRun('ALTER TABLE ticket_categories ADD COLUMN custom_fields TEXT');
+      console.log('Migração: coluna custom_fields adicionada em ticket_categories');
+    }
+
+    // Tabela de regras de atribuição por resposta
+    const rulesTable = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'category_assignment_rules'");
+    if (!rulesTable) {
+      await dbRun(`
+        CREATE TABLE category_assignment_rules (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          category_id INTEGER NOT NULL,
+          field_name VARCHAR(100) NOT NULL,
+          operator VARCHAR(20) NOT NULL CHECK (operator IN ('equals', 'not_equals', 'contains', 'gt', 'gte', 'lt', 'lte')),
+          value VARCHAR(500) NOT NULL,
+          attendant_id INTEGER NOT NULL,
+          priority INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (category_id) REFERENCES ticket_categories(id) ON DELETE CASCADE,
+          FOREIGN KEY (attendant_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `);
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_category_assignment_rules_category ON category_assignment_rules(category_id)');
+      console.log('Migração: tabela category_assignment_rules criada');
+    }
+
     const tableInfo = await dbAll('PRAGMA table_info(aprovacoes_orcamento)') as { name: string; notnull: number }[];
     if (!Array.isArray(tableInfo)) return;
 

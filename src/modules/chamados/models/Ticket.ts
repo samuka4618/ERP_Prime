@@ -2,6 +2,7 @@ import { dbRun, dbGet, dbAll, db } from '../../../core/database/connection';
 import { Ticket, TicketStatus, CreateTicketRequest, UpdateTicketRequest, PaginationParams, PaginatedResponse } from '../../../shared/types';
 import { config } from '../../../config/database';
 import { CategoryAssignmentModel } from './CategoryAssignment';
+import { CategoryAssignmentRuleModel, resolveAttendantFromRules } from './CategoryAssignmentRule';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 
 // Função auxiliar para fazer parse do custom_data
@@ -48,17 +49,25 @@ export class TicketModel {
     const slaFirstResponse = new Date(now.getTime() + (category.sla_first_response_hours * 60 * 60 * 1000));
     const slaResolution = new Date(now.getTime() + (category.sla_resolution_hours * 60 * 60 * 1000));
 
-    // Verificar se há atribuições automáticas para esta categoria
+    // Atribuição: primeiro por regras de resposta (custom_data), depois por atribuições fixas
     const assignments = await CategoryAssignmentModel.findByCategory(ticketData.category_id);
-    let assignedAttendantId = null;
+    let assignedAttendantId: number | null = null;
 
-    if (assignments.length > 0) {
-      // Se há apenas um técnico atribuído, atribuir automaticamente
+    const rules = await CategoryAssignmentRuleModel.findByCategory(ticketData.category_id);
+    if (rules.length > 0 && ticketData.custom_data && Object.keys(ticketData.custom_data).length > 0) {
+      const ruleAttendantId = resolveAttendantFromRules(ticketData.custom_data, rules);
+      if (ruleAttendantId != null) {
+        const isAssigned = assignments.some(a => a.attendant_id === ruleAttendantId);
+        if (isAssigned) {
+          assignedAttendantId = ruleAttendantId;
+        }
+      }
+    }
+
+    if (assignedAttendantId == null && assignments.length > 0) {
       if (assignments.length === 1) {
         assignedAttendantId = assignments[0].attendant_id;
       }
-      // Se há múltiplos técnicos, deixar sem atribuição para que escolham
-      // (o ticket ficará disponível para todos os técnicos atribuídos)
     }
 
     // Converter custom_data para JSON

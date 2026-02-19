@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS ticket_categories (
     sla_first_response_hours INTEGER NOT NULL DEFAULT 4,
     sla_resolution_hours INTEGER NOT NULL DEFAULT 24,
     is_active BOOLEAN DEFAULT 1,
+    custom_fields TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -117,6 +118,22 @@ CREATE TABLE IF NOT EXISTS category_assignments (
     FOREIGN KEY (attendant_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE(category_id, attendant_id)
 );
+
+-- Regras de atribuição por resposta (campo do formulário → técnico)
+-- field_name = nome do custom_field da categoria; operator = equals, not_equals, contains, gt, gte, lt, lte
+CREATE TABLE IF NOT EXISTS category_assignment_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER NOT NULL,
+    field_name VARCHAR(100) NOT NULL,
+    operator VARCHAR(20) NOT NULL CHECK (operator IN ('equals', 'not_equals', 'contains', 'gt', 'gte', 'lt', 'lte')),
+    value VARCHAR(500) NOT NULL,
+    attendant_id INTEGER NOT NULL,
+    priority INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES ticket_categories(id) ON DELETE CASCADE,
+    FOREIGN KEY (attendant_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_category_assignment_rules_category ON category_assignment_rules(category_id);
 
 -- Tabela de mensagens de chamados
 CREATE TABLE IF NOT EXISTS ticket_messages (

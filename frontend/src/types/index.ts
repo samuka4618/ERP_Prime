@@ -125,11 +125,24 @@ export interface CategoryAssignment {
   attendant_name?: string;
 }
 
+export type AssignmentRuleOperator = 'equals' | 'not_equals' | 'contains' | 'gt' | 'gte' | 'lt' | 'lte';
+
+export interface AssignmentRuleSummary {
+  id: number;
+  field_name: string;
+  operator: AssignmentRuleOperator;
+  value: string;
+  attendant_id: number;
+  attendant_name?: string;
+  priority: number;
+}
+
 export interface AssignmentSummary {
   category: {
     id: number;
     name: string;
     description: string;
+    custom_fields?: CategoryField[];
   };
   assigned_attendants: Array<{
     id: number;
@@ -139,6 +152,7 @@ export interface AssignmentSummary {
     id: number;
     name: string;
   }>;
+  assignment_rules?: AssignmentRuleSummary[];
 }
 
 export interface LoginRequest {
@@ -156,6 +170,7 @@ export interface CreateTicketRequest {
   subject: string;
   description: string;
   priority: string;
+  custom_data?: Record<string, any>;
 }
 
 

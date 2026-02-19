@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, X, AlertCircle } from 'lucide-react';
+import { Users, Plus, X, AlertCircle, GitBranch } from 'lucide-react';
 import { apiService } from '../services/api';
-import { AssignmentSummary } from '../types';
+import { AssignmentSummary, AssignmentRuleOperator } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
+
+const OPERATOR_LABELS: Record<AssignmentRuleOperator, string> = {
+  equals: 'igual a',
+  not_equals: 'diferente de',
+  contains: 'contém',
+  gt: 'maior que',
+  gte: 'maior ou igual a',
+  lt: 'menor que',
+  lte: 'menor ou igual a'
+};
 
 const CategoryAssignments: React.FC = () => {
   const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
   const [allAttendants, setAllAttendants] = useState<Array<{ id: number; name: string; email: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [newRuleByCategory, setNewRuleByCategory] = useState<Record<number, { field_name: string; operator: AssignmentRuleOperator; value: string; attendant_id: string; priority: number }>>({});
 
   useEffect(() => {
     fetchAssignments();
@@ -81,6 +92,76 @@ const CategoryAssignments: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const addAssignmentRule = async (categoryId: number) => {
+    const form = newRuleByCategory[categoryId];
+    if (!form || !form.field_name || !form.value.trim() || !form.attendant_id) {
+      toast.error('Preencha campo, valor e técnico para a regra');
+      return;
+    }
+    const attendantId = parseInt(form.attendant_id, 10);
+    if (Number.isNaN(attendantId)) {
+      toast.error('Selecione um técnico');
+      return;
+    }
+    try {
+      setSaving(true);
+      const rule = await apiService.createAssignmentRule(categoryId, {
+        field_name: form.field_name,
+        operator: form.operator,
+        value: form.value.trim(),
+        attendant_id: attendantId,
+        priority: form.priority ?? 0
+      });
+      setAssignments(prev => prev.map(cat => {
+        if (cat.category.id === categoryId) {
+          const rules = cat.assignment_rules || [];
+          return {
+            ...cat,
+            assignment_rules: [...rules, { id: rule.id, field_name: rule.field_name, operator: rule.operator, value: rule.value, attendant_id: rule.attendant_id, attendant_name: rule.attendant_name, priority: rule.priority }]
+          };
+        }
+        return cat;
+      }));
+      setNewRuleByCategory(prev => ({ ...prev, [categoryId]: { field_name: '', operator: 'equals', value: '', attendant_id: '', priority: 0 } }));
+      toast.success('Regra de atribuição adicionada');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Erro ao adicionar regra');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeAssignmentRule = async (categoryId: number, ruleId: number) => {
+    try {
+      setSaving(true);
+      await apiService.deleteAssignmentRule(ruleId);
+      setAssignments(prev => prev.map(cat => {
+        if (cat.category.id === categoryId) {
+          return {
+            ...cat,
+            assignment_rules: (cat.assignment_rules || []).filter(r => r.id !== ruleId)
+          };
+        }
+        return cat;
+      }));
+      toast.success('Regra removida');
+    } catch (error: any) {
+      toast.error('Erro ao remover regra');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setNewRuleField = (categoryId: number, field: string, value: string | number) => {
+    setNewRuleByCategory(prev => ({
+      ...prev,
+      [categoryId]: {
+        ...(prev[categoryId] || { field_name: '', operator: 'equals' as AssignmentRuleOperator, value: '', attendant_id: '', priority: 0 }),
+        [field]: value
+      }
+    }));
   };
 
   if (loading) {
@@ -219,6 +300,132 @@ const CategoryAssignments: React.FC = () => {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Regras de atribuição por resposta */}
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3 flex items-center">
+                <GitBranch className="w-4 h-4 mr-2" />
+                Atribuição por resposta do formulário
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Se a categoria tiver campos no formulário de abertura, você pode definir regras: conforme a resposta, o chamado será atribuído a um técnico específico. A primeira regra que coincidir será usada.
+              </p>
+              {(assignment.assignment_rules || []).length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {(assignment.assignment_rules || []).map((rule) => {
+                    const fieldLabel = assignment.category.custom_fields?.find(f => f.name === rule.field_name)?.label || rule.field_name;
+                    return (
+                      <div
+                        key={rule.id}
+                        className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3"
+                      >
+                        <span className="text-sm text-gray-800 dark:text-gray-200">
+                          Se <strong>{fieldLabel}</strong> {OPERATOR_LABELS[rule.operator]} <strong>&quot;{rule.value}&quot;</strong> → {rule.attendant_name || allAttendants.find(a => a.id === rule.attendant_id)?.name || rule.attendant_id}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeAssignmentRule(assignment.category.id, rule.id)}
+                          disabled={saving}
+                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {(assignment.category.custom_fields && assignment.category.custom_fields.length > 0) && (
+                <>
+                  {assignment.assigned_attendants.length === 0 && (
+                    <p className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
+                      Atribua pelo menos um técnico a esta categoria (acima) para poder criar regras de atribuição por resposta.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-end gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Campo</label>
+                      <select
+                        value={newRuleByCategory[assignment.category.id]?.field_name || ''}
+                        onChange={(e) => setNewRuleField(assignment.category.id, 'field_name', e.target.value)}
+                        className="input py-1.5 text-sm min-w-[140px]"
+                        disabled={assignment.assigned_attendants.length === 0}
+                      >
+                        <option value="">Selecione</option>
+                        {assignment.category.custom_fields.map((f) => (
+                          <option key={f.id || f.name} value={f.name}>{f.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Condição</label>
+                      <select
+                        value={newRuleByCategory[assignment.category.id]?.operator || 'equals'}
+                        onChange={(e) => setNewRuleField(assignment.category.id, 'operator', e.target.value as AssignmentRuleOperator)}
+                        className="input py-1.5 text-sm min-w-[160px]"
+                        disabled={assignment.assigned_attendants.length === 0}
+                      >
+                        {(Object.entries(OPERATOR_LABELS) as [AssignmentRuleOperator, string][]).map(([op, label]) => (
+                          <option key={op} value={op}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Valor</label>
+                      <input
+                        type="text"
+                        value={newRuleByCategory[assignment.category.id]?.value || ''}
+                        onChange={(e) => setNewRuleField(assignment.category.id, 'value', e.target.value)}
+                        placeholder="Ex: Urgente ou 10"
+                        className="input py-1.5 text-sm w-32"
+                        disabled={assignment.assigned_attendants.length === 0}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Técnico</label>
+                      <select
+                        value={newRuleByCategory[assignment.category.id]?.attendant_id || ''}
+                        onChange={(e) => setNewRuleField(assignment.category.id, 'attendant_id', e.target.value)}
+                        className="input py-1.5 text-sm min-w-[160px]"
+                        disabled={assignment.assigned_attendants.length === 0}
+                      >
+                        <option value="">
+                          {assignment.assigned_attendants.length === 0 ? 'Atribua um técnico primeiro' : 'Selecione'}
+                        </option>
+                        {assignment.assigned_attendants.map((a) => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Ordem</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={newRuleByCategory[assignment.category.id]?.priority ?? 0}
+                        onChange={(e) => setNewRuleField(assignment.category.id, 'priority', parseInt(e.target.value, 10) || 0)}
+                        className="input py-1.5 text-sm w-16"
+                        disabled={assignment.assigned_attendants.length === 0}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addAssignmentRule(assignment.category.id)}
+                      disabled={saving || assignment.assigned_attendants.length === 0}
+                      className="btn btn-primary py-1.5 text-sm"
+                    >
+                      <Plus className="w-4 h-4 inline mr-1" />
+                      Adicionar regra
+                    </button>
+                  </div>
+                </>
+              )}
+              {(!assignment.category.custom_fields || assignment.category.custom_fields.length === 0) && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                  Adicione campos personalizados na categoria (em Cadastros → Categorias) para usar regras por resposta.
+                </p>
+              )}
             </div>
           </div>
         ))}

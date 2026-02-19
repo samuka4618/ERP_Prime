@@ -13,6 +13,24 @@ export interface CategoryAssignment {
 
 export class CategoryAssignmentModel {
   static async create(categoryId: number, attendantId: number): Promise<CategoryAssignment> {
+    const existing = await dbGet(
+      'SELECT id, is_active FROM category_assignments WHERE category_id = ? AND attendant_id = ?',
+      [categoryId, attendantId]
+    ) as { id: number; is_active: number } | undefined;
+
+    if (existing) {
+      if (existing.is_active === 1) {
+        throw new Error('Esta atribuição já existe');
+      }
+      await dbRun(
+        'UPDATE category_assignments SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [existing.id]
+      );
+      const assignment = await this.findById(existing.id);
+      if (!assignment) throw new Error('Erro ao reativar atribuição');
+      return assignment;
+    }
+
     const result = await dbRun(
       'INSERT INTO category_assignments (category_id, attendant_id) VALUES (?, ?)',
       [categoryId, attendantId]

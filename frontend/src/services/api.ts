@@ -449,6 +449,22 @@ class ApiService {
     });
   }
 
+  // Regras de atribuição por resposta
+  async createAssignmentRule(
+    categoryId: number,
+    data: { field_name: string; operator: string; value: string; attendant_id: number; priority?: number }
+  ): Promise<any> {
+    const response = await this.api.post<ApiResponse<any>>(
+      `/category-assignments/category/${categoryId}/rules`,
+      data
+    );
+    return response.data.data;
+  }
+
+  async deleteAssignmentRule(ruleId: number): Promise<void> {
+    await this.api.delete(`/category-assignments/rules/${ruleId}`);
+  }
+
   // Assumir ticket
   async claimTicket(ticketId: number): Promise<Ticket> {
     const response = await this.api.post<ApiResponse<Ticket>>(`/tickets/${ticketId}/claim`);

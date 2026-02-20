@@ -52,12 +52,12 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
 
   const getLevelColor = (level: LogLevel): string => {
     const colors = {
-      [LogLevel.DEBUG]: 'text-purple-600 bg-purple-100',
-      [LogLevel.INFO]: 'text-cyan-600 bg-cyan-100',
-      [LogLevel.WARN]: 'text-yellow-600 bg-yellow-100',
-      [LogLevel.ERROR]: 'text-red-600 bg-red-100'
+      [LogLevel.DEBUG]: 'text-purple-600 bg-purple-100 dark:text-purple-300 dark:bg-purple-900/40',
+      [LogLevel.INFO]: 'text-cyan-600 bg-cyan-100 dark:text-cyan-300 dark:bg-cyan-900/40',
+      [LogLevel.WARN]: 'text-yellow-600 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/40',
+      [LogLevel.ERROR]: 'text-red-600 bg-red-100 dark:text-red-300 dark:bg-red-900/40'
     };
-    return colors[level] || 'text-gray-600 bg-gray-100';
+    return colors[level] || 'text-gray-600 bg-gray-100 dark:text-gray-300 dark:bg-gray-700';
   };
 
   const getLevelName = (level: LogLevel): string => {
@@ -94,8 +94,8 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-6xl h-5/6 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 dark:bg-opacity-60 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 dark:border dark:border-gray-700 rounded-lg shadow-xl w-full max-w-6xl h-5/6 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -106,8 +106,8 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
               onClick={() => setAutoScroll(!autoScroll)}
               className={`p-2 rounded-md ${
                 autoScroll 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'bg-gray-100 text-gray-600'
+                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300' 
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
               }`}
               title={autoScroll ? 'Auto-scroll ativado' : 'Auto-scroll desativado'}
             >
@@ -115,21 +115,21 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
             </button>
             <button
               onClick={handleDownload}
-              className="p-2 bg-green-100 text-green-600 rounded-md hover:bg-green-200"
+              className="p-2 bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-800/50"
               title="Download dos logs"
             >
               <Download className="w-4 h-4" />
             </button>
             <button
               onClick={handleClear}
-              className="p-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200"
+              className="p-2 bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-800/50"
               title="Limpar logs"
             >
               <Trash2 className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200"
+              className="p-2 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
             >
               <X className="w-4 h-4" />
             </button>
@@ -140,11 +140,11 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-500" />
+              <Filter className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               <select
                 value={selectedLevel}
                 onChange={(e) => setSelectedLevel(e.target.value as LogLevel | 'ALL')}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                className="input px-3 py-1 text-sm"
               >
                 <option value="ALL">Todos os níveis</option>
                 <option value={LogLevel.DEBUG}>Debug</option>
@@ -159,10 +159,10 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
                 placeholder="Buscar nos logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-1 border border-gray-300 rounded-md text-sm"
+                className="input w-full text-sm"
               />
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               {filteredLogs.length} de {logs.length} logs
             </div>
           </div>
@@ -171,10 +171,10 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
         {/* Logs */}
         <div
           id="log-container"
-          className="flex-1 overflow-y-auto p-4 font-mono text-sm"
+          className="flex-1 overflow-y-auto p-4 font-mono text-sm bg-white dark:bg-gray-800"
         >
           {filteredLogs.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
+            <div className="text-center text-gray-500 dark:text-gray-400 py-8">
               Nenhum log encontrado
             </div>
           ) : (
@@ -193,7 +193,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 text-xs text-gray-500">
+                      <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
                         <span>{formatTimestamp(log.timestamp)}</span>
                         <span>•</span>
                         <span>{log.context}</span>

@@ -233,20 +233,20 @@ const CategoryAssignments: React.FC = () => {
                     assignment.assigned_attendants.map((attendant) => (
                       <div
                         key={attendant.id}
-                        className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3"
+                        className="flex items-center justify-between bg-green-50 dark:bg-green-900/50 border border-green-200 dark:border-green-700 rounded-lg p-3"
                       >
                         <div className="flex items-center">
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                            <Users className="w-4 h-4 text-green-600" />
+                          <div className="w-8 h-8 bg-green-100 dark:bg-green-800/60 rounded-full flex items-center justify-center mr-3">
+                            <Users className="w-4 h-4 text-green-600 dark:text-green-300" />
                           </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          <span className="text-sm font-medium text-gray-900 dark:text-green-100">
                             {attendant.name}
                           </span>
                         </div>
                         <button
                           onClick={() => removeAssignment(assignment.category.id, attendant.id)}
                           disabled={saving}
-                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-50"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -318,16 +318,16 @@ const CategoryAssignments: React.FC = () => {
                     return (
                       <div
                         key={rule.id}
-                        className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3"
+                        className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700 rounded-lg p-3"
                       >
-                        <span className="text-sm text-gray-800 dark:text-gray-200">
+                        <span className="text-sm text-gray-800 dark:text-amber-100">
                           Se <strong>{fieldLabel}</strong> {OPERATOR_LABELS[rule.operator]} <strong>&quot;{rule.value}&quot;</strong> → {rule.attendant_name || allAttendants.find(a => a.id === rule.attendant_id)?.name || rule.attendant_id}
                         </span>
                         <button
                           type="button"
                           onClick={() => removeAssignmentRule(assignment.category.id, rule.id)}
                           disabled={saving}
-                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-50"
                         >
                           <X className="w-4 h-4" />
                         </button>

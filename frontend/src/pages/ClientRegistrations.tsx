@@ -109,8 +109,8 @@ export const ClientRegistrations: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Cadastros de Clientes</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cadastros de Clientes</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Gerencie os cadastros de novos clientes
           </p>
         </div>
@@ -126,19 +126,19 @@ export const ClientRegistrations: React.FC = () => {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Busca */}
           <div className="md:col-span-2">
             <form onSubmit={handleSearch} className="flex">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
                   placeholder="Buscar por nome do cliente..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 w-full"
+                  className="input pl-10 pr-4 py-2 w-full"
                 />
               </div>
               <button
@@ -155,7 +155,7 @@ export const ClientRegistrations: React.FC = () => {
             <select
               value={filters.status || ''}
               onChange={(e) => handleFilterChange('status', e.target.value || undefined)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="input w-full px-3 py-2"
             >
               <option value="">Todos os status</option>
               <option value="cadastro_enviado">Cadastro Enviado</option>
@@ -169,7 +169,7 @@ export const ClientRegistrations: React.FC = () => {
             <select
               value={filters.limit || 10}
               onChange={(e) => handleFilterChange('limit', parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="input w-full px-3 py-2"
             >
               <option value={10}>10 por página</option>
               <option value={25}>25 por página</option>
@@ -180,12 +180,12 @@ export const ClientRegistrations: React.FC = () => {
       </div>
 
       {/* Lista de Cadastros */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4">
+          <div className="bg-red-50 dark:bg-red-900/40 border-l-4 border-red-400 dark:border-red-600 p-4">
             <div className="flex">
               <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
               </div>
             </div>
           </div>
@@ -193,9 +193,9 @@ export const ClientRegistrations: React.FC = () => {
 
         {registrations.length === 0 ? (
           <div className="text-center py-12">
-            <Building className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum cadastro encontrado</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <Building className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Nenhum cadastro encontrado</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {searchTerm || filters.status 
                 ? 'Tente ajustar os filtros de busca.' 
                 : 'Comece criando um novo cadastro de cliente.'
@@ -215,66 +215,66 @@ export const ClientRegistrations: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Cliente
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     CNPJ
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Data
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {registrations.map((registration) => (
-                  <tr key={registration.id} className="hover:bg-gray-50">
+                  <tr key={registration.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Building className="h-5 w-5 text-blue-600" />
+                          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                            <Building className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
                             {registration.nome_cliente}
                           </div>
                           {registration.nome_fantasia && (
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
                               {registration.nome_fantasia}
                             </div>
                           )}
-                          <div className="text-sm text-gray-500 flex items-center">
+                          <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
                             <Mail className="h-3 w-3 mr-1" />
                             {registration.email}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                       {formatCNPJ(registration.cnpj)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <ClientStatusBadge status={registration.status} />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(registration.created_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <Link
                           to={`/client-registrations/${registration.id}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                           title="Ver detalhes"
                         >
                           <Eye className="h-4 w-4" />
@@ -283,7 +283,7 @@ export const ClientRegistrations: React.FC = () => {
                           <>
                             <Link
                               to={`/client-registrations/${registration.id}/edit`}
-                              className="text-indigo-600 hover:text-indigo-900"
+                              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
                               title="Editar"
                             >
                               <Edit className="h-4 w-4" />
@@ -291,7 +291,7 @@ export const ClientRegistrations: React.FC = () => {
                             <button
                               onClick={() => handleReprocess(registration.id)}
                               disabled={reprocessingId === registration.id}
-                              className={`text-orange-600 hover:text-orange-900 disabled:opacity-50 disabled:cursor-not-allowed`}
+                              className="text-orange-600 dark:text-orange-400 hover:text-orange-900 dark:hover:text-orange-300 disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Reprocessar cadastro"
                             >
                               <RefreshCw className={`h-4 w-4 ${reprocessingId === registration.id ? 'animate-spin' : ''}`} />
@@ -309,26 +309,26 @@ export const ClientRegistrations: React.FC = () => {
 
         {/* Paginação */}
         {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
                 onClick={() => handlePageChange((filters.page || 1) - 1)}
                 disabled={filters.page === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Anterior
               </button>
               <button
                 onClick={() => handlePageChange((filters.page || 1) + 1)}
                 disabled={filters.page === totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Próximo
               </button>
             </div>
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
                   Página <span className="font-medium">{filters.page || 1}</span> de{' '}
                   <span className="font-medium">{totalPages}</span>
                 </p>
@@ -338,14 +338,14 @@ export const ClientRegistrations: React.FC = () => {
                   <button
                     onClick={() => handlePageChange((filters.page || 1) - 1)}
                     disabled={filters.page === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Anterior
                   </button>
                   <button
                     onClick={() => handlePageChange((filters.page || 1) + 1)}
                     disabled={filters.page === totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Próximo
                   </button>

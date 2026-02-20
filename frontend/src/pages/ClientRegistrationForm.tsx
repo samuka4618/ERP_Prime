@@ -85,15 +85,15 @@ export const ClientRegistrationForm: React.FC = () => {
     }
     return (
       <div>
-        <Upload className="mx-auto h-12 w-12 text-gray-400" />
-        <div className="flex text-sm text-gray-600">
-          <label className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+        <Upload className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+        <div className="flex text-sm text-gray-600 dark:text-gray-400">
+          <label className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
             <span>Selecionar arquivo</span>
             <input type="file" accept="image/*" onChange={(e) => handleFileChange('imagem_externa', e.target.files?.[0] || null)} className="sr-only" required={!isEditing} />
           </label>
           <p className="pl-1">ou arraste e solte</p>
         </div>
-        <p className="text-xs text-gray-500">PNG, JPG, GIF até 10MB</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF até 10MB</p>
       </div>
     );
   };
@@ -131,15 +131,15 @@ export const ClientRegistrationForm: React.FC = () => {
     }
     return (
       <div>
-        <Upload className="mx-auto h-12 w-12 text-gray-400" />
-        <div className="flex text-sm text-gray-600">
-          <label className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+        <Upload className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+        <div className="flex text-sm text-gray-600 dark:text-gray-400">
+          <label className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
             <span>Selecionar arquivo</span>
             <input type="file" accept="image/*" onChange={(e) => handleFileChange('imagem_interna', e.target.files?.[0] || null)} className="sr-only" required={!isEditing} />
           </label>
           <p className="pl-1">ou arraste e solte</p>
         </div>
-        <p className="text-xs text-gray-500">PNG, JPG, GIF até 10MB</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF até 10MB</p>
       </div>
     );
   };
@@ -332,25 +332,25 @@ export const ClientRegistrationForm: React.FC = () => {
       <div className="flex items-center space-x-4">
         <button
           onClick={() => navigate('/client-registrations')}
-          className="p-2 text-gray-400 hover:text-gray-600"
+          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             {isEditing ? 'Editar Cadastro de Cliente' : 'Novo Cadastro de Cliente'}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {isEditing ? 'Edite os dados do cadastro' : 'Preencha os dados do cliente para enviar o cadastro'}
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
+        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 dark:border-red-500 p-4">
           <div className="flex">
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
           </div>
         </div>
@@ -358,15 +358,15 @@ export const ClientRegistrationForm: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Informações Básicas */}
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 dark:border dark:border-gray-700">
           <div className="flex items-center mb-4">
-            <Building className="h-5 w-5 text-blue-600 mr-2" />
-            <h2 className="text-lg font-medium text-gray-900">Informações Básicas</h2>
+            <Building className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Informações Básicas</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Nome do Cliente *
               </label>
               <input
@@ -374,13 +374,13 @@ export const ClientRegistrationForm: React.FC = () => {
                 name="nome_cliente"
                 value={formData.nome_cliente || ''}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Nome Fantasia
               </label>
               <input
@@ -388,12 +388,12 @@ export const ClientRegistrationForm: React.FC = () => {
                 name="nome_fantasia"
                 value={formData.nome_fantasia || ''}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 CNPJ *
               </label>
               <input
@@ -402,13 +402,13 @@ export const ClientRegistrationForm: React.FC = () => {
                 value={formData.cnpj || ''}
                 onChange={handleCNPJChange}
                 placeholder="00.000.000/0000-00"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Email *
               </label>
               <input
@@ -416,7 +416,7 @@ export const ClientRegistrationForm: React.FC = () => {
                 name="email"
                 value={formData.email || ''}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
                 required
               />
             </div>
@@ -424,22 +424,22 @@ export const ClientRegistrationForm: React.FC = () => {
         </div>
 
         {/* Configurações Comerciais */}
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 dark:border dark:border-gray-700">
           <div className="flex items-center mb-4">
-            <Briefcase className="h-5 w-5 text-green-600 mr-2" />
-            <h2 className="text-lg font-medium text-gray-900">Configurações Comerciais</h2>
+            <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Configurações Comerciais</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Ramo de Atividade *
               </label>
               <select
                 name="ramo_atividade_id"
                 value={formData.ramo_atividade_id || ''}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
                 required
               >
                 <option value="">Selecione...</option>
@@ -452,14 +452,14 @@ export const ClientRegistrationForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Vendedor *
               </label>
               <select
                 name="vendedor_id"
                 value={formData.vendedor_id || ''}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
                 required
               >
                 <option value="">Selecione...</option>
@@ -472,14 +472,14 @@ export const ClientRegistrationForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Gestor *
               </label>
               <select
                 name="gestor_id"
                 value={formData.gestor_id || ''}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
                 required
               >
                 <option value="">Selecione...</option>
@@ -492,14 +492,14 @@ export const ClientRegistrationForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Código da Carteira *
               </label>
               <select
                 name="codigo_carteira_id"
                 value={formData.codigo_carteira_id || ''}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
                 required
               >
                 <option value="">Selecione...</option>
@@ -512,14 +512,14 @@ export const ClientRegistrationForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Lista de Preço *
               </label>
               <select
                 name="lista_preco_id"
                 value={formData.lista_preco_id || ''}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
                 required
               >
                 <option value="">Selecione...</option>
@@ -532,14 +532,14 @@ export const ClientRegistrationForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Forma de Pagamento Desejada *
               </label>
               <select
                 name="forma_pagamento_desejada_id"
                 value={formData.forma_pagamento_desejada_id || ''}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
                 required
               >
                 <option value="">Selecione...</option>
@@ -554,15 +554,15 @@ export const ClientRegistrationForm: React.FC = () => {
         </div>
 
         {/* Informações Adicionais */}
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 dark:border dark:border-gray-700">
           <div className="flex items-center mb-4">
-            <DollarSign className="h-5 w-5 text-purple-600 mr-2" />
-            <h2 className="text-lg font-medium text-gray-900">Informações Adicionais</h2>
+            <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Informações Adicionais</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Prazo Desejado (dias)
               </label>
               <input
@@ -572,12 +572,12 @@ export const ClientRegistrationForm: React.FC = () => {
                 onChange={handleInputChange}
                 min="1"
                 max="365"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Periodicidade de Pedido
               </label>
               <input
@@ -586,12 +586,12 @@ export const ClientRegistrationForm: React.FC = () => {
                 value={formData.periodicidade_pedido || ''}
                 onChange={handleInputChange}
                 placeholder="Ex: Mensal, Quinzenal, Semanal"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Valor Estimado de Pedido (R$)
               </label>
               <input
@@ -601,12 +601,12 @@ export const ClientRegistrationForm: React.FC = () => {
                 onChange={handleInputChange}
                 min="0"
                 step="0.01"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Forma de Contato
               </label>
               <input
@@ -615,22 +615,22 @@ export const ClientRegistrationForm: React.FC = () => {
                 value={formData.forma_contato || ''}
                 onChange={handleInputChange}
                 placeholder="Ex: Telefone, Email, WhatsApp"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
               />
             </div>
           </div>
         </div>
 
         {/* Contato e Redes Sociais */}
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 dark:border dark:border-gray-700">
           <div className="flex items-center mb-4">
-            <Phone className="h-5 w-5 text-orange-600 mr-2" />
-            <h2 className="text-lg font-medium text-gray-900">Contato e Redes Sociais</h2>
+            <Phone className="h-5 w-5 text-orange-600 dark:text-orange-400 mr-2" />
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Contato e Redes Sociais</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 WhatsApp do Cliente
               </label>
               <input
@@ -639,12 +639,12 @@ export const ClientRegistrationForm: React.FC = () => {
                 value={formData.whatsapp_cliente || ''}
                 onChange={handleInputChange}
                 placeholder="(11) 99999-9999"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Rede Social
               </label>
               <input
@@ -653,12 +653,12 @@ export const ClientRegistrationForm: React.FC = () => {
                 value={formData.rede_social || ''}
                 onChange={handleInputChange}
                 placeholder="Instagram, Facebook, LinkedIn"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Link do Google Maps
               </label>
               <input
@@ -667,17 +667,17 @@ export const ClientRegistrationForm: React.FC = () => {
                 value={formData.link_google_maps || ''}
                 onChange={handleInputChange}
                 placeholder="https://maps.google.com/..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="input w-full"
               />
             </div>
           </div>
         </div>
 
         {/* Upload de Imagens */}
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 dark:border dark:border-gray-700">
           <div className="flex items-center mb-4">
-            <Upload className="h-5 w-5 text-indigo-600 mr-2" />
-            <h2 className="text-lg font-medium text-gray-900">Imagens e Anexos</h2>
+            <Upload className="h-5 w-5 text-indigo-600 dark:text-indigo-400 mr-2" />
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Imagens e Anexos</h2>
           </div>
           
           <div className="space-y-6">
@@ -685,34 +685,34 @@ export const ClientRegistrationForm: React.FC = () => {
             {(() => { return null; })()}
             {/* Imagem Externa */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Imagem Externa {isEditing ? '(Atual)' : '* (Obrigatória)'}
               </label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md">
                 <div className="space-y-1 text-center">{renderImagemExterna()}</div>
               </div>
             </div>
 
             {/* Imagem Interna */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Imagem Interna {isEditing ? '(Atual)' : '* (Obrigatória)'}
               </label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md">
                 <div className="space-y-1 text-center">{renderImagemInterna()}</div>
               </div>
             </div>
 
             {/* Anexos Opcionais */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Anexos (Opcional)
               </label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md">
                 <div className="space-y-1 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="flex text-sm text-gray-600">
-                    <label className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                  <Upload className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                  <div className="flex text-sm text-gray-600 dark:text-gray-400">
+                    <label className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
                       <span>Selecionar arquivos</span>
                       <input
                         type="file"
@@ -723,21 +723,21 @@ export const ClientRegistrationForm: React.FC = () => {
                     </label>
                     <p className="pl-1">ou arraste e solte</p>
                   </div>
-                  <p className="text-xs text-gray-500">PDF, DOC, XLS, imagens até 10MB cada</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">PDF, DOC, XLS, imagens até 10MB cada</p>
                 </div>
               </div>
               
               {files.anexos.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Arquivos selecionados:</h4>
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Arquivos selecionados:</h4>
                   <div className="space-y-2">
                     {files.anexos.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <span className="text-sm text-gray-700">{file.name}</span>
+                      <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                        <span className="text-sm text-gray-700 dark:text-gray-200">{file.name}</span>
                         <button
                           type="button"
                           onClick={() => handleAnexosChange(files.anexos.filter((_, i) => i !== index))}
-                          className="text-red-600 hover:text-red-800"
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -755,7 +755,7 @@ export const ClientRegistrationForm: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/client-registrations')}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Cancelar
           </button>

@@ -1162,20 +1162,20 @@ export const ClientRegistrationDetail: React.FC = () => {
 
       {/* Modal de Atualização de Status */}
       {showStatusModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black dark:bg-opacity-60 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
             <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Atualizar Status</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Atualizar Status</h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Novo Status
                   </label>
                   <select
                     value={statusUpdate.status}
                     onChange={(e) => setStatusUpdate(prev => ({ ...prev, status: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="input w-full"
                   >
                     <option value="cadastro_enviado">Cadastro Enviado</option>
                     <option value="aguardando_analise_credito">Aguardando Análise de Crédito</option>
@@ -1184,14 +1184,14 @@ export const ClientRegistrationDetail: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Observações
                   </label>
                   <textarea
                     value={statusUpdate.observacoes}
                     onChange={(e) => setStatusUpdate(prev => ({ ...prev, observacoes: e.target.value }))}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="input w-full"
                     placeholder="Adicione observações sobre a mudança de status..."
                   />
                 </div>
@@ -1199,27 +1199,27 @@ export const ClientRegistrationDetail: React.FC = () => {
                 {statusUpdate.status === 'cadastro_finalizado' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                         Prazo Aprovado
                       </label>
                       <input
                         type="text"
                         value={statusUpdate.prazo_aprovado}
                         onChange={(e) => setStatusUpdate(prev => ({ ...prev, prazo_aprovado: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="input w-full"
                         placeholder="Ex: 30 dias"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                         Limite Aprovado
                       </label>
                       <input
                         type="text"
                         value={statusUpdate.limite_aprovado}
                         onChange={(e) => setStatusUpdate(prev => ({ ...prev, limite_aprovado: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="input w-full"
                         placeholder="Ex: R$ 10.000,00"
                       />
                     </div>
@@ -1230,7 +1230,7 @@ export const ClientRegistrationDetail: React.FC = () => {
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   onClick={() => setShowStatusModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                 >
                   Cancelar
                 </button>
@@ -1249,14 +1249,14 @@ export const ClientRegistrationDetail: React.FC = () => {
 
       {/* Modal de Definir Prazo/Condição de Pagamento */}
       {showFinancialModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black dark:bg-opacity-60 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
             <div className="mt-3">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Definir Condição de Pagamento</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Definir Condição de Pagamento</h3>
                 <button
                   onClick={() => setShowFinancialModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1266,13 +1266,13 @@ export const ClientRegistrationDetail: React.FC = () => {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Condição de Pagamento <span className="text-red-500">*</span>
                   </label>
                   {loadingCondicoes ? (
-                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                      <span className="text-sm text-gray-500">Carregando condições...</span>
+                    <div className="input w-full flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400 mr-2"></div>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Carregando condições...</span>
                     </div>
                   ) : (
                     <div className="relative">
@@ -1302,12 +1302,12 @@ export const ClientRegistrationDetail: React.FC = () => {
                           // Delay para permitir clique no dropdown
                           setTimeout(() => setShowCondicoesDropdown(false), 200);
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="input w-full px-3 py-2"
                         placeholder="Digite o código ou nome da condição..."
                         required
                       />
                       {showCondicoesDropdown && condicoesPagamento.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
                           {condicoesPagamento
                             .filter(condicao => {
                               const searchTerm = condicaoPagamentoInput.toLowerCase();
@@ -1325,11 +1325,11 @@ export const ClientRegistrationDetail: React.FC = () => {
                                   setFinancialData(prev => ({ ...prev, condicao_pagamento_id: condicao.id }));
                                   setShowCondicoesDropdown(false);
                                 }}
-                                className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0"
                               >
-                                <div className="font-medium text-sm text-gray-900">{condicao.id} - {condicao.nome}</div>
+                                <div className="font-medium text-sm text-gray-900 dark:text-white">{condicao.id} - {condicao.nome}</div>
                                 {condicao.descricao && condicao.descricao !== condicao.nome && (
-                                  <div className="text-xs text-gray-500 mt-0.5">{condicao.descricao}</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{condicao.descricao}</div>
                                 )}
                               </div>
                             ))}
@@ -1340,20 +1340,20 @@ export const ClientRegistrationDetail: React.FC = () => {
                               condicao.nome.toLowerCase().includes(searchTerm) ||
                               `${condicao.id} - ${condicao.nome}`.toLowerCase().includes(searchTerm);
                           }).length === 0 && (
-                            <div className="px-3 py-2 text-sm text-gray-500">Nenhuma condição encontrada</div>
+                            <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Nenhuma condição encontrada</div>
                           )}
                         </div>
                       )}
                     </div>
                   )}
                   {condicoesPagamento.length === 0 && !loadingCondicoes && (
-                    <p className="mt-1 text-xs text-red-500">Nenhuma condição de pagamento disponível. Contate o administrador.</p>
+                    <p className="mt-1 text-xs text-red-500 dark:text-red-400">Nenhuma condição de pagamento disponível. Contate o administrador.</p>
                   )}
-                  <p className="mt-1 text-xs text-gray-500">Digite o código ou nome da condição de pagamento. As opções aparecerão automaticamente.</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Digite o código ou nome da condição de pagamento. As opções aparecerão automaticamente.</p>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Limite de Crédito
                   </label>
                   <input
@@ -1364,15 +1364,15 @@ export const ClientRegistrationDetail: React.FC = () => {
                       const value = e.target.value.replace(/[^\d,.-]/g, '');
                       setFinancialData(prev => ({ ...prev, limite_credito: value }));
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="input w-full px-3 py-2"
                     placeholder="Ex: 10000.00 ou 10000,00"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Valor do limite de crédito em R$ (número decimal)</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Valor do limite de crédito em R$ (número decimal)</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Código da Carteira <span className="text-gray-400 text-xs">(opcional)</span>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Código da Carteira <span className="text-gray-400 dark:text-gray-500 text-xs">(opcional)</span>
                   </label>
                   <input
                     type="text"
@@ -1382,15 +1382,15 @@ export const ClientRegistrationDetail: React.FC = () => {
                       const value = e.target.value.replace(/\D/g, '');
                       setFinancialData(prev => ({ ...prev, codigo_carteira: value }));
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="input w-full px-3 py-2"
                     placeholder="Ex: 101"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Deixe em branco para usar o valor atual do cadastro</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Deixe em branco para usar o valor atual do cadastro</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Código da Forma de Cobrança <span className="text-gray-400 text-xs">(opcional)</span>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    Código da Forma de Cobrança <span className="text-gray-400 dark:text-gray-500 text-xs">(opcional)</span>
                   </label>
                   <input
                     type="text"
@@ -1400,15 +1400,15 @@ export const ClientRegistrationDetail: React.FC = () => {
                       const value = e.target.value.replace(/\D/g, '');
                       setFinancialData(prev => ({ ...prev, codigo_forma_cobranca: value }));
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="input w-full px-3 py-2"
                     placeholder="Ex: 1"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Deixe em branco para usar o valor atual do cadastro</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Deixe em branco para usar o valor atual do cadastro</p>
                 </div>
 
                 {registration?.dados_financeiros_enviados_atak && (
-                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                    <p className="text-sm text-green-800">
+                  <div className="bg-green-50 dark:bg-green-900/40 border border-green-200 dark:border-green-700 rounded-md p-3">
+                    <p className="text-sm text-green-800 dark:text-green-200">
                       ✓ Dados financeiros já foram enviados ao Atak
                     </p>
                   </div>
@@ -1418,7 +1418,7 @@ export const ClientRegistrationDetail: React.FC = () => {
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   onClick={() => setShowFinancialModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                   disabled={savingFinancial}
                 >
                   Cancelar
@@ -1466,17 +1466,17 @@ export const ClientRegistrationDetail: React.FC = () => {
 
       {/* Modal de Cadastro ATAK */}
       {showAtakModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black dark:bg-opacity-60 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-full max-w-4xl shadow-lg rounded-md bg-white dark:bg-gray-800 max-h-[90vh] overflow-y-auto">
             <div className="mt-3">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
-                  <Building className="h-5 w-5 text-green-600 mr-2" />
-                  <h3 className="text-lg font-medium text-gray-900">Cadastro ATAK</h3>
+                  <Building className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Cadastro ATAK</h3>
                 </div>
                 <button
                   onClick={() => setShowAtakModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -1485,66 +1485,66 @@ export const ClientRegistrationDetail: React.FC = () => {
               {loadingAtak ? (
                 <div className="text-center py-8">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                  <p className="mt-2 text-sm text-gray-500">Carregando dados do Atak...</p>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Carregando dados do Atak...</p>
                 </div>
               ) : atakData ? (
                 <div className="space-y-6">
                   {/* Dados Básicos */}
-                  <div className="border-t pt-4">
-                    <h3 className="text-md font-medium text-gray-900 mb-3">Dados Básicos</h3>
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <h3 className="text-md font-medium text-gray-900 dark:text-white mb-3">Dados Básicos</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {atakData.id !== undefined && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">ID</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.id}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">ID</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.id}</p>
                         </div>
                       )}
                       {atakData.RazaoSocial && (
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Razão Social</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.RazaoSocial}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Razão Social</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.RazaoSocial}</p>
                         </div>
                       )}
                       {atakData.nomeFantasia && (
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Nome Fantasia</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.nomeFantasia}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Nome Fantasia</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.nomeFantasia}</p>
                         </div>
                       )}
                       {atakData.cpfCnpj && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">CPF/CNPJ</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.cpfCnpj}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">CPF/CNPJ</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.cpfCnpj}</p>
                         </div>
                       )}
                       {atakData.CNPJCPF && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">CNPJ/CPF</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.CNPJCPF}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">CNPJ/CPF</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.CNPJCPF}</p>
                         </div>
                       )}
                       {atakData.rg && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">RG</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.rg}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">RG</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.rg}</p>
                         </div>
                       )}
                       {atakData.RGIE && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">RG/IE</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.RGIE}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">RG/IE</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.RGIE}</p>
                         </div>
                       )}
                       {atakData.tipoDePessoa && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Tipo de Pessoa</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.tipoDePessoa === 'F' ? 'Física' : atakData.tipoDePessoa === 'J' ? 'Jurídica' : atakData.tipoDePessoa}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Tipo de Pessoa</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.tipoDePessoa === 'F' ? 'Física' : atakData.tipoDePessoa === 'J' ? 'Jurídica' : atakData.tipoDePessoa}</p>
                         </div>
                       )}
                       {atakData.codigoDaSituacao && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Situação</label>
-                          <p className="mt-1 text-sm text-gray-900">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Situação</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">
                             {atakData.codigoDaSituacao === 'A' ? 'Ativo' : 
                              atakData.codigoDaSituacao === 'B' ? 'Bloqueado' : 
                              atakData.codigoDaSituacao === 'I' ? 'Inativo' : 
@@ -1554,26 +1554,26 @@ export const ClientRegistrationDetail: React.FC = () => {
                       )}
                       {atakData.tipoDeCadastro && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Tipo de Cadastro</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.tipoDeCadastro}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Tipo de Cadastro</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.tipoDeCadastro}</p>
                         </div>
                       )}
                       {atakData.codigoDaArea && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Código da Área</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.codigoDaArea}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Código da Área</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.codigoDaArea}</p>
                         </div>
                       )}
                       {atakData.CodigoDaFilial && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Código da Filial</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.CodigoDaFilial}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Código da Filial</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.CodigoDaFilial}</p>
                         </div>
                       )}
                       {atakData.identificadorEstadual !== undefined && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Indicador IE</label>
-                          <p className="mt-1 text-sm text-gray-900">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Indicador IE</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">
                             {atakData.identificadorEstadual === 0 ? 'Não aplicável' :
                              atakData.identificadorEstadual === 1 ? 'Contribuinte ICMS' :
                              atakData.identificadorEstadual === 2 ? 'Contribuinte Isento' :
@@ -1584,38 +1584,38 @@ export const ClientRegistrationDetail: React.FC = () => {
                       )}
                       {atakData.observacao && (
                         <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Observação</label>
-                          <p className="mt-1 text-sm text-gray-900">{atakData.observacao}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Observação</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.observacao}</p>
                         </div>
                       )}
                       {atakData.dataDoCadastro && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Data do Cadastro</label>
-                          <p className="mt-1 text-sm text-gray-900">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Data do Cadastro</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">
                             {new Date(atakData.dataDoCadastro).toLocaleDateString('pt-BR')}
                           </p>
                         </div>
                       )}
                       {atakData.DataCadastro && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Data do Cadastro</label>
-                          <p className="mt-1 text-sm text-gray-900">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Data do Cadastro</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">
                             {new Date(atakData.DataCadastro).toLocaleDateString('pt-BR')}
                           </p>
                         </div>
                       )}
                       {atakData.dataAlteracaoDoCadastro && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Data de Alteração</label>
-                          <p className="mt-1 text-sm text-gray-900">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Data de Alteração</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">
                             {new Date(atakData.dataAlteracaoDoCadastro).toLocaleDateString('pt-BR')}
                           </p>
                         </div>
                       )}
                       {atakData.DataAlteracao && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Data de Alteração</label>
-                          <p className="mt-1 text-sm text-gray-900">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Data de Alteração</label>
+                          <p className="mt-1 text-sm text-gray-900 dark:text-white">
                             {new Date(atakData.DataAlteracao).toLocaleDateString('pt-BR')}
                           </p>
                         </div>
@@ -1625,66 +1625,66 @@ export const ClientRegistrationDetail: React.FC = () => {
 
                   {/* Endereços */}
                   {atakData.Enderecos && (
-                    <div className="border-t pt-4">
-                      <h3 className="text-md font-medium text-gray-900 mb-3">Endereços</h3>
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <h3 className="text-md font-medium text-gray-900 dark:text-white mb-3">Endereços</h3>
                       
                       {/* Endereço de Faturamento */}
                       {(atakData.Enderecos.ConteudoEnderecoF || atakData.Enderecos.BairroF || atakData.Enderecos.CidadeF) && (
-                        <div className="mb-4 bg-blue-50 rounded-lg p-4">
-                          <h4 className="text-sm font-semibold text-gray-800 mb-2">Faturamento</h4>
+                        <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                          <h4 className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Faturamento</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {atakData.Enderecos.ConteudoEnderecoF && (
                               <div className="md:col-span-2">
-                                <label className="block text-xs font-medium text-gray-600">Endereço</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.ConteudoEnderecoF}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Endereço</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.ConteudoEnderecoF}</p>
                               </div>
                             )}
                             {atakData.Enderecos.NumeroF && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Número</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.NumeroF}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Número</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.NumeroF}</p>
                               </div>
                             )}
                             {atakData.Enderecos.BairroF && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Bairro</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.BairroF}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Bairro</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.BairroF}</p>
                               </div>
                             )}
                             {atakData.Enderecos.CidadeF && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Cidade</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.CidadeF}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Cidade</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.CidadeF}</p>
                               </div>
                             )}
                             {atakData.Enderecos.UFF && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">UF</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.UFF}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">UF</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.UFF}</p>
                               </div>
                             )}
                             {atakData.Enderecos.CEPF && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">CEP</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.CEPF}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">CEP</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.CEPF}</p>
                               </div>
                             )}
                             {atakData.Enderecos.TelefoneF && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Telefone</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.TelefoneF}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Telefone</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.TelefoneF}</p>
                               </div>
                             )}
                             {atakData.Enderecos.FaxF && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Fax</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.FaxF}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Fax</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.FaxF}</p>
                               </div>
                             )}
                             {atakData.Enderecos.EmailF && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Email</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.EmailF}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Email</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.EmailF}</p>
                               </div>
                             )}
                           </div>
@@ -1693,55 +1693,55 @@ export const ClientRegistrationDetail: React.FC = () => {
 
                       {/* Endereço de Cobrança */}
                       {(atakData.Enderecos.ConteudoEnderecoC || atakData.Enderecos.BairroC || atakData.Enderecos.CidadeC) && (
-                        <div className="mb-4 bg-green-50 rounded-lg p-4">
-                          <h4 className="text-sm font-semibold text-gray-800 mb-2">Cobrança</h4>
+                        <div className="mb-4 bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                          <h4 className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Cobrança</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {atakData.Enderecos.ConteudoEnderecoC && (
                               <div className="md:col-span-2">
-                                <label className="block text-xs font-medium text-gray-600">Endereço</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.ConteudoEnderecoC}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Endereço</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.ConteudoEnderecoC}</p>
                               </div>
                             )}
                             {atakData.Enderecos.NumeroC && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Número</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.NumeroC}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Número</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.NumeroC}</p>
                               </div>
                             )}
                             {atakData.Enderecos.BairroC && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Bairro</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.BairroC}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Bairro</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.BairroC}</p>
                               </div>
                             )}
                             {atakData.Enderecos.CidadeC && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Cidade</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.CidadeC}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Cidade</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.CidadeC}</p>
                               </div>
                             )}
                             {atakData.Enderecos.UFC && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">UF</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.UFC}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">UF</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.UFC}</p>
                               </div>
                             )}
                             {atakData.Enderecos.CEPC && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">CEP</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.CEPC}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">CEP</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.CEPC}</p>
                               </div>
                             )}
                             {atakData.Enderecos.TelefoneC && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Telefone</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.TelefoneC}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Telefone</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.TelefoneC}</p>
                               </div>
                             )}
                             {atakData.Enderecos.EmailC && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Email</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.EmailC}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Email</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.EmailC}</p>
                               </div>
                             )}
                           </div>
@@ -1750,43 +1750,43 @@ export const ClientRegistrationDetail: React.FC = () => {
 
                       {/* Endereço de Entrega */}
                       {(atakData.Enderecos.ConteudoEnderecoE || atakData.Enderecos.BairroE || atakData.Enderecos.CidadeE) && (
-                        <div className="mb-4 bg-purple-50 rounded-lg p-4">
-                          <h4 className="text-sm font-semibold text-gray-800 mb-2">Entrega</h4>
+                        <div className="mb-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                          <h4 className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Entrega</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {atakData.Enderecos.ConteudoEnderecoE && (
                               <div className="md:col-span-2">
-                                <label className="block text-xs font-medium text-gray-600">Endereço</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.ConteudoEnderecoE}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Endereço</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.ConteudoEnderecoE}</p>
                               </div>
                             )}
                             {atakData.Enderecos.NumeroE && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Número</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.NumeroE}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Número</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.NumeroE}</p>
                               </div>
                             )}
                             {atakData.Enderecos.BairroE && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Bairro</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.BairroE}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Bairro</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.BairroE}</p>
                               </div>
                             )}
                             {atakData.Enderecos.CidadeE && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">Cidade</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.CidadeE}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Cidade</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.CidadeE}</p>
                               </div>
                             )}
                             {atakData.Enderecos.UFE && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">UF</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.UFE}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">UF</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.UFE}</p>
                               </div>
                             )}
                             {atakData.Enderecos.CEPE && (
                               <div>
-                                <label className="block text-xs font-medium text-gray-600">CEP</label>
-                                <p className="mt-1 text-sm text-gray-900">{atakData.Enderecos.CEPE}</p>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">CEP</label>
+                                <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Enderecos.CEPE}</p>
                               </div>
                             )}
                           </div>
@@ -1797,85 +1797,85 @@ export const ClientRegistrationDetail: React.FC = () => {
 
                   {/* Dados Financeiros */}
                   {atakData.Financeiro && (
-                    <div className="border-t pt-4">
-                      <h3 className="text-md font-medium text-gray-900 mb-3">Dados Financeiros</h3>
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <h3 className="text-md font-medium text-gray-900 dark:text-white mb-3">Dados Financeiros</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {atakData.Financeiro.ValorDoLimiteDeCredito !== undefined && atakData.Financeiro.ValorDoLimiteDeCredito !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Limite de Crédito</label>
-                            <p className="mt-1 text-sm text-gray-900">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Limite de Crédito</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(atakData.Financeiro.ValorDoLimiteDeCredito)}
                             </p>
                           </div>
                         )}
                         {atakData.Financeiro.CodigoDaCarteira !== undefined && atakData.Financeiro.CodigoDaCarteira !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Código da Carteira</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.Financeiro.CodigoDaCarteira}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Código da Carteira</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Financeiro.CodigoDaCarteira}</p>
                           </div>
                         )}
                         {atakData.Financeiro.CodigoDaListaDePreco !== undefined && atakData.Financeiro.CodigoDaListaDePreco !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Código da Lista de Preço</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.Financeiro.CodigoDaListaDePreco}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Código da Lista de Preço</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Financeiro.CodigoDaListaDePreco}</p>
                           </div>
                         )}
                         {atakData.Financeiro.CodigoFormaDeCobranca !== undefined && atakData.Financeiro.CodigoFormaDeCobranca !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Forma de Cobrança</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.Financeiro.CodigoFormaDeCobranca}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Forma de Cobrança</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Financeiro.CodigoFormaDeCobranca}</p>
                           </div>
                         )}
                         {atakData.IdDaCondicaoDePagamento && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Condição de Pagamento</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.IdDaCondicaoDePagamento}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Condição de Pagamento</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.IdDaCondicaoDePagamento}</p>
                           </div>
                         )}
                         {atakData.Financeiro.CodigoDoVendedor !== undefined && atakData.Financeiro.CodigoDoVendedor !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Código do Vendedor</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.Financeiro.CodigoDoVendedor}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Código do Vendedor</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Financeiro.CodigoDoVendedor}</p>
                           </div>
                         )}
                         {atakData.Financeiro.CodigoDeRisco !== undefined && atakData.Financeiro.CodigoDeRisco !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Código de Risco</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.Financeiro.CodigoDeRisco}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Código de Risco</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Financeiro.CodigoDeRisco}</p>
                           </div>
                         )}
                         {atakData.Financeiro.PercentualDeDesconto !== undefined && atakData.Financeiro.PercentualDeDesconto !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Percentual de Desconto</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.Financeiro.PercentualDeDesconto}%</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Percentual de Desconto</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Financeiro.PercentualDeDesconto}%</p>
                           </div>
                         )}
                         {atakData.Financeiro.PrazoMedioMaximo !== undefined && atakData.Financeiro.PrazoMedioMaximo !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Prazo Médio Máximo</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.Financeiro.PrazoMedioMaximo} dias</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Prazo Médio Máximo</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.Financeiro.PrazoMedioMaximo} dias</p>
                           </div>
                         )}
                         {atakData.Financeiro.DataRenovacaoDoCredito && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Data de Renovação do Crédito</label>
-                            <p className="mt-1 text-sm text-gray-900">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Data de Renovação do Crédito</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">
                               {new Date(atakData.Financeiro.DataRenovacaoDoCredito).toLocaleDateString('pt-BR')}
                             </p>
                           </div>
                         )}
                         {atakData.Financeiro.ValorDaUltimaCompra !== undefined && atakData.Financeiro.ValorDaUltimaCompra !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Valor da Última Compra</label>
-                            <p className="mt-1 text-sm text-gray-900">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Valor da Última Compra</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(atakData.Financeiro.ValorDaUltimaCompra)}
                             </p>
                           </div>
                         )}
                         {atakData.Financeiro.ValorDaMaiorCompra !== undefined && atakData.Financeiro.ValorDaMaiorCompra !== null && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Valor da Maior Compra</label>
-                            <p className="mt-1 text-sm text-gray-900">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Valor da Maior Compra</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(atakData.Financeiro.ValorDaMaiorCompra)}
                             </p>
                           </div>
@@ -1886,25 +1886,25 @@ export const ClientRegistrationDetail: React.FC = () => {
 
                   {/* Dados de Vendedor/Comissão */}
                   {(atakData.PercentualDeComissaoDoVendedor !== undefined || atakData.TipoDoVendedor || atakData.TipoDaComissaoDoVendedor || atakData.PercentualDescontoMaxDaVenda !== undefined) && (
-                    <div className="border-t pt-4">
-                      <h3 className="text-md font-medium text-gray-900 mb-3">Vendedor e Comissão</h3>
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <h3 className="text-md font-medium text-gray-900 dark:text-white mb-3">Vendedor e Comissão</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {atakData.PercentualDeComissaoDoVendedor !== undefined && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Percentual de Comissão do Vendedor</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.PercentualDeComissaoDoVendedor}%</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Percentual de Comissão do Vendedor</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.PercentualDeComissaoDoVendedor}%</p>
                           </div>
                         )}
                         {atakData.TipoDoVendedor && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Tipo do Vendedor</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.TipoDoVendedor}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Tipo do Vendedor</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.TipoDoVendedor}</p>
                           </div>
                         )}
                         {atakData.TipoDaComissaoDoVendedor && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Tipo da Comissão</label>
-                            <p className="mt-1 text-sm text-gray-900">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Tipo da Comissão</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">
                               {atakData.TipoDaComissaoDoVendedor === 'V' ? 'Venda' : 
                                atakData.TipoDaComissaoDoVendedor === 'R' ? 'Recebimento' : 
                                atakData.TipoDaComissaoDoVendedor}
@@ -1913,20 +1913,20 @@ export const ClientRegistrationDetail: React.FC = () => {
                         )}
                         {atakData.PercentualDescontoMaxDaVenda !== undefined && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Percentual de Desconto Máximo da Venda</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.PercentualDescontoMaxDaVenda}%</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Percentual de Desconto Máximo da Venda</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.PercentualDescontoMaxDaVenda}%</p>
                           </div>
                         )}
                         {atakData.CodigoDoSupervisorDaVenda !== undefined && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Código do Supervisor de Venda</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.CodigoDoSupervisorDaVenda}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Código do Supervisor de Venda</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.CodigoDoSupervisorDaVenda}</p>
                           </div>
                         )}
                         {atakData.CodigoDoGerenteDaVenda !== undefined && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700">Código do Gerente de Venda</label>
-                            <p className="mt-1 text-sm text-gray-900">{atakData.CodigoDoGerenteDaVenda}</p>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Código do Gerente de Venda</label>
+                            <p className="mt-1 text-sm text-gray-900 dark:text-white">{atakData.CodigoDoGerenteDaVenda}</p>
                           </div>
                         )}
                       </div>

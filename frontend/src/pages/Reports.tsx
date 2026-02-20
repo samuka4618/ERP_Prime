@@ -878,8 +878,8 @@ const CreateReportModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black dark:bg-opacity-60 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div className="mt-3">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Criar Relatório</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -996,11 +996,11 @@ const ExecuteReportModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black dark:bg-opacity-60 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div className="mt-3">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Executar Relatório</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400 mb-4">{report.name}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{report.name}</p>
           {isExecuting ? (
             <div className="py-8 text-center">
               <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4" />
@@ -1010,30 +1010,30 @@ const ExecuteReportModal: React.FC<{
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300">Data Início</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Início</label>
                   <input
                     type="date"
                     value={parameters.start_date}
                     onChange={(e) => setParameters({ ...parameters, start_date: e.target.value })}
-                    className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="input mt-1 block w-full"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300">Data Fim</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data Fim</label>
                   <input
                     type="date"
                     value={parameters.end_date}
                     onChange={(e) => setParameters({ ...parameters, end_date: e.target.value })}
-                    className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="input mt-1 block w-full"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300">Formato de Exportação</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Formato de Exportação</label>
                 <select
                   value={parameters.export_format}
                   onChange={(e) => setParameters({ ...parameters, export_format: e.target.value as any })}
-                  className="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="input mt-1 block w-full"
                 >
                   <option value="json">JSON</option>
                   <option value="excel">Excel</option>
@@ -1110,28 +1110,28 @@ const ScheduleReportModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black dark:bg-opacity-60 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div className="mt-3">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Agendar Relatório</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400 mb-4">{report.name}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{report.name}</p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300">Nome do Agendamento</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Agendamento</label>
               <input
                 type="text"
                 value={scheduleData.name}
                 onChange={(e) => setScheduleData({ ...scheduleData, name: e.target.value })}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className="input mt-1 block w-full"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300">Frequência</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Frequência</label>
               <select
                 value={scheduleData.frequency}
                 onChange={(e) => setScheduleData({ ...scheduleData, frequency: e.target.value as any })}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className="input mt-1 block w-full"
               >
                 <option value="daily">Diário</option>
                 <option value="weekly">Semanal</option>
@@ -1140,11 +1140,11 @@ const ScheduleReportModal: React.FC<{
             </div>
             {scheduleData.frequency === 'weekly' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300">Dia da Semana</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Dia da Semana</label>
                 <select
                   value={scheduleData.day_of_week}
                   onChange={(e) => setScheduleData({ ...scheduleData, day_of_week: parseInt(e.target.value) })}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="input mt-1 block w-full"
                 >
                   <option value={0}>Domingo</option>
                   <option value={1}>Segunda-feira</option>
@@ -1158,42 +1158,42 @@ const ScheduleReportModal: React.FC<{
             )}
             {scheduleData.frequency === 'monthly' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300">Dia do Mês</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Dia do Mês</label>
                 <input
                   type="number"
                   min="1"
                   max="31"
                   value={scheduleData.day_of_month}
                   onChange={(e) => setScheduleData({ ...scheduleData, day_of_month: parseInt(e.target.value) })}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="input mt-1 block w-full"
                 />
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300">Horário</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Horário</label>
               <input
                 type="time"
                 value={scheduleData.time}
                 onChange={(e) => setScheduleData({ ...scheduleData, time: e.target.value })}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className="input mt-1 block w-full"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300">Destinatários</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Destinatários</label>
               {scheduleData.recipients.map((email, index) => (
                 <div key={index} className="flex space-x-2 mt-2">
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => updateRecipient(index, e.target.value)}
-                    className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="input flex-1"
                     placeholder="email@exemplo.com"
                   />
                   <button
                     type="button"
                     onClick={() => removeRecipient(index)}
-                    className="px-3 py-2 text-red-600 hover:text-red-800"
+                    className="px-3 py-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                   >
                     ×
                   </button>
@@ -1202,7 +1202,7 @@ const ScheduleReportModal: React.FC<{
               <button
                 type="button"
                 onClick={addRecipient}
-                className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                className="mt-2 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 + Adicionar destinatário
               </button>
@@ -1340,8 +1340,8 @@ const CustomReportBuilderModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black dark:bg-opacity-60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div>

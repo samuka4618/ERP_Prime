@@ -245,21 +245,11 @@ const DescarregamentoConfig: React.FC = () => {
         throw new Error(error.error || 'Erro ao salvar formulário');
       }
 
-      const result = await response.json();
+      await response.json();
       toast.success(editingFormulario ? 'Formulário atualizado com sucesso!' : 'Formulário criado com sucesso!');
       
-      // Se foi publicado, atualizar a URL pública no estado
-      if (result.data?.public_url && result.data?.formulario) {
-        const updatedFormulario = {
-          ...result.data.formulario,
-          public_url: result.data.public_url
-        };
-        setFormularios(prev => 
-          prev.map(f => f.id === updatedFormulario.id ? updatedFormulario : f)
-        );
-      } else {
-        fetchFormularios();
-      }
+      // Recarregar a lista do servidor para exibir o novo/atualizado formulário
+      await fetchFormularios();
       
       setShowFormularioModal(false);
       setEditingFormulario(null);

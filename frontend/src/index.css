@@ -143,6 +143,30 @@
   background: #9ca3af;
 }
 
+/* Scrollbar mais discreta para a sidebar */
+.scrollbar-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.scrollbar-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-sidebar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+.scrollbar-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+.dark .scrollbar-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark .scrollbar-sidebar::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+.dark .scrollbar-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
 /* Animações personalizadas */
 @keyframes shimmer {
   0% {

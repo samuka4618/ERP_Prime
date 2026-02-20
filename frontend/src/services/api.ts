@@ -831,6 +831,15 @@ class ApiService {
     const response = await this.api.get<ApiResponse<any>>('/solicitacoes-compra/statistics', { params });
     return response.data.data;
   }
+
+  /**
+   * Configuração pública do sistema (nome, logo, subtítulo).
+   * Não requer autenticação - usada na tela de login e globalmente para todos os usuários.
+   */
+  async getPublicSystemConfig(): Promise<{ system_name: string; system_subtitle: string; system_logo: string; system_version: string }> {
+    const response = await this.api.get<{ message: string; data: { system_name: string; system_subtitle: string; system_logo: string; system_version: string } }>('/system/public-config');
+    return response.data.data;
+  }
 }
 
 export const apiService = new ApiService();

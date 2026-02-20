@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSystemConfig } from '../contexts/SystemConfigContext';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -10,7 +11,18 @@ const Login: React.FC = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const { login } = useAuth();
+  const { config } = useSystemConfig();
+
+  const systemName = config?.system_name || 'ERP PRIME';
+  const systemSubtitle = config?.system_subtitle || 'Sistema de Gestão Empresarial';
+  const logoPath = config?.system_logo?.trim();
+  const logoUrl = logoPath
+    ? (logoPath.startsWith('http') ? logoPath : `/${logoPath.replace(/^\/+/, '')}`)
+    : null;
+  const logoInitials = systemName.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'PR';
+  const showLogoImg = logoUrl && !logoError;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -36,16 +48,21 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        {/* Logo and Title */}
+        {/* Logo and Title - nome e logo globais configurados pelo administrador */}
         <div className="text-center">
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl flex items-center justify-center shadow-xl">
-            <span className="text-white font-bold text-2xl">PR</span>
+          <div className="mx-auto w-40 h-40 min-w-[10rem] min-h-[10rem] bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center shadow-xl overflow-hidden border border-gray-200 dark:border-gray-600">
+            {showLogoImg ? (
+              <img src={logoUrl!} alt={systemName} className="w-full h-full object-contain p-3" onError={() => setLogoError(true)} />
+            ) : null}
+            {!showLogoImg ? (
+              <span className="text-primary-600 dark:text-primary-400 font-bold text-3xl">{logoInitials}</span>
+            ) : null}
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
-            ERP PRIME
+            {systemName}
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Sistema de Gestão Empresarial
+            {systemSubtitle}
           </p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
             Faça login para acessar sua conta
@@ -147,7 +164,7 @@ const Login: React.FC = () => {
         {/* Footer */}
         <div className="text-center">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            © 2024 ERP PRIME. Todos os direitos reservados.
+            © {new Date().getFullYear()} {systemName}. Todos os direitos reservados.
           </p>
         </div>
       </div>

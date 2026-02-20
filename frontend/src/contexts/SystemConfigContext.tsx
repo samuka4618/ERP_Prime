@@ -31,45 +31,37 @@ export const SystemConfigProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [hasTriedLoad, setHasTriedLoad] = useState(false);
 
   const refreshConfig = async () => {
-    // Verificar se há token antes de tentar buscar
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setConfig(defaultConfig);
-      setLoading(false);
-      setHasTriedLoad(true);
-      return;
-    }
-
     try {
       setLoading(true);
-      const response = await apiService.get('/system/config');
-      setConfig(response.data || defaultConfig);
-      setHasTriedLoad(true);
-    } catch (error: any) {
-      // Se for erro 401 (não autenticado), usar valores padrão silenciosamente
-      if (error.response?.status === 401) {
-        setConfig(defaultConfig);
-      } else {
-        console.error('Erro ao carregar configurações do sistema:', error);
-        setConfig(defaultConfig);
+      // Sempre carregar config pública primeiro (nome, logo, subtítulo) - não requer login
+      const publicConfig = await apiService.getPublicSystemConfig();
+      setConfig(prev => ({ ...defaultConfig, ...prev, ...publicConfig }));
+
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await apiService.get('/system/config');
+          const data = response.data as { message?: string; data?: SystemConfig };
+          const fullConfig = data?.data ?? data;
+          if (fullConfig) {
+            setConfig(prev => ({ ...defaultConfig, ...prev, ...fullConfig }));
+          }
+        } catch {
+          // Mantém a config pública já definida
+        }
       }
-      setHasTriedLoad(true);
+    } catch (error) {
+      console.error('Erro ao carregar configurações do sistema:', error);
+      setConfig(defaultConfig);
     } finally {
       setLoading(false);
+      setHasTriedLoad(true);
     }
   };
 
   useEffect(() => {
-    // Só tentar carregar uma vez, e só se houver token
     if (!hasTriedLoad) {
-      const token = localStorage.getItem('token');
-      if (token) {
-        refreshConfig();
-      } else {
-        setConfig(defaultConfig);
-        setLoading(false);
-        setHasTriedLoad(true);
-      }
+      refreshConfig();
     }
   }, [hasTriedLoad]);
 

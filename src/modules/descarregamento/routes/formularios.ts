@@ -22,6 +22,7 @@ router.use(authenticate);
 router.get('/', requirePermission('descarregamento.formularios.manage'), FormularioController.findAll);
 router.post('/', requirePermission('descarregamento.formularios.manage'), FormularioController.create);
 router.get('/default', requirePermission('descarregamento.formularios.manage'), FormularioController.findDefault);
+router.get('/:id/regenerate-link', requirePermission('descarregamento.formularios.manage'), validateParams(paramsSchema), FormularioController.regeneratePublicUrl);
 router.get('/:id', requirePermission('descarregamento.formularios.manage'), validateParams(paramsSchema), FormularioController.findById);
 router.put('/:id', requirePermission('descarregamento.formularios.manage'), validateParams(paramsSchema), FormularioController.update);
 router.delete('/:id', requirePermission('descarregamento.formularios.manage'), validateParams(paramsSchema), FormularioController.delete);

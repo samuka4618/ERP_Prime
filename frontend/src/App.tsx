@@ -46,7 +46,10 @@ import MotoristasPatio from './pages/Descarregamento/MotoristasPatio';
 import NovoAgendamento from './pages/Descarregamento/NovoAgendamento';
 import NovoFornecedor from './pages/Descarregamento/NovoFornecedor';
 import PublicForm from './pages/Descarregamento/PublicForm';
+import DriverTracking from './pages/Descarregamento/DriverTracking';
+import PublicFormRestrito from './pages/Descarregamento/PublicFormRestrito';
 import LoadingSpinner from './components/LoadingSpinner';
+import { PublicFormOnlyGuard, PublicFormOnlyWrapper } from './components/PublicFormOnlyGuard';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -78,24 +81,31 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const AppRoutes: React.FC = () => {
   return (
-    <Routes>
-      <Route 
-        path="/login" 
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        } 
-      />
-      <Route 
-        path="/register" 
-        element={
-          <PublicRoute>
-            <Register />
-          </PublicRoute>
-        } 
-      />
-      <Route 
+    <PublicFormOnlyGuard>
+      <Routes>
+        <Route 
+          path="/login" 
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          } 
+        />
+        <Route 
+          path="/register" 
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          } 
+        />
+        {/* Formulário e acompanhamento públicos: modo "só formulário" ativo (sem acesso a login/ERP). */}
+        <Route path="/descarregamento/formulario/:id" element={<PublicFormOnlyWrapper><PublicForm /></PublicFormOnlyWrapper>} />
+        <Route path="/descarregamento/formulario-publico" element={<PublicFormOnlyWrapper><PublicForm /></PublicFormOnlyWrapper>} />
+        <Route path="/descarregamento/formulario-publico/:id" element={<PublicFormOnlyWrapper><PublicForm /></PublicFormOnlyWrapper>} />
+        <Route path="/descarregamento/acompanhamento/:trackingCode" element={<PublicFormOnlyWrapper><DriverTracking /></PublicFormOnlyWrapper>} />
+        <Route path="/descarregamento/restrito" element={<PublicFormRestrito />} />
+        <Route 
         path="/" 
         element={
           <ProtectedRoute>
@@ -131,8 +141,6 @@ const AppRoutes: React.FC = () => {
         <Route path="descarregamento/docas" element={<Docas />} />
         <Route path="descarregamento/motoristas-patio" element={<MotoristasPatio />} />
         <Route path="descarregamento-config" element={<DescarregamentoConfig />} />
-        <Route path="descarregamento/formulario-publico" element={<PublicForm />} />
-        <Route path="descarregamento/formulario-publico/:id" element={<PublicForm />} />
         <Route path="users" element={<Users />} />
         <Route path="permissions" element={<PermissionsPage />} />
         <Route path="profile" element={<Profile />} />
@@ -148,6 +156,7 @@ const AppRoutes: React.FC = () => {
         <Route path="performance" element={<Performance />} />
       </Route>
     </Routes>
+    </PublicFormOnlyGuard>
   );
 };
 

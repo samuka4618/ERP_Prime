@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, MapPin, FileText, Save, X, QrCode, Copy, Check, MessageSquare, Send } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, FileText, Save, X, QrCode, Copy, Check, MessageSquare, Send, RefreshCw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -309,6 +309,34 @@ const DescarregamentoConfig: React.FC = () => {
 
   const toggleQrCode = (formularioId: number) => {
     setQrCodeVisible(qrCodeVisible === formularioId ? null : formularioId);
+  };
+
+  const regenerateLink = async (formularioId: number) => {
+    try {
+      const response = await fetch(`/api/descarregamento/formularios/${formularioId}/regenerate-link`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Erro ao regenerar link');
+      }
+      const data = await response.json();
+      const newUrl = data.data?.public_url;
+      if (newUrl) {
+        setFormularios(prev => prev.map(f =>
+          f.id === formularioId ? { ...f, public_url: newUrl } : f
+        ));
+        toast.success('Link regenerado com sucesso! O QR code foi atualizado.');
+      } else {
+        await fetchFormularios();
+        toast.success('Link atualizado. Se o ngrok estiver rodando, a nova URL já está em uso.');
+      }
+    } catch (err: any) {
+      console.error('Erro ao regenerar link:', err);
+      toast.error(err.message || 'Erro ao regenerar link');
+    }
   };
 
   const copyUrl = async (url: string, formularioId: number) => {
@@ -652,13 +680,22 @@ const DescarregamentoConfig: React.FC = () => {
                       {hasPermission('descarregamento.formularios.manage') && (
                         <div className="flex gap-2">
                           {formulario.is_published && (
-                            <button
-                              onClick={() => toggleQrCode(formulario.id)}
-                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                              title="Mostrar QR Code"
-                            >
-                              <QrCode className="w-5 h-5" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => regenerateLink(formulario.id)}
+                                className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+                                title="Regenerar link (atualiza a URL quando o ngrok reinicia)"
+                              >
+                                <RefreshCw className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => toggleQrCode(formulario.id)}
+                                className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                title="Mostrar QR Code"
+                              >
+                                <QrCode className="w-5 h-5" />
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={() => handleEditFormulario(formulario)}
@@ -697,6 +734,14 @@ const DescarregamentoConfig: React.FC = () => {
                                 className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
                               />
                               <button
+                                onClick={() => regenerateLink(formulario.id)}
+                                className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg flex items-center gap-1.5 text-sm"
+                                title="Atualizar link (ex.: após reiniciar o ngrok)"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                                Regenerar
+                              </button>
+                              <button
                                 onClick={() => copyUrl(getPublicUrl(formulario), formulario.id)}
                                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 text-sm"
                               >
@@ -714,7 +759,7 @@ const DescarregamentoConfig: React.FC = () => {
                               </button>
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                              Escaneie o QR Code com o celular para acessar o formulário público
+                              Escaneie o QR Code com o celular para acessar o formulário público. Se o ngrok reiniciar, use &quot;Regenerar&quot; para atualizar o link.
                             </p>
                           </div>
                         </div>

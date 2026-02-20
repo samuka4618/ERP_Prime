@@ -58,8 +58,8 @@ O sistema estará disponível em:
 - `npm run migrate` - Executa migrações do banco de dados
 
 ### Produção
-- `npm start` - Inicia o Nginx (proxy porta 80) e o servidor Node (porta 3000)
-- `npm run start:server` - Inicia apenas o servidor Node (sem Nginx)
+- `npm start` - Inicia o Ngrok (túnel público), o Nginx (proxy porta 80) e o servidor Node (porta 3000)
+- `npm run start:server` - Inicia apenas o servidor Node (sem Ngrok/Nginx)
 - `npm run build:all` - Compila backend e frontend para produção
 
 ### Nginx
@@ -118,6 +118,38 @@ USE_NGINX=false
 - **Linux:** `sudo systemctl stop nginx` ou `sudo nginx -s stop`
 - **Windows:** `nginx -s stop` (no diretório do Nginx ou com ele no PATH)
 
+## 🌐 Formulário público e Ngrok
+
+Para que **formulários** (ex.: formulário de descarregamento) possam ser acessados **fora da sua rede** (por link ou QR code), o projeto usa **Ngrok**: um túnel que expõe seu localhost na internet.
+
+### Comportamento com `npm start`
+
+Ao rodar `npm start`, o script:
+
+1. **Inicia o Ngrok** (se `USE_NGROK` não for `false` no `.env`) — expõe a porta do Node (ex.: 3000) em uma URL pública (ex.: `https://xxxx.ngrok-free.app`).
+2. Inicia o Nginx (se instalado e `USE_NGINX` não for `false`).
+3. Inicia o servidor Node.
+
+Quando o Ngrok está ativo, o sistema detecta a URL pública e usa essa URL nos **QR codes** dos formulários. Assim, quem escanear o QR code acessa o formulário pela internet, não só na sua rede.
+
+### O que você precisa
+
+1. **Instalar o Ngrok** e deixá-lo no PATH:
+   - Download: [ngrok.com/download](https://ngrok.com/download)
+   - No Windows, após instalar, certifique-se de que `ngrok` (ou `ngrok.exe`) está no PATH.
+
+2. **Configuração no `.env`** (opcional):
+   - `USE_NGROK=true` — inicia o Ngrok com `npm start` (padrão).
+   - `USE_NGROK=false` — não inicia o Ngrok (use se não quiser túnel público).
+
+3. Rodar normalmente:
+   ```bash
+   npm run build:all   # se ainda não tiver compilado
+   npm start
+   ```
+
+Se o Ngrok não estiver instalado ou não estiver no PATH, o script apenas exibe um aviso e segue sem o túnel. Os formulários continuam acessíveis na rede local (IP da máquina + porta ou `PUBLIC_URL`/`PUBLIC_HOSTNAME` no `.env`).
+
 ## 🚀 Deploy em Produção
 
 ### 1. Preparação
@@ -156,7 +188,7 @@ Use o arquivo `.env` existente e configure as variáveis necessárias:
 npm start
 ```
 
-O comando inicia o Nginx (se instalado) e o servidor Node. O sistema estará disponível em:
+O comando inicia o Ngrok (se instalado e `USE_NGROK` não for `false`), o Nginx (se instalado) e o servidor Node. O sistema estará disponível em:
 - **Com Nginx:** http://localhost e http://[SEU_IP] (porta 80)
 - **Sem Nginx:** http://localhost:3000 e http://[SEU_IP]:3000
 - **API:** http://[SEU_IP]/api (ou :3000/api se não usar Nginx)

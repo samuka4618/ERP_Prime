@@ -1,22 +1,44 @@
 #!/usr/bin/env node
 /**
- * Inicia o ERP PRIME: opcionalmente inicia o Nginx (proxy na porta 80) e depois o servidor Node.
- * Defina USE_NGINX=false no .env ou ambiente para pular o Nginx e só subir o Node.
+ * Inicia o ERP PRIME: opcionalmente inicia o Ngrok (túnel público), o Nginx (proxy na porta 80) e o servidor Node.
+ * .env: USE_NGINX=false para não iniciar Nginx; USE_NGROK=false para não iniciar Ngrok.
  */
 
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
+
 const projectRoot = path.resolve(__dirname, '..');
 const nginxConf = path.join(projectRoot, 'nginx', 'nginx-standalone.conf');
 const nodeServer = path.join(projectRoot, 'dist', 'src', 'server.js');
+const port = process.env.PORT || '3000';
+const ngrokPort = process.env.NGROK_PORT || port;
 const useNginx = process.env.USE_NGINX !== 'false';
+const useNgrok = process.env.USE_NGROK !== 'false';
 
 function findNginx() {
   const isWin = process.platform === 'win32';
   const cmd = isWin ? 'nginx.exe' : 'nginx';
   return cmd;
+}
+
+function startNgrok() {
+  const isWin = process.platform === 'win32';
+  const ngrokCmd = isWin ? 'ngrok.exe' : 'ngrok';
+  const child = spawn(ngrokCmd, ['http', ngrokPort], {
+    stdio: 'ignore',
+    detached: true,
+    cwd: projectRoot,
+    shell: process.platform === 'win32'
+  });
+
+  child.unref();
+
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(true), 1500);
+  });
 }
 
 function startNginx() {
@@ -58,6 +80,15 @@ function startNode() {
 }
 
 async function main() {
+  if (useNgrok) {
+    try {
+      await startNgrok();
+      console.log(`✅ Ngrok iniciado (túnel público → localhost:${ngrokPort}). Formulários acessíveis fora da rede.`);
+    } catch (e) {
+      console.warn('⚠️  Ngrok não iniciado (instale e coloque no PATH: https://ngrok.com/download).');
+    }
+  }
+
   if (useNginx) {
     try {
       await startNginx();

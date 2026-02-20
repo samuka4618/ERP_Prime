@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { FormularioModel } from '../models/Formulario';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
 import { QRCodeService } from '../services/QRCodeService';
+import { NgrokService } from '../services/NgrokService';
 import Joi from 'joi';
 
 const formFieldSchema = Joi.object({
@@ -146,6 +147,36 @@ export class FormularioController {
     res.json({
       message: 'Formulário obtido com sucesso',
       data: { formulario }
+    });
+  });
+
+  /** Regenera o link público (limpa cache do ngrok e obtém a URL atual). Útil quando o ngrok reinicia e a URL muda. */
+  static regeneratePublicUrl = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const formularioId = parseInt(id);
+
+    if (isNaN(formularioId)) {
+      res.status(400).json({ error: 'ID inválido' });
+      return;
+    }
+
+    const formulario = await FormularioModel.findById(formularioId);
+    if (!formulario) {
+      res.status(404).json({ error: 'Formulário não encontrado' });
+      return;
+    }
+
+    if (!formulario.is_published) {
+      res.status(400).json({ error: 'Só é possível regenerar o link de formulários publicados' });
+      return;
+    }
+
+    NgrokService.clearCache();
+    const publicUrl = await QRCodeService.getPublicFormUrl(formularioId);
+
+    res.json({
+      message: 'Link regenerado com sucesso',
+      data: { public_url: publicUrl }
     });
   });
 

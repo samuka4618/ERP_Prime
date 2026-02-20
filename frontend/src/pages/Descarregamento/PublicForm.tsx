@@ -174,7 +174,7 @@ const PublicForm: React.FC = () => {
             onChange={(e) => handleFieldChange(field.name, e.target.value)}
             required={field.required}
             placeholder={field.placeholder}
-            className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 placeholder-gray-400 font-medium"
+            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
           />
         );
 
@@ -187,7 +187,7 @@ const PublicForm: React.FC = () => {
             required={field.required}
             placeholder={field.placeholder}
             rows={4}
-            className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all text-gray-900 placeholder-gray-400 font-medium"
+            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
           />
         );
 
@@ -202,7 +202,7 @@ const PublicForm: React.FC = () => {
             placeholder={field.placeholder}
             min={field.min}
             max={field.max}
-            className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 placeholder-gray-400 font-medium"
+            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
           />
         );
 
@@ -214,7 +214,7 @@ const PublicForm: React.FC = () => {
             value={value}
             onChange={(e) => handleFieldChange(field.name, e.target.value)}
             required={field.required}
-            className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 font-medium"
+            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100 font-medium"
           />
         );
 
@@ -226,7 +226,7 @@ const PublicForm: React.FC = () => {
             value={value}
             onChange={(e) => handleFieldChange(field.name, e.target.value)}
             required={field.required}
-            className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 font-medium"
+            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100 font-medium"
           />
         );
 
@@ -237,7 +237,7 @@ const PublicForm: React.FC = () => {
             value={value}
             onChange={(e) => handleFieldChange(field.name, e.target.value)}
             required={field.required}
-            className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 font-medium"
+            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100 font-medium"
           >
             <option value="">Selecione...</option>
             {field.options?.map(option => (
@@ -311,7 +311,7 @@ const PublicForm: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
           {/* Header com gradiente */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
             <div className="flex items-center gap-4 mb-3">
@@ -328,17 +328,17 @@ const PublicForm: React.FC = () => {
           </div>
 
           {/* Conteúdo do formulário */}
-          <div className="p-8">
+          <div className="p-8 dark:bg-gray-800">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Informações do Motorista */}
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 space-y-5 border border-gray-200">
-                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 pb-2 border-b border-gray-300">
-                  <User className="w-5 h-5 text-blue-600" />
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 space-y-5 border border-gray-200 dark:border-gray-600">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 pb-2 border-b border-gray-300 dark:border-gray-600">
+                  <User className="w-5 h-5 text-blue-600 shrink-0" />
                   Informações do Motorista
                 </h2>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                     Nome do Motorista <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -346,34 +346,34 @@ const PublicForm: React.FC = () => {
                     value={formData.driver_name}
                     onChange={(e) => handleFieldChange('driver_name', e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 placeholder-gray-400 font-medium"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
                     placeholder="Digite seu nome completo"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                     Telefone
                   </label>
                   <input
                     type="tel"
                     value={formData.phone_number}
                     onChange={(e) => handleFieldChange('phone_number', e.target.value)}
-                    className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 placeholder-gray-400 font-medium"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 font-medium"
                     placeholder="(00) 00000-0000"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    <Truck className="inline w-4 h-4 mr-2 text-blue-600" />
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    <Truck className="inline w-4 h-4 mr-2 text-blue-600 shrink-0" />
                     Fornecedor/Transportadora <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.fornecedor_id}
                     onChange={(e) => handleFieldChange('fornecedor_id', e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 font-medium"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100 font-medium"
                   >
                     <option value="">Selecione o fornecedor</option>
                     {fornecedores.map(fornecedor => (
@@ -388,10 +388,10 @@ const PublicForm: React.FC = () => {
               {/* Campos do Formulário */}
               {formulario.fields.length > 0 && (
                 <div className="space-y-5">
-                  <h2 className="text-lg font-bold text-gray-800 pb-2 border-b border-gray-300">Informações Adicionais</h2>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 pb-2 border-b border-gray-300 dark:border-gray-600">Informações Adicionais</h2>
                   {formulario.fields.map(field => (
                     <div key={field.id}>
-                      <label className="block text-sm font-semibold text-gray-800 mb-2">
+                      <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                         {field.label}
                         {field.required && <span className="text-red-500 ml-1">*</span>}
                       </label>

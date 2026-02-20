@@ -26,14 +26,20 @@ const app = express();
 app.use((req, res, next) => {
   // Se a requisição vier via HTTPS (detectado pelo header x-forwarded-proto ou req.secure)
   const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
-  
+  const host = (req.headers.host || '').toLowerCase();
+
   if (isHttps && config.nodeEnv === 'development') {
-    // Redirecionar para HTTP
-    const host = req.headers.host?.replace(':443', ':3000') || req.headers.host;
-    const httpUrl = `http://${host}${req.url}`;
+    // Não redirecionar quando acessando via ngrok: o túnel já é HTTPS para o usuário.
+    // Redirecionar para HTTP aqui causaria loop (ngrok/browser voltam para HTTPS).
+    if (host.includes('ngrok')) {
+      return next();
+    }
+    // Redirecionar para HTTP apenas em acesso direto (ex.: localhost)
+    const hostNormalized = req.headers.host?.replace(':443', ':3000') || req.headers.host;
+    const httpUrl = `http://${hostNormalized}${req.url}`;
     return res.redirect(301, httpUrl);
   }
-  
+
   // Remover qualquer header que possa forçar HTTPS ANTES de processar
   res.removeHeader('Strict-Transport-Security');
   res.removeHeader('Upgrade-Insecure-Requests');

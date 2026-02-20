@@ -302,20 +302,20 @@ const GradeDescarregamento: React.FC = () => {
 
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar:</span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-1">
             {(['all', 'pendente', 'motorista_pronto', 'em_andamento', 'concluido'] as StatusFilter[]).map(status => {
               const config = status === 'all' ? { color: 'bg-blue-500', label: 'Todos' } : getStatusConfig(status);
               return (
-                <label key={status} className="flex items-center gap-2 cursor-pointer">
+                <label key={status} className="flex items-center gap-2 cursor-pointer py-2 px-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors select-none">
                   <input
                     type="radio"
                     name="statusFilter"
                     value={status}
                     checked={statusFilter === status}
                     onChange={() => setStatusFilter(status)}
-                    className="hidden"
+                    className="sr-only"
                   />
-                  <div className={`w-3 h-3 rounded-full ${config.color} ${statusFilter === status ? 'ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-800' : ''}`}></div>
+                  <div className={`w-3 h-3 rounded-full flex-shrink-0 ${config.color} ${statusFilter === status ? 'ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-800' : ''}`}></div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">{config.label}</span>
                 </label>
               );

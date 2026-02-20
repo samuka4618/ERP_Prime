@@ -416,15 +416,15 @@ const NovaSolicitacaoCompra: React.FC = () => {
                     .map((usuario) => (
                       <label
                         key={usuario.id}
-                        className="flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
                         <input
                           type="checkbox"
                           checked={aprovadoresSelecionados.includes(usuario.id)}
                           onChange={() => handleAprovadorToggle(usuario.id)}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                         />
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
                             {usuario.name}
                           </div>

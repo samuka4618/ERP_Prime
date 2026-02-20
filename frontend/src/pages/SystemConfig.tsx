@@ -562,18 +562,15 @@ const SystemConfig: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center">
+              <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                 <input
                   type="checkbox"
-                  id="email_notifications"
                   checked={settings.email_notifications}
                   onChange={(e) => handleInputChange('email_notifications', e.target.checked)}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded flex-shrink-0"
                 />
-                <label htmlFor="email_notifications" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                  Notificações por email
-                </label>
-              </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Notificações por email</span>
+              </label>
             </div>
           </div>
 
@@ -926,14 +923,14 @@ const SystemConfig: React.FC = () => {
                         </select>
                       </div>
                       <div className="flex items-center">
-                        <label className="flex items-center space-x-2 cursor-pointer">
+                        <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                           <input
                             type="checkbox"
                             checked={field.required}
                             onChange={(e) => updateCustomField(field.id, { required: e.target.checked }, true)}
-                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0"
                           />
-                          <span className="text-xs text-gray-700 dark:text-gray-300">Campo obrigatório</span>
+                          <span className="text-xs text-gray-700 dark:text-gray-300 select-none">Campo obrigatório</span>
                         </label>
                       </div>
                       {field.type === 'select' && (
@@ -1199,14 +1196,14 @@ const SystemConfig: React.FC = () => {
                         </select>
                       </div>
                       <div className="flex items-center">
-                        <label className="flex items-center space-x-2 cursor-pointer">
+                        <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                           <input
                             type="checkbox"
                             checked={field.required}
                             onChange={(e) => updateCustomField(field.id, { required: e.target.checked }, false)}
-                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0"
                           />
-                          <span className="text-xs text-gray-700 dark:text-gray-300">Campo obrigatório</span>
+                          <span className="text-xs text-gray-700 dark:text-gray-300 select-none">Campo obrigatório</span>
                         </label>
                       </div>
                       {field.type === 'select' && (

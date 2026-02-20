@@ -456,19 +456,16 @@ const Users: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex items-center">
+              <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                 <input
                   type="checkbox"
-                  id="edit_is_active"
                   name="is_active"
                   checked={editForm.is_active}
                   onChange={handleEditInputChange}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded flex-shrink-0"
                 />
-                <label htmlFor="edit_is_active" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300">
-                  Usuário ativo
-                </label>
-              </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Usuário ativo</span>
+              </label>
 
               <div className="flex justify-end space-x-3 pt-4">
                 <button
@@ -572,19 +569,16 @@ const Users: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex items-center">
+              <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                 <input
                   type="checkbox"
-                  id="is_active"
                   name="is_active"
                   checked={createForm.is_active}
                   onChange={handleInputChange}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded flex-shrink-0"
                 />
-                <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 dark:text-gray-300">
-                  Usuário ativo
-                </label>
-              </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Usuário ativo</span>
+              </label>
 
               <div className="flex justify-end space-x-3 pt-4">
                 <button

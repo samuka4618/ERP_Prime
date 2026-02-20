@@ -147,14 +147,14 @@ const Login: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer group">
+              <label className="flex items-center gap-3 cursor-pointer group py-2 -ml-1 pl-1 pr-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors w-fit">
                 <input
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 flex-shrink-0"
                 />
-                <span className="text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                <span className="text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors select-none">
                   Lembrar de mim
                 </span>
               </label>

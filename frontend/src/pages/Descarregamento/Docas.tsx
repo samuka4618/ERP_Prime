@@ -257,18 +257,15 @@ const Docas: React.FC = () => {
                   placeholder="Ex: Doca principal"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                 <input
                   type="checkbox"
-                  id="is_active"
                   checked={formData.is_active}
                   onChange={(e) => setFormData((p) => ({ ...p, is_active: e.target.checked }))}
-                  className="rounded border-gray-300 dark:border-gray-600"
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 flex-shrink-0"
                 />
-                <label htmlFor="is_active" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Doca ativa
-                </label>
-              </div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 select-none">Doca ativa</span>
+              </label>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={closeModal} className="btn border border-gray-300 dark:border-gray-600">
                   Cancelar

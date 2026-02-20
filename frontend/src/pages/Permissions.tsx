@@ -566,11 +566,11 @@ const PermissionsPage: React.FC = () => {
                     
                     <div className="space-y-3">
                       {modulePermissions.map((permission) => (
-                        <div
+                        <label
                           key={permission.id}
-                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/80 transition-colors"
                         >
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0 pr-4">
                             <div className="font-medium text-gray-900 dark:text-white">
                               {permission.name}
                             </div>
@@ -583,16 +583,14 @@ const PermissionsPage: React.FC = () => {
                               {permission.code}
                             </div>
                           </div>
-                          <label className="relative inline-flex items-center cursor-pointer ml-4">
-                            <input
-                              type="checkbox"
-                              checked={permission.granted}
-                              onChange={(e) => handlePermissionToggle(permission.id, e.target.checked)}
-                              className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
-                          </label>
-                        </div>
+                          <input
+                            type="checkbox"
+                            checked={permission.granted}
+                            onChange={(e) => handlePermissionToggle(permission.id, e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="relative inline-flex items-center flex-shrink-0 w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600" />
+                        </label>
                       ))}
                     </div>
                   </div>

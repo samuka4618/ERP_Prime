@@ -988,18 +988,15 @@ const DescarregamentoConfig: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center">
+              <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                 <input
                   type="checkbox"
-                  id="is_active"
                   checked={docaForm.is_active}
                   onChange={(e) => setDocaForm({ ...docaForm, is_active: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                 />
-                <label htmlFor="is_active" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                  Doca ativa
-                </label>
-              </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Doca ativa</span>
+              </label>
 
               <div className="flex justify-end gap-3 pt-4">
                 <button
@@ -1177,49 +1174,40 @@ const DescarregamentoConfig: React.FC = () => {
                           </div>
                         )}
 
-                        <div className="flex items-center">
+                        <label className="md:col-span-2 flex items-center gap-3 cursor-pointer py-3 px-2 -mx-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-600">
                           <input
                             type="checkbox"
                             checked={field.required}
                             onChange={(e) => handleFieldChange(field.id, 'required', e.target.checked)}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                           />
-                          <label className="ml-2 text-xs text-gray-700 dark:text-gray-300">
-                            Campo obrigatório
-                          </label>
-                        </div>
+                          <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Campo obrigatório</span>
+                        </label>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-                <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center">
+                <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                     <input
                       type="checkbox"
-                      id="is_published"
                       checked={formularioForm.is_published}
                       onChange={(e) => setFormularioForm({ ...formularioForm, is_published: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                     />
-                    <label htmlFor="is_published" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                      Publicado (acessível publicamente)
-                    </label>
-                  </div>
-
-                  <div className="flex items-center">
+                    <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Publicado (acessível publicamente)</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                     <input
                       type="checkbox"
-                      id="is_default"
                       checked={formularioForm.is_default}
                       onChange={(e) => setFormularioForm({ ...formularioForm, is_default: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                     />
-                    <label htmlFor="is_default" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                      Formulário padrão
-                    </label>
-                  </div>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Formulário padrão</span>
+                  </label>
                 </div>
               </div>
             </div>
@@ -1328,19 +1316,16 @@ const DescarregamentoConfig: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center">
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                     <input
                       type="checkbox"
-                      id="is_default_sms"
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                       checked={smsTemplateForm.is_default}
                       onChange={(e) => setSmsTemplateForm({ ...smsTemplateForm, is_default: e.target.checked })}
                     />
-                    <label htmlFor="is_default_sms" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                      Template padrão (usado automaticamente)
-                    </label>
-                  </div>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Template padrão (usado automaticamente)</span>
+                  </label>
                 </div>
               </div>
             </div>

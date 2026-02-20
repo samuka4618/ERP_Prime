@@ -16,6 +16,7 @@ import { registerCoreRoutes } from './core';
 import { registerChamadosRoutes } from './modules/chamados';
 import { registerCadastrosRoutes } from './modules/cadastros';
 import { registerComprasRoutes } from './modules/compras';
+import { registerDescarregamentoRoutes } from './modules/descarregamento';
 import { initializeWebSocket } from './modules/chamados/services/WebSocketService';
 import { ReportController } from './modules/chamados/controllers/ReportController';
 
@@ -271,6 +272,7 @@ registerCoreRoutes(apiRouter, authLimiter);
 registerChamadosRoutes(apiRouter, uploadLimiter);
 registerCadastrosRoutes(apiRouter);
 registerComprasRoutes(apiRouter);
+registerDescarregamentoRoutes(apiRouter);
 console.log('✅ Todas as rotas registradas');
 
 // Aplicar router da API

@@ -218,6 +218,166 @@ async function runSchemaMigrations(): Promise<void> {
       `INSERT OR IGNORE INTO role_permissions (role, permission_id, granted)
        SELECT 'user', id, 1 FROM permissions WHERE code = 'compras.orcamentos.view'`
     );
+
+    // --- Módulo Descarregamento: tabelas e permissões ---
+    const fornecedoresDescarga = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'fornecedores_descarga'");
+    if (!fornecedoresDescarga) {
+      await dbRun(`
+        CREATE TABLE fornecedores_descarga (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name VARCHAR(255) NOT NULL,
+          category VARCHAR(100) NOT NULL,
+          plate VARCHAR(20),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_fornecedores_descarga_category ON fornecedores_descarga(category)');
+      console.log('Migração: tabela fornecedores_descarga criada');
+    }
+    const docasConfig = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'docas_config'");
+    if (!docasConfig) {
+      await dbRun(`
+        CREATE TABLE docas_config (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          numero VARCHAR(50) NOT NULL UNIQUE,
+          nome VARCHAR(255),
+          is_active BOOLEAN DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('Migração: tabela docas_config criada');
+    }
+    const agendamentosDescarga = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'agendamentos_descarga'");
+    if (!agendamentosDescarga) {
+      await dbRun(`
+        CREATE TABLE agendamentos_descarga (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          fornecedor_id INTEGER NOT NULL,
+          scheduled_date DATE NOT NULL,
+          scheduled_time VARCHAR(10) NOT NULL,
+          dock VARCHAR(50) NOT NULL,
+          status VARCHAR(30) NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'motorista_pronto', 'em_andamento', 'concluido')),
+          notes TEXT,
+          created_by INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (fornecedor_id) REFERENCES fornecedores_descarga(id) ON DELETE CASCADE,
+          FOREIGN KEY (created_by) REFERENCES users(id)
+        )
+      `);
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_agendamentos_descarga_fornecedor ON agendamentos_descarga(fornecedor_id)');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_agendamentos_descarga_date ON agendamentos_descarga(scheduled_date)');
+      await dbRun(`
+        CREATE TABLE agendamentos_descarga_status_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          agendamento_id INTEGER NOT NULL,
+          previous_status VARCHAR(30),
+          new_status VARCHAR(30) NOT NULL,
+          changed_by INTEGER,
+          changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (agendamento_id) REFERENCES agendamentos_descarga(id) ON DELETE CASCADE,
+          FOREIGN KEY (changed_by) REFERENCES users(id)
+        )
+      `);
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_agendamentos_descarga_status_history_ag ON agendamentos_descarga_status_history(agendamento_id)');
+      console.log('Migração: tabelas agendamentos_descarga e agendamentos_descarga_status_history criadas');
+    }
+    const formulariosDescarga = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'formularios_descarga'");
+    if (!formulariosDescarga) {
+      await dbRun(`
+        CREATE TABLE formularios_descarga (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title VARCHAR(255) NOT NULL,
+          description TEXT,
+          fields TEXT NOT NULL,
+          is_published BOOLEAN DEFAULT 0,
+          is_default BOOLEAN DEFAULT 0,
+          created_by INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (created_by) REFERENCES users(id)
+        )
+      `);
+      console.log('Migração: tabela formularios_descarga criada');
+    }
+    const formResponsesDescarga = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'form_responses_descarga'");
+    if (!formResponsesDescarga) {
+      await dbRun(`
+        CREATE TABLE form_responses_descarga (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          form_id INTEGER,
+          responses TEXT NOT NULL,
+          driver_name VARCHAR(255) NOT NULL,
+          phone_number VARCHAR(50),
+          fornecedor_id INTEGER,
+          agendamento_id INTEGER,
+          is_in_yard BOOLEAN DEFAULT 1,
+          submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          checked_out_at DATETIME,
+          tracking_code VARCHAR(50) UNIQUE,
+          FOREIGN KEY (form_id) REFERENCES formularios_descarga(id),
+          FOREIGN KEY (fornecedor_id) REFERENCES fornecedores_descarga(id),
+          FOREIGN KEY (agendamento_id) REFERENCES agendamentos_descarga(id)
+        )
+      `);
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_form_responses_descarga_agendamento ON form_responses_descarga(agendamento_id)');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_form_responses_descarga_tracking ON form_responses_descarga(tracking_code)');
+      console.log('Migração: tabela form_responses_descarga criada');
+    }
+    const smsTemplatesDescarga = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sms_templates_descarga'");
+    if (!smsTemplatesDescarga) {
+      await dbRun(`
+        CREATE TABLE sms_templates_descarga (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name VARCHAR(255) NOT NULL,
+          message TEXT NOT NULL,
+          template_type VARCHAR(20) NOT NULL CHECK (template_type IN ('arrival', 'release')),
+          is_default BOOLEAN DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('Migração: tabela sms_templates_descarga criada');
+    }
+
+    // Permissões do módulo Descarregamento
+    await dbRun(`
+      INSERT OR IGNORE INTO permissions (name, code, module, description) VALUES
+      ('Visualizar Agendamentos', 'descarregamento.agendamentos.view', 'descarregamento', 'Permite visualizar agendamentos de descarregamento'),
+      ('Criar Agendamentos', 'descarregamento.agendamentos.create', 'descarregamento', 'Permite criar agendamentos'),
+      ('Editar Agendamentos', 'descarregamento.agendamentos.edit', 'descarregamento', 'Permite editar agendamentos'),
+      ('Excluir Agendamentos', 'descarregamento.agendamentos.delete', 'descarregamento', 'Permite excluir agendamentos'),
+      ('Visualizar Fornecedores', 'descarregamento.fornecedores.view', 'descarregamento', 'Permite visualizar fornecedores'),
+      ('Criar Fornecedores', 'descarregamento.fornecedores.create', 'descarregamento', 'Permite criar fornecedores'),
+      ('Editar Fornecedores', 'descarregamento.fornecedores.edit', 'descarregamento', 'Permite editar fornecedores'),
+      ('Excluir Fornecedores', 'descarregamento.fornecedores.delete', 'descarregamento', 'Permite excluir fornecedores'),
+      ('Visualizar Docas', 'descarregamento.docas.view', 'descarregamento', 'Permite visualizar docas'),
+      ('Gerenciar Docas', 'descarregamento.docas.manage', 'descarregamento', 'Permite criar/editar/excluir docas'),
+      ('Visualizar Formulários', 'descarregamento.formularios.view', 'descarregamento', 'Permite visualizar formulários'),
+      ('Gerenciar Formulários', 'descarregamento.formularios.manage', 'descarregamento', 'Permite criar/editar formulários'),
+      ('Visualizar Respostas', 'descarregamento.form_responses.view', 'descarregamento', 'Permite visualizar respostas de chegada'),
+      ('Liberar Motorista', 'descarregamento.form_responses.release', 'descarregamento', 'Permite liberar motorista (checkout)'),
+      ('Gerenciar Templates SMS', 'descarregamento.sms_templates.manage', 'descarregamento', 'Permite gerenciar templates de SMS'),
+      ('Visualizar Motoristas no Pátio', 'descarregamento.motoristas.view', 'descarregamento', 'Permite visualizar motoristas no pátio'),
+      ('Visualizar Respostas de Formulários', 'descarregamento.formularios.view_responses', 'descarregamento', 'Permite visualizar respostas dos formulários'),
+      ('Liberar Motoristas', 'descarregamento.motoristas.liberar', 'descarregamento', 'Permite liberar motorista (checkout)')
+    `);
+    await dbRun(`
+      INSERT OR IGNORE INTO role_permissions (role, permission_id, granted)
+      SELECT 'admin', id, 1 FROM permissions WHERE module = 'descarregamento'
+    `);
+    await dbRun(`
+      INSERT OR IGNORE INTO role_permissions (role, permission_id, granted)
+      SELECT 'attendant', id, 1 FROM permissions WHERE code IN (
+        'descarregamento.agendamentos.view', 'descarregamento.agendamentos.create', 'descarregamento.agendamentos.edit',
+        'descarregamento.fornecedores.view', 'descarregamento.fornecedores.create', 'descarregamento.fornecedores.edit',
+        'descarregamento.docas.view', 'descarregamento.docas.manage', 'descarregamento.formularios.manage',
+        'descarregamento.form_responses.view', 'descarregamento.form_responses.release',
+        'descarregamento.motoristas.view', 'descarregamento.formularios.view_responses', 'descarregamento.motoristas.liberar'
+      )
+    `);
   } catch (err) {
     console.warn('Migração de schema (aprovacoes_orcamento/orcamentos/anexos):', (err as Error).message);
   }

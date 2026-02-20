@@ -36,5 +36,10 @@ export const config = {
     firstResponseHours: parseInt(process.env.SLA_FIRST_RESPONSE || '4'),
     resolutionHours: parseInt(process.env.SLA_RESOLUTION || '24'),
     reopenDays: parseInt(process.env.REOPEN_DAYS || '7')
+  },
+  sms: {
+    apiKey: process.env.VONAGE_API_KEY || '',
+    apiSecret: process.env.VONAGE_API_SECRET || '',
+    fromNumber: process.env.VONAGE_FROM_NUMBER || ''
   }
 };

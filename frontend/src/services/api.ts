@@ -840,6 +840,69 @@ class ApiService {
     const response = await this.api.get<{ message: string; data: { system_name: string; system_subtitle: string; system_logo: string; system_version: string } }>('/system/public-config');
     return response.data.data;
   }
+
+  // --- Módulo Descarregamento ---
+  async getAgendamentosDescarregamento(params?: { page?: number; limit?: number; start_date?: string; end_date?: string; status?: string; fornecedor_id?: number; dock?: string; search?: string }) {
+    const response = await this.api.get<ApiResponse<{ data: any[]; total: number; page: number; limit: number; total_pages: number }>>('/descarregamento/agendamentos', { params });
+    return response.data.data;
+  }
+  async getAgendamentoDescarregamentoById(id: number) {
+    const response = await this.api.get<ApiResponse<{ agendamento: any }>>(`/descarregamento/agendamentos/${id}`);
+    return response.data.data.agendamento;
+  }
+  async createAgendamentoDescarregamento(data: { fornecedor_id: number; scheduled_date: string; scheduled_time: string; dock: string; notes?: string }) {
+    const response = await this.api.post<ApiResponse<{ agendamento: any }>>('/descarregamento/agendamentos', data);
+    return response.data.data.agendamento;
+  }
+  async updateAgendamentoDescarregamento(id: number, data: Partial<{ fornecedor_id: number; scheduled_date: string; scheduled_time: string; dock: string; status: string; notes?: string }>) {
+    const response = await this.api.put<ApiResponse<{ agendamento: any }>>(`/descarregamento/agendamentos/${id}`, data);
+    return response.data.data.agendamento;
+  }
+  async deleteAgendamentoDescarregamento(id: number) {
+    await this.api.delete(`/descarregamento/agendamentos/${id}`);
+  }
+  async getFornecedoresDescarregamento(params?: { page?: number; limit?: number; search?: string; category?: string }) {
+    const response = await this.api.get<ApiResponse<{ data: any[]; total: number; page: number; limit: number; total_pages: number }>>('/descarregamento/fornecedores', { params });
+    return response.data.data;
+  }
+  async getFornecedoresDescarregamentoPublic(params?: { search?: string; category?: string }) {
+    const response = await this.api.get<ApiResponse<{ data: any[]; total: number }>>('/descarregamento/fornecedores/public', { params });
+    return response.data.data;
+  }
+  async getFornecedorDescarregamentoById(id: number) {
+    const response = await this.api.get<ApiResponse<{ fornecedor: any }>>(`/descarregamento/fornecedores/${id}`);
+    return response.data.data.fornecedor;
+  }
+  async createFornecedorDescarregamento(data: { name: string; category: string; plate?: string }) {
+    const response = await this.api.post<ApiResponse<{ fornecedor: any }>>('/descarregamento/fornecedores', data);
+    return response.data.data.fornecedor;
+  }
+  async updateFornecedorDescarregamento(id: number, data: Partial<{ name: string; category: string; plate?: string }>) {
+    const response = await this.api.put<ApiResponse<{ fornecedor: any }>>(`/descarregamento/fornecedores/${id}`, data);
+    return response.data.data.fornecedor;
+  }
+  async deleteFornecedorDescarregamento(id: number) {
+    await this.api.delete(`/descarregamento/fornecedores/${id}`);
+  }
+  async getDocasDescarregamento() {
+    const response = await this.api.get<ApiResponse<{ docas: any[] }>>('/descarregamento/docas');
+    return (response.data.data as any).docas ?? response.data.data;
+  }
+  async getDocaDescarregamentoById(id: number) {
+    const response = await this.api.get<ApiResponse<{ doca: any }>>(`/descarregamento/docas/${id}`);
+    return response.data.data.doca;
+  }
+  async createDocaDescarregamento(data: { numero: string; nome?: string; is_active?: boolean }) {
+    const response = await this.api.post<ApiResponse<{ doca: any }>>('/descarregamento/docas', data);
+    return response.data.data.doca;
+  }
+  async updateDocaDescarregamento(id: number, data: Partial<{ numero: string; nome?: string; is_active?: boolean }>) {
+    const response = await this.api.put<ApiResponse<{ doca: any }>>(`/descarregamento/docas/${id}`, data);
+    return response.data.data.doca;
+  }
+  async deleteDocaDescarregamento(id: number) {
+    await this.api.delete(`/descarregamento/docas/${id}`);
+  }
 }
 
 export const apiService = new ApiService();

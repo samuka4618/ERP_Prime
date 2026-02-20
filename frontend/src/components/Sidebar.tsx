@@ -23,7 +23,10 @@ import {
   CheckCircle,
   Package,
   ClipboardList,
-  ShoppingBag
+  ShoppingBag,
+  Truck,
+  Calendar,
+  Warehouse
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
@@ -117,6 +120,17 @@ const Sidebar: React.FC<SidebarProps> = ({
             { name: 'Minhas Solicitações', href: '/compras/minhas-solicitacoes', icon: Package },
             { name: 'Pendentes de Aprovação', href: '/compras/pendentes-aprovacao', icon: CheckCircle }
           ]
+        },
+        {
+          name: 'Descarregamento',
+          icon: Truck,
+          items: [
+            { name: 'Agendamentos', href: '/descarregamento/agendamentos', icon: Calendar },
+            { name: 'Grade', href: '/descarregamento/grade', icon: Calendar },
+            { name: 'Fornecedores', href: '/descarregamento/fornecedores', icon: Building2 },
+            { name: 'Docas', href: '/descarregamento/docas', icon: Warehouse },
+            { name: 'Motoristas no Pátio', href: '/descarregamento/motoristas-patio', icon: Users }
+          ]
         }
       ],
       collapsible: true
@@ -154,6 +168,11 @@ const Sidebar: React.FC<SidebarProps> = ({
               name: 'Sistema de Compras',
               icon: ShoppingBag,
               items: [{ name: 'Configurações', href: '/compras-config', icon: Settings }]
+            },
+            {
+              name: 'Sistema de Descarregamento',
+              icon: Truck,
+              items: [{ name: 'Configurações', href: '/descarregamento-config', icon: Settings }]
             }
           ]
         }

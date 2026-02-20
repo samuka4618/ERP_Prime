@@ -6,7 +6,8 @@
   "scripts": {
     "test-sql": "ts-node scripts/test-sql-connection.ts",
     "build": "tsc",
-    "start": "node dist/src/server.js",
+    "start": "node scripts/start-with-nginx.js",
+    "start:server": "node dist/src/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "ts-node-dev --respawn --transpile-only src/server.ts",
@@ -22,7 +23,9 @@
     "migrate:push-tokens": "ts-node src/core/database/run-device-push-tokens-migration.ts",
     "check-user": "ts-node scripts/check-user.ts",
     "create-user": "ts-node scripts/create-user.ts",
-    "db:reset": "node scripts/reset-db.js"
+    "db:reset": "node scripts/reset-db.js",
+    "install:nginx:linux": "bash scripts/install-nginx.sh",
+    "install:nginx:win": "powershell -ExecutionPolicy Bypass -File scripts/install-nginx.ps1"
   },
   "keywords": [
     "erp",

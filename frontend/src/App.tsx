@@ -37,6 +37,15 @@ import MinhasSolicitacoesComprador from './pages/Compras/MinhasSolicitacoesCompr
 import SolicitacoesPendentesAprovacao from './pages/Compras/SolicitacoesPendentesAprovacao';
 import OrcamentosRecebidos from './pages/Compras/OrcamentosRecebidos';
 import OrcamentoDetail from './pages/Compras/OrcamentoDetail';
+import AgendamentosDescarregamento from './pages/Descarregamento/Agendamentos';
+import FornecedoresDescarregamento from './pages/Descarregamento/Fornecedores';
+import DescarregamentoConfig from './pages/Descarregamento/DescarregamentoConfig';
+import GradeDescarregamento from './pages/Descarregamento/GradeDescarregamento';
+import Docas from './pages/Descarregamento/Docas';
+import MotoristasPatio from './pages/Descarregamento/MotoristasPatio';
+import NovoAgendamento from './pages/Descarregamento/NovoAgendamento';
+import NovoFornecedor from './pages/Descarregamento/NovoFornecedor';
+import PublicForm from './pages/Descarregamento/PublicForm';
 import LoadingSpinner from './components/LoadingSpinner';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -112,6 +121,18 @@ const AppRoutes: React.FC = () => {
         <Route path="compras/minhas-solicitacoes" element={<MinhasSolicitacoesComprador />} />
         <Route path="compras/pendentes-aprovacao" element={<SolicitacoesPendentesAprovacao />} />
         <Route path="compras-config" element={<ComprasConfig />} />
+        <Route path="descarregamento/agendamentos" element={<AgendamentosDescarregamento />} />
+        <Route path="descarregamento/agendamentos/novo" element={<NovoAgendamento />} />
+        <Route path="descarregamento/agendamentos/:id" element={<NovoAgendamento />} />
+        <Route path="descarregamento/fornecedores" element={<FornecedoresDescarregamento />} />
+        <Route path="descarregamento/fornecedores/novo" element={<NovoFornecedor />} />
+        <Route path="descarregamento/fornecedores/:id/editar" element={<NovoFornecedor />} />
+        <Route path="descarregamento/grade" element={<GradeDescarregamento />} />
+        <Route path="descarregamento/docas" element={<Docas />} />
+        <Route path="descarregamento/motoristas-patio" element={<MotoristasPatio />} />
+        <Route path="descarregamento-config" element={<DescarregamentoConfig />} />
+        <Route path="descarregamento/formulario-publico" element={<PublicForm />} />
+        <Route path="descarregamento/formulario-publico/:id" element={<PublicForm />} />
         <Route path="users" element={<Users />} />
         <Route path="permissions" element={<PermissionsPage />} />
         <Route path="profile" element={<Profile />} />

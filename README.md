@@ -58,15 +58,80 @@ O sistema estará disponível em:
 - `npm run migrate` - Executa migrações do banco de dados
 
 ### Produção
-- `npm start` - Inicia o servidor em modo produção
+- `npm start` - Inicia o Nginx (proxy porta 80) e o servidor Node (porta 3000)
+- `npm run start:server` - Inicia apenas o servidor Node (sem Nginx)
 - `npm run build:all` - Compila backend e frontend para produção
+
+### Nginx
+- `npm run install:nginx:linux` - Instala o Nginx no Linux (Debian/Ubuntu/RHEL)
+- `npm run install:nginx:win` - Instala o Nginx no Windows (via winget ou Chocolatey)
+
+## 🌐 Configuração do Nginx
+
+O `npm start` inicia o **Nginx** (se estiver instalado) como proxy reverso na **porta 80** e o **Node** na porta 3000. Quem acessar `http://localhost` ou `http://[IP]` será atendido pelo Nginx, que repassa as requisições ao Node.
+
+### 1. Instalar o Nginx
+
+**Linux (Debian/Ubuntu):**
+```bash
+npm run install:nginx:linux
+```
+O `npm start` usa automaticamente o arquivo `nginx/nginx-standalone.conf` do projeto; não é obrigatório copiar para `/etc/nginx`. Se quiser que o Nginx rode como serviço do sistema (início com a máquina), copie e ative o site:
+```bash
+sudo cp nginx/erp-prime.conf /etc/nginx/sites-available/erp-prime
+sudo ln -sf /etc/nginx/sites-available/erp-prime /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+**Windows:**
+```powershell
+npm run install:nginx:win
+```
+Ou baixe o Nginx em [nginx.org](https://nginx.org/en/download.html) e coloque a pasta no PATH.
+
+**macOS:**
+```bash
+brew install nginx
+```
+
+### 2. Garantir a porta do Node
+
+No `.env` use `PORT=3000` (ou a porta que o Nginx está configurado para usar). Os arquivos em `nginx/` fazem proxy para `http://127.0.0.1:3000`.
+
+### 3. Iniciar o sistema
+
+```bash
+npm run build:all   # se ainda não tiver compilado
+npm start
+```
+
+- **Com Nginx:** acesse `http://localhost` (porta 80). Em Linux, a porta 80 costuma exigir root; se o Nginx não iniciar, use `npm run start:server` e acesse pela porta 3000, ou inicie o Nginx com `sudo nginx -c $(pwd)/nginx/nginx-standalone.conf` antes de `npm run start:server`.
+- **Sem Nginx:** use `npm run start:server` e acesse `http://localhost:3000`.
+
+Para desativar o Nginx ao rodar `npm start`, defina no `.env`:
+```env
+USE_NGINX=false
+```
+
+### 4. Parar o Nginx (quando necessário)
+
+- **Linux:** `sudo systemctl stop nginx` ou `sudo nginx -s stop`
+- **Windows:** `nginx -s stop` (no diretório do Nginx ou com ele no PATH)
 
 ## 🚀 Deploy em Produção
 
 ### 1. Preparação
 ```bash
+# Clonar e entrar no projeto (se ainda não fez)
+git clone <url-do-repositorio>
+cd ERP_Prime
+
 # Instalar dependências
 npm run install:all
+
+# (Opcional) Instalar Nginx para proxy na porta 80
+# Linux: npm run install:nginx:linux
+# Windows: npm run install:nginx:win
 
 # Compilar para produção
 npm run build:all
@@ -91,10 +156,10 @@ Use o arquivo `.env` existente e configure as variáveis necessárias:
 npm start
 ```
 
-O sistema estará disponível em:
-- **Frontend**: http://localhost:3001 (servido pelo backend)
-- **Backend API**: http://localhost:3000
-- **Rede**: http://[SEU_IP]:3001
+O comando inicia o Nginx (se instalado) e o servidor Node. O sistema estará disponível em:
+- **Com Nginx:** http://localhost e http://[SEU_IP] (porta 80)
+- **Sem Nginx:** http://localhost:3000 e http://[SEU_IP]:3000
+- **API:** http://[SEU_IP]/api (ou :3000/api se não usar Nginx)
 
 ### 4. Criar Primeiro Usuário Administrador
 Após iniciar o sistema, acesse a página de registro e crie o primeiro usuário com role "admin":

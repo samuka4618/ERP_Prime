@@ -53,7 +53,7 @@ const GradeDescarregamento: React.FC = () => {
     // Atualizar a cada 30 segundos
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [currentDate, statusFilter]);
+  }, [currentDate, statusFilter, viewMode]);
 
   // Função para formatar data no formato YYYY-MM-DD no fuso horário local
   const formatDateToYYYYMMDD = (date: Date): string => {
@@ -206,13 +206,26 @@ const GradeDescarregamento: React.FC = () => {
   const agendamentosHoje = getAgendamentosDoDia(currentDate);
   const weekDates = getWeekDates();
 
+  const getWeekRangeLabel = () => {
+    if (weekDates.length < 2) return '';
+    const start = weekDates[0];
+    const end = weekDates[6];
+    const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    if (start.getMonth() === end.getMonth()) {
+      return `Semana de ${start.getDate()} a ${end.getDate()} de ${months[start.getMonth()]} de ${start.getFullYear()}`;
+    }
+    return `${start.getDate()}/${start.getMonth() + 1} a ${end.getDate()}/${end.getMonth() + 1}/${end.getFullYear()}`;
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Grade de Descarregamento</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">{dateHeader.dayOfWeek}, {dateHeader.day} De {dateHeader.month} De {dateHeader.year}</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            {viewMode === 'semana' && weekDates.length ? getWeekRangeLabel() : `${dateHeader.dayOfWeek}, ${dateHeader.day} de ${dateHeader.month} de ${dateHeader.year}`}
+          </p>
         </div>
 
         <div className="flex items-center gap-4">
@@ -416,51 +429,49 @@ const GradeDescarregamento: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3">
               {weekDates.map((date) => {
                 const dayAgendamentos = getAgendamentosDoDia(date);
                 const isToday = formatDateToYYYYMMDD(date) === formatDateToYYYYMMDD(new Date());
                 const dayHeader = formatDateHeader(date);
                 return (
-                  <div key={date.toISOString()} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div className={`px-6 py-3 ${isToday ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'}`}>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="font-bold uppercase text-sm">{dayHeader.dayOfWeek.split('-')[0]}</div>
-                          <div className="text-2xl font-bold">{dayHeader.day}</div>
-                        </div>
-                        <div className="text-sm font-medium">{dayAgendamentos.length} {dayAgendamentos.length === 1 ? 'agendamento' : 'agendamentos'}</div>
+                  <div key={date.toISOString()} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col min-h-[200px]">
+                    <div className={`px-3 py-2 flex-shrink-0 ${isToday ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'}`}>
+                      <div className="font-semibold uppercase text-xs tracking-wide">{dayHeader.dayOfWeek.split('-')[0]}</div>
+                      <div className="flex justify-between items-baseline gap-1">
+                        <span className="text-xl font-bold">{dayHeader.day}</span>
+                        <span className="text-xs font-medium opacity-90">{dayAgendamentos.length}</span>
                       </div>
                     </div>
-                    <div className="p-4 bg-gray-50 dark:bg-gray-900/50">
+                    <div className="p-2 bg-gray-50 dark:bg-gray-900/50 flex-1 min-h-[120px] overflow-y-auto">
                       {dayAgendamentos.length === 0 ? (
-                        <p className="text-gray-400 dark:text-gray-500 text-sm text-center py-4">Nenhum agendamento</p>
+                        <div className="h-full flex items-center justify-center py-3">
+                          <p className="text-gray-400 dark:text-gray-500 text-xs text-center">Nenhum agendamento</p>
+                        </div>
                       ) : (
-                        <div className="space-y-2">
-                          {dayAgendamentos.slice(0, 3).map((agendamento) => {
+                        <div className="space-y-1.5">
+                          {dayAgendamentos.slice(0, 4).map((agendamento) => {
                             const statusConfig = getStatusConfig(agendamento.status);
                             return (
                               <div
                                 key={agendamento.id}
-                                className="bg-white dark:bg-gray-800 rounded p-3 border-l-4 text-sm border border-gray-200 dark:border-gray-700"
+                                className="bg-white dark:bg-gray-800 rounded p-2 border-l-2 text-xs border border-gray-200 dark:border-gray-700"
                                 style={{ borderLeftColor: statusConfig.hexColor }}
                               >
-                                <div className="font-semibold text-gray-900 dark:text-white">{agendamento.fornecedor?.name}</div>
-                                <div className="text-gray-500 dark:text-gray-400 text-xs">{agendamento.scheduled_time} - Doca {agendamento.dock}</div>
+                                <div className="font-semibold text-gray-900 dark:text-white truncate" title={agendamento.fornecedor?.name}>{agendamento.fornecedor?.name}</div>
+                                <div className="text-gray-500 dark:text-gray-400">{agendamento.scheduled_time} · Doca {agendamento.dock}</div>
                                 {agendamento.motorista && (
-                                  <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
-                                    <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-                                      <Users className="w-3 h-3" />
-                                      <span className="font-medium">{agendamento.motorista.driver_name}</span>
-                                    </div>
+                                  <div className="mt-0.5 pt-0.5 border-t border-gray-100 dark:border-gray-600 flex items-center gap-0.5 text-blue-600 dark:text-blue-400">
+                                    <Users className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate font-medium">{agendamento.motorista.driver_name}</span>
                                   </div>
                                 )}
                               </div>
                             );
                           })}
-                          {dayAgendamentos.length > 3 && (
-                            <div className="text-xs text-gray-400 dark:text-gray-500 text-center py-1">
-                              +{dayAgendamentos.length - 3} mais
+                          {dayAgendamentos.length > 4 && (
+                            <div className="text-xs text-gray-400 dark:text-gray-500 text-center py-0.5">
+                              +{dayAgendamentos.length - 4} mais
                             </div>
                           )}
                         </div>

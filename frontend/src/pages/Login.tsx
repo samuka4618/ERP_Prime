@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const Login: React.FC = () => {
@@ -46,37 +46,62 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Logo and Title - nome e logo globais configurados pelo administrador */}
-        <div className="text-center">
-          <div className="mx-auto w-40 h-40 min-w-[10rem] min-h-[10rem] bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center shadow-xl overflow-hidden border border-gray-200 dark:border-gray-600">
-            {showLogoImg ? (
-              <img src={logoUrl!} alt={systemName} className="w-full h-full object-contain p-3" onError={() => setLogoError(true)} />
-            ) : null}
-            {!showLogoImg ? (
-              <span className="text-primary-600 dark:text-primary-400 font-bold text-3xl">{logoInitials}</span>
-            ) : null}
+    <div className="min-h-screen flex flex-col lg:flex-row bg-gray-50 dark:bg-gray-900">
+      {/* Painel esquerdo: branding (desktop) / header compacto (mobile) */}
+      <div className="lg:flex-1 lg:min-h-screen flex flex-col justify-center px-6 py-12 lg:py-16 lg:px-12 xl:px-20 bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 dark:from-primary-800 dark:via-primary-900 dark:to-gray-900 relative overflow-hidden">
+        {/* Padrão sutil de fundo */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }} />
+        </div>
+        <div className="relative z-10 text-center lg:text-left">
+          <div className="inline-flex lg:inline-flex items-center justify-center">
+            <div className="w-20 h-20 lg:w-24 lg:h-24 bg-white/95 dark:bg-gray-800 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden border border-white/20">
+              {showLogoImg ? (
+                <img src={logoUrl!} alt={systemName} className="w-full h-full object-contain p-2" onError={() => setLogoError(true)} />
+              ) : (
+                <span className="text-primary-600 dark:text-primary-400 font-bold text-2xl lg:text-3xl">{logoInitials}</span>
+              )}
+            </div>
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="mt-6 lg:mt-8 text-2xl lg:text-3xl xl:text-4xl font-bold text-white tracking-tight">
             {systemName}
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          </h1>
+          <p className="mt-2 text-primary-100 dark:text-primary-200 text-sm lg:text-base max-w-sm mx-auto lg:mx-0">
             {systemSubtitle}
           </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
-            Faça login para acessar sua conta
+          <p className="mt-6 text-primary-200/90 dark:text-primary-300/80 text-sm hidden lg:block max-w-xs">
+            Acesse sua conta para gerenciar chamados, cadastros e relatórios em um só lugar.
           </p>
         </div>
+      </div>
 
-        {/* Login Form */}
-        <div className="bg-white dark:bg-gray-800 py-8 px-6 shadow-xl rounded-2xl">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+      {/* Painel direito: formulário */}
+      <div className="flex-1 flex flex-col justify-center px-6 py-10 lg:py-16 lg:px-12 xl:px-24">
+        <div className="w-full max-w-sm mx-auto lg:max-w-md">
+          <div className="lg:hidden mb-8 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Faça login para continuar
+            </p>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white lg:text-2xl">
+            Entrar na sua conta
+          </h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Use seu e-mail e senha para acessar o sistema
+          </p>
+
+          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Email
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                E-mail
               </label>
-              <div className="mt-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
+                  <Mail className="h-5 w-5" />
+                </div>
                 <input
                   id="email"
                   name="email"
@@ -85,17 +110,20 @@ const Login: React.FC = () => {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="input w-full"
+                  className="input w-full pl-10 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow"
                   placeholder="seu@email.com"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Senha
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
+                  <Lock className="h-5 w-5" />
+                </div>
                 <input
                   id="password"
                   name="password"
@@ -104,66 +132,57 @@ const Login: React.FC = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="input w-full pr-10"
-                  placeholder="Sua senha"
+                  className="input w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow"
+                  placeholder="••••••••"
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2 cursor-pointer group">
                 <input
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 dark:text-white">
+                <span className="text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
                   Lembrar de mim
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
-                  Esqueceu a senha?
-                </a>
-              </div>
+                </span>
+              </label>
+              <a href="#" className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 transition-colors">
+                Esqueceu a senha?
+              </a>
             </div>
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary w-full btn-lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  'Entrar'
-                )}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                <>
+                  Entrar
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
           </form>
 
-        </div>
-
-        {/* Footer */}
-        <div className="text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-8 text-center text-xs text-gray-500 dark:text-gray-400">
             © {new Date().getFullYear()} {systemName}. Todos os direitos reservados.
           </p>
         </div>

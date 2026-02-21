@@ -22,8 +22,10 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   try {
     logger.debug('Iniciando autenticação', { requestId, ip: req.ip, userAgent: req.get('User-Agent') }, 'AUTH');
     
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+    let token = (req as any).cookies?.token || req.header('Authorization')?.replace('Bearer ', '');
+    if (token && (token === 'cookie' || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token))) {
+      token = undefined;
+    }
     if (!token) {
       logger.warn('Tentativa de acesso sem token', { requestId, ip: req.ip }, 'AUTH');
       res.status(401).json({ error: 'Token de acesso necessário' });
@@ -150,8 +152,10 @@ export const authorize = (...roles: UserRole[]) => {
 };
 
 export const optionalAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  
+  let token = (req as any).cookies?.token || req.header('Authorization')?.replace('Bearer ', '');
+  if (token && (token === 'cookie' || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token))) {
+    token = undefined;
+  }
   if (!token) {
     next();
     return;

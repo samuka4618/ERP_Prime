@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -69,26 +70,26 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configuração de CORS simples e funcional
+// Configuração de CORS: em produção usar ALLOWED_ORIGINS (ex: https://meudominio.com), em dev permitir todas
+const corsOrigin = config.nodeEnv === 'production' && process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim())
+  : true;
+
 app.use(cors({
-  origin: true, // Permitir todas as origens em desenvolvimento
+  origin: corsOrigin,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   optionsSuccessStatus: 200,
-  maxAge: 86400 // Cache preflight por 24 horas
+  maxAge: 86400
 }));
 
-// Log de debug para CORS
-app.use((req, res, next) => {
-  console.log('CORS Debug:', {
-    origin: req.headers.origin,
-    method: req.method,
-    url: req.url,
-    userAgent: req.headers['user-agent']
+if (config.nodeEnv !== 'production') {
+  app.use((req, res, next) => {
+    console.log('CORS Debug:', { origin: req.headers.origin, method: req.method, url: req.url });
+    next();
   });
-  next();
-});
+}
 
 // Middleware para tratar requisições OPTIONS (preflight)
 app.options('*', (req, res) => {
@@ -117,6 +118,7 @@ app.use(globalLimiter);
 // Middleware para parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 
 // Middleware de cache headers
 app.use((req, res, next) => {

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
+import { apiService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { 
   UsersIcon, 
@@ -127,26 +129,15 @@ const AdminDashboard: React.FC = () => {
     }
   }, []);
 
+  const { user } = useAuth();
   const trackUserActivity = useCallback(async (activity: string) => {
+    if (!user) return;
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      await fetch('/api/admin-metrics/track-activity', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          userId: JSON.parse(localStorage.getItem('user') || '{}').id,
-          activity
-        })
-      });
+      await apiService.trackActivity(user.id, activity);
     } catch (error) {
       console.error('Erro ao rastrear atividade:', error);
     }
-  }, []);
+  }, [user]);
 
   // Verificar permissão quando as permissões carregarem
   useEffect(() => {

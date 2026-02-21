@@ -1256,7 +1256,8 @@ export const ClientRegistrationDetail: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">Definir Condição de Pagamento</h3>
                 <button
                   onClick={() => setShowFinancialModal(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  aria-label="Fechar"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1266,7 +1267,7 @@ export const ClientRegistrationDetail: React.FC = () => {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  <label htmlFor="financial-condicao-pagamento" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     Condição de Pagamento <span className="text-red-500">*</span>
                   </label>
                   {loadingCondicoes ? (
@@ -1277,6 +1278,7 @@ export const ClientRegistrationDetail: React.FC = () => {
                   ) : (
                     <div className="relative">
                       <input
+                        id="financial-condicao-pagamento"
                         type="text"
                         value={condicaoPagamentoInput}
                         onChange={(e) => {
@@ -1476,7 +1478,8 @@ export const ClientRegistrationDetail: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setShowAtakModal(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  aria-label="Fechar"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   <X className="w-6 h-6" />
                 </button>

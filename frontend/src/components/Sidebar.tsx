@@ -204,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return section.items.some(item => checkItem(item));
   };
 
-  const navItemBase = 'flex items-center gap-3 w-full rounded-lg text-sm transition-all duration-200';
+  const navItemBase = 'flex items-center gap-3 w-full rounded-lg text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900';
   const navItemPadding = (isNested: boolean, collapsed: boolean) =>
     collapsed && !isNested ? 'px-2 py-2.5 justify-center' : isNested ? 'pl-4 pr-3 py-2' : 'px-3 py-2.5';
   const navItemActive = 'bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-300 font-medium';
@@ -223,6 +223,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={() => toggleSection(itemId)}
+            aria-label={isExpanded ? `Recolher ${item.name}` : `Expandir ${item.name}`}
+            aria-expanded={isExpanded}
             className={clsx(
               navItemBase,
               navItemPadding(isNested, isCollapsed),
@@ -327,8 +329,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => toggleSection(section.id)}
+          aria-label={isExpanded ? `Recolher ${section.name}` : `Expandir ${section.name}`}
+          aria-expanded={isExpanded}
           className={clsx(
-            'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900',
             sectionActive ? navItemActive : navItemInactive
           )}
         >
@@ -441,11 +445,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={onToggleCollapse}
+          aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
           className={clsx(
-            'absolute top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full',
+            'absolute top-1/2 -translate-y-1/2 z-10 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full',
             'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 shadow-md',
             'flex items-center justify-center',
             'hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-500',
+            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900',
             'transition-all duration-200',
             isCollapsed ? '-right-3.5' : '-right-3.5'
           )}

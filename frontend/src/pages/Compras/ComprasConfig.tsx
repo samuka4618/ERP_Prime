@@ -248,6 +248,14 @@ const ComprasConfig: React.FC = () => {
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Adicione compradores para gerenciar as solicitações de compra
               </p>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <Plus className="w-5 h-5" />
+                Adicionar o primeiro comprador
+              </button>
             </div>
           ) : (
             <div className="overflow-x-auto">

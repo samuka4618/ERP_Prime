@@ -121,7 +121,7 @@ const Fornecedores: React.FC = () => {
         {hasPermission('descarregamento.fornecedores.create') && (
           <Link
             to="/descarregamento/fornecedores/novo"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 font-medium"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 font-medium focus-ring"
           >
             <Plus className="w-5 h-5" />
             Novo Fornecedor
@@ -182,7 +182,7 @@ const Fornecedores: React.FC = () => {
           <div className="flex items-end">
             <button
               type="submit"
-              className="bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 font-medium"
+              className="bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 font-medium focus-ring"
             >
               <Search className="w-5 h-5" />
               Buscar
@@ -227,6 +227,15 @@ const Fornecedores: React.FC = () => {
                           ? 'Tente ajustar os filtros de busca'
                           : 'Comece criando um novo fornecedor'}
                       </p>
+                      {!searchTerm && !categoryFilter && hasPermission('descarregamento.fornecedores.create') && (
+                        <Link
+                          to="/descarregamento/fornecedores/novo"
+                          className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <Plus className="w-5 h-5" />
+                          Criar o primeiro fornecedor
+                        </Link>
+                      )}
                     </div>
                   </td>
                 </tr>

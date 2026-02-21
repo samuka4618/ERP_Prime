@@ -9,6 +9,20 @@ import { logger } from '../../shared/utils/logger';
 import jwt from 'jsonwebtoken';
 import Joi from 'joi';
 
+const AUTH_COOKIE_NAME = 'token';
+
+function getCookieOptions() {
+  const isProduction = config.nodeEnv === 'production';
+  const maxAgeMs = 24 * 60 * 60 * 1000; // 24h em ms
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax' as const,
+    maxAge: maxAgeMs,
+    path: '/',
+  };
+}
+
 
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
@@ -62,6 +76,7 @@ export class AuthController {
         responseTime: Date.now() - startTime
       }, 'AUTH');
       
+      res.cookie(AUTH_COOKIE_NAME, result.token, getCookieOptions());
       res.json({
         message: 'Login realizado com sucesso',
         data: result
@@ -122,6 +137,7 @@ export class AuthController {
           role: result.user.role
         }, 'AUTH');
         
+        res.cookie(AUTH_COOKIE_NAME, result.token, getCookieOptions());
         res.status(201).json({
           message: 'Usuário criado com sucesso',
           data: result
@@ -159,6 +175,7 @@ export class AuthController {
 
             const { password, ...userWithoutPassword } = existingUser;
 
+            res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions());
             res.status(200).json({
               message: 'Usuário já existe, login realizado',
               data: {
@@ -198,7 +215,7 @@ export class AuthController {
     }
 
     const token = await AuthService.refreshToken(userId);
-    
+    res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions());
     res.json({
       message: 'Token renovado com sucesso',
       data: { token }
@@ -206,45 +223,27 @@ export class AuthController {
   });
 
   static logout = asyncHandler(async (req: Request, res: Response) => {
-    console.log('=== LOGOUT CHAMADO ===');
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    console.log('Token recebido:', token ? token.substring(0, 20) + '...' : 'Nenhum');
+    const token = (req as any).cookies?.[AUTH_COOKIE_NAME] || req.header('Authorization')?.replace('Bearer ', '');
     
     if (token) {
-      // Primeiro, obter informações do usuário pelo token
       const tokenInfo = tokenCacheService.getUserByToken(token);
-      console.log('Token encontrado no cache:', tokenInfo ? `${tokenInfo.userName} (ID: ${tokenInfo.userId})` : 'Não encontrado');
-      
       if (tokenInfo) {
-        console.log('Removendo tokens do usuário ID:', tokenInfo.userId);
-        // Remover TODOS os tokens do usuário (mais robusto)
         tokenCacheService.removeUserTokens(tokenInfo.userId);
-        // Também invalidar o token específico
         tokenCacheService.invalidateToken(token);
-        console.log('Logout concluído para:', tokenInfo.userName);
         logger.info(`Logout realizado para usuário ${tokenInfo.userName} (ID: ${tokenInfo.userId})`);
       } else {
-        console.log('Token não encontrado no cache, tentando JWT...');
-        // Se não encontrar no cache, tentar decodificar o JWT para obter o userId
         try {
           const decoded = jwt.verify(token, config.jwt.secret) as { userId: number; role?: string };
-          console.log('JWT decodificado - UserID:', decoded.userId);
           tokenCacheService.removeUserTokens(decoded.userId);
-          // Também invalidar o token específico
           tokenCacheService.invalidateToken(token);
-          console.log('Logout via JWT concluído para UserID:', decoded.userId);
           logger.info(`Logout realizado para usuário ID ${decoded.userId} (via JWT)`);
         } catch (error) {
-          console.log('Erro ao decodificar JWT:', error);
           logger.warn('Token inválido durante logout:', error);
         }
       }
-    } else {
-      console.log('Nenhum token fornecido');
     }
-    
-    console.log('=== FIM LOGOUT ===');
-    
+
+    res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
     res.json({
       message: 'Logout realizado com sucesso'
     });

@@ -1,26 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 export const validate = (schema: Joi.ObjectSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    console.log('🔍 DEBUG VALIDATION - Validando dados:', req.body);
-    console.log('🔍 DEBUG VALIDATION - Schema:', schema.describe());
-    
-    const { error, value } = schema.validate(req.body, { 
+    if (isDev) {
+      console.log('🔍 DEBUG VALIDATION - Validando dados:', req.body);
+      console.log('🔍 DEBUG VALIDATION - Schema:', schema.describe());
+    }
+
+    const { error, value } = schema.validate(req.body, {
       abortEarly: false,
-      stripUnknown: false 
+      stripUnknown: false
     });
-    
+
     if (error) {
-      console.log('❌ ERRO DE VALIDAÇÃO NO MIDDLEWARE:', error.details);
+      if (isDev) console.log('❌ ERRO DE VALIDAÇÃO NO MIDDLEWARE:', error.details);
       res.status(400).json({ 
         error: 'Dados inválidos', 
         details: error.details.map(detail => detail.message) 
       });
       return;
     }
-    
-    console.log('✅ VALIDAÇÃO PASSOU - Dados validados:', value);
+
+    if (isDev) console.log('✅ VALIDAÇÃO PASSOU - Dados validados:', value);
     next();
   };
 };

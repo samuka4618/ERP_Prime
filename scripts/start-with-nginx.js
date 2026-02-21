@@ -7,6 +7,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const net = require('net');
 
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
@@ -22,6 +23,27 @@ function findNginx() {
   const isWin = process.platform === 'win32';
   const cmd = isWin ? 'nginx.exe' : 'nginx';
   return cmd;
+}
+
+/** Verifica se a porta 80 está em uso (ex.: Nginx já rodando). */
+function checkPort80InUse() {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    const timeout = setTimeout(() => {
+      socket.destroy();
+      resolve(false);
+    }, 500);
+    socket.once('connect', () => {
+      clearTimeout(timeout);
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once('error', () => {
+      clearTimeout(timeout);
+      resolve(false);
+    });
+    socket.connect(80, '127.0.0.1');
+  });
 }
 
 function startNgrok() {
@@ -91,8 +113,13 @@ async function main() {
 
   if (useNginx) {
     try {
-      await startNginx();
-      console.log('✅ Nginx iniciado (proxy na porta 80 → Node na porta 3000)');
+      const port80InUse = await checkPort80InUse();
+      if (port80InUse) {
+        console.log('ℹ️  Porta 80 já em uso (Nginx ou outro serviço). Pulando início do Nginx.');
+      } else {
+        await startNginx();
+        console.log('✅ Nginx iniciado (proxy na porta 80 → Node na porta 3000)');
+      }
     } catch (e) {
       console.warn('⚠️  Nginx não iniciado (pode não estar instalado). Iniciando apenas o Node.');
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, MapPin, FileText, Save, X, QrCode, Copy, Check, MessageSquare, Send, RefreshCw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import Modal from '../../components/Modal';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -49,6 +50,9 @@ const DescarregamentoConfig: React.FC = () => {
   const { hasPermission } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'docas' | 'formularios' | 'sms'>('docas');
+  const [errorDocas, setErrorDocas] = useState<string | null>(null);
+  const [errorFormularios, setErrorFormularios] = useState<string | null>(null);
+  const [errorSmsTemplates, setErrorSmsTemplates] = useState<string | null>(null);
   
   // Docas
   const [docas, setDocas] = useState<Doca[]>([]);
@@ -91,6 +95,7 @@ const DescarregamentoConfig: React.FC = () => {
   }, []);
 
   const fetchDocas = async () => {
+    setErrorDocas(null);
     try {
       const response = await fetch('/api/descarregamento/docas', {
         headers: {
@@ -101,15 +106,19 @@ const DescarregamentoConfig: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setDocas(data.data?.docas || []);
+      } else {
+        setErrorDocas('Falha ao carregar docas. Tente novamente.');
       }
     } catch (error) {
       console.error('Erro ao carregar docas:', error);
+      setErrorDocas('Falha ao carregar docas. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
   const fetchFormularios = async () => {
+    setErrorFormularios(null);
     try {
       const response = await fetch('/api/descarregamento/formularios', {
         headers: {
@@ -120,13 +129,24 @@ const DescarregamentoConfig: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setFormularios(data.data?.formularios || []);
+      } else {
+        setErrorFormularios('Falha ao carregar formulários. Tente novamente.');
       }
     } catch (error) {
       console.error('Erro ao carregar formulários:', error);
+      setErrorFormularios('Falha ao carregar formulários. Tente novamente.');
     }
   };
 
+  const [docaFieldErrors, setDocaFieldErrors] = useState<{ numero?: string }>({});
+
   const handleSaveDoca = async () => {
+    if (!docaForm.numero?.trim()) {
+      setDocaFieldErrors({ numero: 'Número da doca é obrigatório' });
+      toast.error('Preencha o número da doca');
+      return;
+    }
+    setDocaFieldErrors({});
     try {
       const url = editingDoca 
         ? `/api/descarregamento/docas/${editingDoca.id}`
@@ -149,6 +169,7 @@ const DescarregamentoConfig: React.FC = () => {
       setShowDocaModal(false);
       setEditingDoca(null);
       setDocaForm({ numero: '', nome: '', is_active: true });
+      setDocaFieldErrors({});
       fetchDocas();
     } catch (error) {
       toast.error('Erro ao salvar doca');
@@ -353,6 +374,7 @@ const DescarregamentoConfig: React.FC = () => {
 
   // Templates SMS
   const fetchSmsTemplates = async () => {
+    setErrorSmsTemplates(null);
     try {
       const response = await fetch('/api/descarregamento/sms-templates', {
         headers: {
@@ -363,9 +385,12 @@ const DescarregamentoConfig: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setSmsTemplates(data.data?.templates || []);
+      } else {
+        setErrorSmsTemplates('Falha ao carregar templates SMS. Tente novamente.');
       }
     } catch (error) {
       console.error('Erro ao carregar templates SMS:', error);
+      setErrorSmsTemplates('Falha ao carregar templates SMS. Tente novamente.');
     }
   };
 
@@ -547,6 +572,19 @@ const DescarregamentoConfig: React.FC = () => {
           {/* Tab: Docas */}
           {activeTab === 'docas' && (
             <div>
+              {errorDocas && (
+                <div className="mb-4 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex flex-wrap items-center justify-between gap-3">
+                  <span>{errorDocas}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setLoading(true); fetchDocas(); }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Gerenciar Docas</h2>
                 {hasPermission('descarregamento.formularios.manage') && (
@@ -564,6 +602,27 @@ const DescarregamentoConfig: React.FC = () => {
                 )}
               </div>
 
+              {docas.length === 0 && !errorDocas ? (
+                <div className="text-center py-12 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
+                  <MapPin className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">Nenhuma doca cadastrada</h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Cadastre docas para organizar o descarregamento.</p>
+                  {hasPermission('descarregamento.formularios.manage') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingDoca(null);
+                        setDocaForm({ numero: '', nome: '', is_active: true });
+                        setShowDocaModal(true);
+                      }}
+                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Criar a primeira doca
+                    </button>
+                  )}
+                </div>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {docas.map(doca => (
                   <div
@@ -610,12 +669,26 @@ const DescarregamentoConfig: React.FC = () => {
                   </div>
                 ))}
               </div>
+              )}
             </div>
           )}
 
           {/* Tab: Formulários */}
           {activeTab === 'formularios' && (
             <div>
+              {errorFormularios && (
+                <div className="mb-4 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex flex-wrap items-center justify-between gap-3">
+                  <span>{errorFormularios}</span>
+                  <button
+                    type="button"
+                    onClick={() => fetchFormularios()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Gerenciar Formulários</h2>
                 {hasPermission('descarregamento.formularios.manage') && (
@@ -764,6 +837,19 @@ const DescarregamentoConfig: React.FC = () => {
           {/* Tab: Templates SMS */}
           {activeTab === 'sms' && (
             <div>
+              {errorSmsTemplates && (
+                <div className="mb-4 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex flex-wrap items-center justify-between gap-3">
+                  <span>{errorSmsTemplates}</span>
+                  <button
+                    type="button"
+                    onClick={() => fetchSmsTemplates()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Templates de SMS</h2>
@@ -943,43 +1029,45 @@ const DescarregamentoConfig: React.FC = () => {
 
       {/* Modal: Doca */}
       {showDocaModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {editingDoca ? 'Editar Doca' : 'Nova Doca'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowDocaModal(false);
-                  setEditingDoca(null);
-                  setDocaForm({ numero: '', nome: '', is_active: true });
-                }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
+        <Modal
+          title={editingDoca ? 'Editar Doca' : 'Nova Doca'}
+          size="sm"
+          onClose={() => {
+            setShowDocaModal(false);
+            setEditingDoca(null);
+            setDocaForm({ numero: '', nome: '', is_active: true });
+            setDocaFieldErrors({});
+          }}
+        >
+          <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label htmlFor="doca-numero" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Número da Doca *
                 </label>
                 <input
+                  id="doca-numero"
                   type="text"
                   value={docaForm.numero}
-                  onChange={(e) => setDocaForm({ ...docaForm, numero: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  onChange={(e) => {
+                    setDocaForm({ ...docaForm, numero: e.target.value });
+                    if (docaFieldErrors.numero) setDocaFieldErrors({});
+                  }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                    docaFieldErrors.numero ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   placeholder="Ex: 1, 2, A, B..."
                 />
+                {docaFieldErrors.numero && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{docaFieldErrors.numero}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label htmlFor="doca-nome" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Nome (Opcional)
                 </label>
                 <input
+                  id="doca-nome"
                   type="text"
                   value={docaForm.nome}
                   onChange={(e) => setDocaForm({ ...docaForm, nome: e.target.value })}
@@ -988,8 +1076,9 @@ const DescarregamentoConfig: React.FC = () => {
                 />
               </div>
 
-              <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
+              <label htmlFor="doca-is_active" className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                 <input
+                  id="doca-is_active"
                   type="checkbox"
                   checked={docaForm.is_active}
                   onChange={(e) => setDocaForm({ ...docaForm, is_active: e.target.checked })}
@@ -1004,6 +1093,7 @@ const DescarregamentoConfig: React.FC = () => {
                     setShowDocaModal(false);
                     setEditingDoca(null);
                     setDocaForm({ numero: '', nome: '', is_active: true });
+                    setDocaFieldErrors({});
                   }}
                   className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                 >
@@ -1018,8 +1108,7 @@ const DescarregamentoConfig: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal: Formulário */}
@@ -1042,7 +1131,8 @@ const DescarregamentoConfig: React.FC = () => {
                     is_default: false
                   });
                 }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                aria-label="Fechar"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -1051,10 +1141,11 @@ const DescarregamentoConfig: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label htmlFor="formulario-title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Título do Formulário *
                 </label>
                 <input
+                  id="formulario-title"
                   type="text"
                   value={formularioForm.title}
                   onChange={(e) => setFormularioForm({ ...formularioForm, title: e.target.value })}
@@ -1064,10 +1155,11 @@ const DescarregamentoConfig: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label htmlFor="formulario-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Descrição
                 </label>
                 <textarea
+                  id="formulario-description"
                   value={formularioForm.description}
                   onChange={(e) => setFormularioForm({ ...formularioForm, description: e.target.value })}
                   rows={2}
@@ -1260,7 +1352,8 @@ const DescarregamentoConfig: React.FC = () => {
                     is_default: false
                   });
                 }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                aria-label="Fechar"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -1269,10 +1362,11 @@ const DescarregamentoConfig: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="sms-template-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nome do Template *
                   </label>
                   <input
+                    id="sms-template-name"
                     type="text"
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Ex: Chamado Padrão"
@@ -1282,10 +1376,11 @@ const DescarregamentoConfig: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="sms-template-type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Tipo de Template *
                   </label>
                   <select
+                    id="sms-template-type"
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     value={smsTemplateForm.template_type}
                     onChange={(e) => setSmsTemplateForm({ ...smsTemplateForm, template_type: e.target.value as 'arrival' | 'release' })}
@@ -1296,10 +1391,11 @@ const DescarregamentoConfig: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="sms-template-message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Mensagem *
                   </label>
                   <textarea
+                    id="sms-template-message"
                     rows={6}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Digite a mensagem que será enviada por SMS. Use {{driver_name}}, {{fornecedor_name}}, {{scheduled_date}}, {{scheduled_time}}, {{dock}} para variáveis."
@@ -1317,8 +1413,9 @@ const DescarregamentoConfig: React.FC = () => {
                 </div>
 
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
+                  <label htmlFor="sms-template-is_default" className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                     <input
+                      id="sms-template-is_default"
                       type="checkbox"
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                       checked={smsTemplateForm.is_default}
@@ -1372,7 +1469,8 @@ const DescarregamentoConfig: React.FC = () => {
                   setTestingTemplate(null);
                   setTestPhoneNumber('');
                 }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                aria-label="Fechar"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -1380,10 +1478,11 @@ const DescarregamentoConfig: React.FC = () => {
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label htmlFor="test-sms-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Número de Telefone *
                 </label>
                 <input
+                  id="test-sms-phone"
                   type="text"
                   value={testPhoneNumber}
                   onChange={(e) => setTestPhoneNumber(e.target.value)}

@@ -48,6 +48,10 @@
   .btn-outline {
     @apply border border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-900;
   }
+
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900;
+  }
   
   .btn-sm {
     @apply h-9 rounded-md px-3;

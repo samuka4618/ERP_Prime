@@ -11,7 +11,8 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -107,6 +108,7 @@ const Reports: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [deletingReport, setDeletingReport] = useState<number | null>(null);
   const [executingReport, setExecutingReport] = useState(false);
+  const [reportsError, setReportsError] = useState<string | null>(null);
 
   const reportTypes = {
     sla_performance: 'Performance de SLA',
@@ -152,6 +154,7 @@ const Reports: React.FC = () => {
   }, [activeTab]);
 
   const fetchReports = async () => {
+    setReportsError(null);
     try {
       logger.info('Buscando relatórios...', {}, 'REPORTS');
       const data = await apiService.getReports();
@@ -164,7 +167,8 @@ const Reports: React.FC = () => {
       setReports(reportsArray);
     } catch (error) {
       logger.error('Erro ao buscar relatórios:', { error: error instanceof Error ? error.message : 'Unknown error' }, 'REPORTS');
-      setReports([]); // Em caso de erro, definir como array vazio
+      setReports([]);
+      setReportsError('Falha ao carregar relatórios. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -443,13 +447,29 @@ const Reports: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-2 border-gray-300 dark:border-gray-600 border-t-blue-600" />
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando relatórios...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {reportsError && (
+        <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex flex-wrap items-center justify-between gap-3">
+          <span>{reportsError}</span>
+          <button
+            type="button"
+            onClick={() => fetchReports()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <ArrowPathIcon className="w-4 h-4" />
+            Tentar novamente
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <div className="flex items-center justify-between">
@@ -460,7 +480,7 @@ const Reports: React.FC = () => {
           <div className="flex space-x-3">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              className="btn btn-primary flex items-center space-x-2"
             >
               <DocumentTextIcon className="h-5 w-5" />
               <span>Novo Relatório</span>
@@ -716,7 +736,7 @@ const Reports: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setShowCustomBuilder(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                  className="btn btn-primary flex items-center space-x-2"
                 >
                   <DocumentTextIcon className="h-5 w-5" />
                   <span>Novo Relatório Personalizado</span>
@@ -958,13 +978,13 @@ const CreateReportModal: React.FC<{
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+                className="btn btn-outline"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                className="btn btn-primary"
               >
                 Criar
               </button>
@@ -1043,13 +1063,13 @@ const ExecuteReportModal: React.FC<{
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="btn btn-outline"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                  className="btn btn-primary"
                 >
                   Executar
                 </button>
@@ -1211,13 +1231,13 @@ const ScheduleReportModal: React.FC<{
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+                className="btn btn-outline"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                className="btn btn-primary"
               >
                 Agendar
               </button>
@@ -1350,7 +1370,8 @@ const CustomReportBuilderModal: React.FC<{
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            aria-label="Fechar"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
@@ -1641,14 +1662,14 @@ const CustomReportBuilderModal: React.FC<{
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                className="btn btn-outline"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={!name.trim() || config.fields.length === 0}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                className="btn btn-primary flex items-center space-x-2"
               >
                 <DocumentTextIcon className="h-4 w-4" />
                 <span>Criar Relatório</span>

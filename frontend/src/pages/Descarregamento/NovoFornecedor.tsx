@@ -16,6 +16,7 @@ const NovoFornecedor: React.FC = () => {
     category: '',
     plate: ''
   });
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; category?: string }>({});
 
   useEffect(() => {
     if (isEditing && id) {
@@ -52,8 +53,11 @@ const NovoFornecedor: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.category) {
+    const err: { name?: string; category?: string } = {};
+    if (!formData.name?.trim()) err.name = 'Nome é obrigatório';
+    if (!formData.category?.trim()) err.category = 'Categoria é obrigatória';
+    setFieldErrors(err);
+    if (Object.keys(err).length > 0) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -94,10 +98,11 @@ const NovoFornecedor: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    if (fieldErrors[name as keyof typeof fieldErrors]) {
+      setFieldErrors(prev => ({ ...prev, [name]: undefined }));
+    }
   };
 
   if (loadingData) {
@@ -140,8 +145,13 @@ const NovoFornecedor: React.FC = () => {
               onChange={handleChange}
               required
               placeholder="Digite o nome do fornecedor"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                fieldErrors.name ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
             />
+            {fieldErrors.name && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.name}</p>
+            )}
           </div>
 
           {/* Categoria */}
@@ -157,8 +167,13 @@ const NovoFornecedor: React.FC = () => {
               onChange={handleChange}
               required
               placeholder="Ex: Transportadora, Fornecedor, etc."
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                fieldErrors.category ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
             />
+            {fieldErrors.category && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.category}</p>
+            )}
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Exemplos: Transportadora, Fornecedor de Matéria Prima, Distribuidor, etc.
             </p>

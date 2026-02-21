@@ -18,7 +18,8 @@ import {
   ShoppingCart,
   Package,
   BarChart3,
-  FileText
+  FileText,
+  RefreshCw
 } from 'lucide-react';
 import { DashboardStats } from '../types';
 import { apiService } from '../services/api';
@@ -51,6 +52,7 @@ const Dashboard: React.FC = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [showCustomDates, setShowCustomDates] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   // Rastrear atividade do usuário
   useActivityTracking();
@@ -106,6 +108,7 @@ const Dashboard: React.FC = () => {
   }, [datePreset]);
 
   const fetchData = async () => {
+    setLoadError(null);
     try {
       setLoading(true);
       const dateRange = getDateRange(datePreset);
@@ -129,8 +132,7 @@ const Dashboard: React.FC = () => {
       setRecentActivity(activitiesWithDates);
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
-      // Não mostrar toast de erro durante inicialização
-      // toast.error('Erro ao carregar dados do dashboard');
+      setLoadError('Falha ao carregar dados. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -221,6 +223,19 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex flex-wrap items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => fetchData()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Tentar novamente
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -247,7 +262,7 @@ const Dashboard: React.FC = () => {
           <div className="flex flex-wrap gap-2 flex-1">
             <button
               onClick={() => handlePresetChange('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                 datePreset === 'all'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -257,7 +272,7 @@ const Dashboard: React.FC = () => {
             </button>
             <button
               onClick={() => handlePresetChange('today')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                 datePreset === 'today'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -267,7 +282,7 @@ const Dashboard: React.FC = () => {
             </button>
             <button
               onClick={() => handlePresetChange('last7days')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                 datePreset === 'last7days'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -277,7 +292,7 @@ const Dashboard: React.FC = () => {
             </button>
             <button
               onClick={() => handlePresetChange('last30days')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                 datePreset === 'last30days'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -287,7 +302,7 @@ const Dashboard: React.FC = () => {
             </button>
             <button
               onClick={() => handlePresetChange('thisMonth')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                 datePreset === 'thisMonth'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -297,7 +312,7 @@ const Dashboard: React.FC = () => {
             </button>
             <button
               onClick={() => handlePresetChange('lastMonth')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                 datePreset === 'lastMonth'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -307,7 +322,7 @@ const Dashboard: React.FC = () => {
             </button>
             <button
               onClick={() => handlePresetChange('custom')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                 datePreset === 'custom'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -350,7 +365,7 @@ const Dashboard: React.FC = () => {
                   }
                 }}
                 disabled={!startDate || !endDate || startDate > endDate}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
               >
                 Aplicar Filtro
               </button>
@@ -643,7 +658,7 @@ const Dashboard: React.FC = () => {
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Sistema de Compras</h2>
-            <Link to="/compras/solicitacoes" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+            <Link to="/compras/solicitacoes" className="text-sm text-blue-600 dark:text-blue-400 hover:underline rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
               Ver todas →
             </Link>
           </div>
@@ -706,12 +721,12 @@ const Dashboard: React.FC = () => {
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Relatórios</h2>
-          <Link to="/reports" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+          <Link to="/reports" className="text-sm text-blue-600 dark:text-blue-400 hover:underline rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
             Ver todos →
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link to="/reports" className="card p-6 hover:shadow-lg transition-shadow hover:border-blue-500 border-2 border-transparent">
+          <Link to="/reports" className="card p-6 hover:shadow-lg transition-shadow hover:border-blue-500 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
             <div className="flex items-center space-x-4">
               <div className="bg-blue-500 p-3 rounded-lg">
                 <BarChart3 className="w-6 h-6 text-white" />
@@ -723,7 +738,7 @@ const Dashboard: React.FC = () => {
             </div>
           </Link>
 
-          <Link to="/reports" className="card p-6 hover:shadow-lg transition-shadow hover:border-green-500 border-2 border-transparent">
+          <Link to="/reports" className="card p-6 hover:shadow-lg transition-shadow hover:border-green-500 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
             <div className="flex items-center space-x-4">
               <div className="bg-green-500 p-3 rounded-lg">
                 <ShoppingCart className="w-6 h-6 text-white" />
@@ -735,7 +750,7 @@ const Dashboard: React.FC = () => {
             </div>
           </Link>
 
-          <Link to="/reports" className="card p-6 hover:shadow-lg transition-shadow hover:border-purple-500 border-2 border-transparent">
+          <Link to="/reports" className="card p-6 hover:shadow-lg transition-shadow hover:border-purple-500 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
             <div className="flex items-center space-x-4">
               <div className="bg-purple-500 p-3 rounded-lg">
                 <FileText className="w-6 h-6 text-white" />

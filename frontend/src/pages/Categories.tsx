@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { apiService } from '../services/api';
 import { Category, CategoryField } from '../types';
 import { Tag, Plus, Edit, Trash2, X } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface NewCategory {
   name: string;
@@ -213,7 +214,7 @@ const Categories: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600 mx-auto"></div>
+          <LoadingSpinner size="lg" className="mx-auto" />
           <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando categorias...</p>
         </div>
       </div>

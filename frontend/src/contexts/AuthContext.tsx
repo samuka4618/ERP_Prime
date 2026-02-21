@@ -1,3 +1,7 @@
+/**
+ * Contexto de autenticação.
+ * Usa cookie httpOnly para o token (segurança); usuário pode ser cacheado em localStorage.
+ */
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, LoginRequest } from '../types';
 import { apiService } from '../services/api';
@@ -37,37 +41,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      logger.debug('Inicializando autenticação', {}, 'AUTH');
-      
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-
-      if (storedToken && storedUser) {
-        logger.debug('Token e usuário encontrados no localStorage', { 
-          hasToken: !!storedToken,
-          hasUser: !!storedUser 
-        }, 'AUTH');
-        
-        try {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-          
-          logger.success('Autenticação inicial bem-sucedida', { 
-            userId: JSON.parse(storedUser).id 
-          }, 'AUTH');
-        } catch (error) {
-          logger.warn('Erro ao restaurar dados do usuário, limpando storage', { 
-            error: error instanceof Error ? error.message : 'Unknown error' 
-          }, 'AUTH');
-          
-          // Erro ao restaurar dados, limpar storage
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setToken(null);
-          setUser(null);
-        }
-      } else {
-        logger.debug('Nenhum token ou usuário encontrado no localStorage', {}, 'AUTH');
+      logger.debug('Inicializando autenticação (cookie httpOnly)', {}, 'AUTH');
+      try {
+        const profile = await apiService.getProfile();
+        setUser(profile);
+        setToken('cookie');
+        localStorage.setItem('user', JSON.stringify(profile));
+        logger.success('Sessão validada via cookie', { userId: profile.id }, 'AUTH');
+      } catch {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        logger.debug('Sem sessão válida (cookie)', {}, 'AUTH');
       }
       setLoading(false);
     };
@@ -80,20 +66,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     try {
       const response = await apiService.login(credentials);
-      
-      setToken(response.token);
+      setToken('cookie');
       setUser(response.user);
-      
-      localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
+      if (response.token) localStorage.setItem('token', response.token);
       
-      logger.success('Login concluído no contexto', { 
+      logger.success('Login concluído (cookie httpOnly)', { 
         userId: response.user.id,
         email: response.user.email,
         role: response.user.role
       }, 'AUTH');
       
-      // Rastrear atividade de login
       await trackActivity('login');
     } catch (error) {
       logger.error('Falha no login no contexto', { 
@@ -108,26 +91,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logger.info('Iniciando processo de logout no contexto', { userId: user?.id }, 'AUTH');
     
     try {
-      // Fazer logout no servidor primeiro (para remover token do cache)
       await apiService.logout();
     } catch (error) {
-      // Falha silenciosa - mesmo se der erro, limpar o estado local
       logger.warn('Erro ao fazer logout no servidor, continuando com limpeza local', { 
         error: error instanceof Error ? error.message : 'Unknown error' 
       }, 'AUTH');
     } finally {
-      // Sempre limpar o estado local
       setToken(null);
       setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       logger.success('Logout concluído no contexto', {}, 'AUTH');
     }
   };
 
   const refreshUser = async () => {
-    if (!token) return;
+    if (!user && !token) return;
     
     try {
-      // Usar getProfile ao invés de getUser para não precisar de permissão de admin
       const updatedUser = await apiService.getProfile();
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -147,17 +128,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const trackActivity = async (activity: string) => {
-    if (!user || !token) return;
+    if (!user) return;
     
     try {
       await apiService.trackActivity(user.id, activity);
     } catch (error) {
-      // Falha silenciosa - não interrompe o fluxo principal
       console.warn('Erro ao rastrear atividade:', error);
     }
   };
 
-  const isAuthenticated = !!token && !!user;
+  const isAuthenticated = !!user;
   const isAdmin = user?.role === 'admin';
   const isAttendant = user?.role === 'attendant' || user?.role === 'admin';
 

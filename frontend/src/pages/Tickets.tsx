@@ -274,13 +274,13 @@ const Tickets: React.FC = () => {
                     <div className="flex items-center space-x-2">
                       <Link
                         to={`/tickets/${ticket.id}`}
-                        className="text-primary-600 hover:text-primary-900"
+                        className="text-primary-600 hover:text-primary-900 p-1 rounded focus-ring"
                       >
                         <Eye className="w-4 h-4" />
                       </Link>
                       <button 
                         onClick={() => handleDeleteTicket(ticket.id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 p-1 rounded focus-ring"
                         title="Excluir chamado"
                       >
                         <Trash2 className="w-4 h-4" />

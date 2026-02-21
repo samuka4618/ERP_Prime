@@ -9,7 +9,8 @@ import {
   Paperclip,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import { Ticket, TicketHistory, Attachment } from '../types';
 import { apiService } from '../services/api';
@@ -28,6 +29,7 @@ const TicketDetail: React.FC = () => {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [history, setHistory] = useState<TicketHistory[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachmentsError, setAttachmentsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -113,6 +115,7 @@ const TicketDetail: React.FC = () => {
   };
 
   const fetchAttachments = async () => {
+    setAttachmentsError(null);
     try {
       const ticketId = parseInt(id!);
       if (isNaN(ticketId)) {
@@ -122,6 +125,7 @@ const TicketDetail: React.FC = () => {
       setAttachments(data.attachments);
     } catch (error) {
       console.error('Erro ao carregar anexos:', error);
+      setAttachmentsError('Falha ao carregar anexos. Tente novamente.');
     }
   };
 
@@ -349,7 +353,19 @@ const TicketDetail: React.FC = () => {
           {/* Chat Interface */}
           <div className="card p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white dark:text-white mb-4">Chat do Chamado</h3>
-            
+            {attachmentsError && (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm">{attachmentsError}</span>
+                <button
+                  type="button"
+                  onClick={() => fetchAttachments()}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Tentar novamente
+                </button>
+              </div>
+            )}
             {/* Messages Container */}
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4 h-96 overflow-y-auto">
               {history && history.length > 0 ? (() => {

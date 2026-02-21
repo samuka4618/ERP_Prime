@@ -28,6 +28,7 @@ const NovoAgendamento: React.FC = () => {
     dock: '',
     notes: ''
   });
+  const [fieldErrors, setFieldErrors] = useState<{ fornecedor_id?: string; scheduled_date?: string; scheduled_time?: string; dock?: string }>({});
 
   useEffect(() => {
     fetchFornecedores();
@@ -131,8 +132,13 @@ const NovoAgendamento: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.fornecedor_id || !formData.scheduled_date || !formData.scheduled_time || !formData.dock) {
+    const err: typeof fieldErrors = {};
+    if (!formData.fornecedor_id) err.fornecedor_id = 'Selecione o fornecedor';
+    if (!formData.scheduled_date) err.scheduled_date = 'Data é obrigatória';
+    if (!formData.scheduled_time) err.scheduled_time = 'Hora é obrigatória';
+    if (!formData.dock?.trim()) err.dock = 'Selecione a doca';
+    setFieldErrors(err);
+    if (Object.keys(err).length > 0) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -175,10 +181,11 @@ const NovoAgendamento: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    if (fieldErrors[name as keyof typeof fieldErrors]) {
+      setFieldErrors(prev => ({ ...prev, [name]: undefined }));
+    }
   };
 
   if (loadingData) {
@@ -210,7 +217,7 @@ const NovoAgendamento: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Fornecedor */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="agendamento-fornecedor_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <Truck className="inline w-4 h-4 mr-2" />
               Fornecedor *
             </label>
@@ -221,12 +228,15 @@ const NovoAgendamento: React.FC = () => {
             ) : (
               <>
                 <select
+                  id="agendamento-fornecedor_id"
                   name="fornecedor_id"
                   value={formData.fornecedor_id}
                   onChange={handleChange}
                   required
                   disabled={fornecedores.length === 0}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed ${
+                    fieldErrors.fornecedor_id ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 >
                   <option value="">
                     {fornecedores.length === 0 
@@ -239,6 +249,9 @@ const NovoAgendamento: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.fornecedor_id && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.fornecedor_id}</p>
+                )}
                 {fornecedores.length === 0 && (
                   <p className="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
                     ⚠️ Nenhum fornecedor cadastrado. Por favor,{' '}
@@ -255,38 +268,50 @@ const NovoAgendamento: React.FC = () => {
           {/* Data e Hora */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor="agendamento-scheduled_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <Calendar className="inline w-4 h-4 mr-2" />
                 Data do Agendamento *
               </label>
               <input
+                id="agendamento-scheduled_date"
                 type="date"
                 name="scheduled_date"
                 value={formData.scheduled_date}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                  fieldErrors.scheduled_date ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
               />
+              {fieldErrors.scheduled_date && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.scheduled_date}</p>
+              )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor="agendamento-scheduled_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <Clock className="inline w-4 h-4 mr-2" />
                 Hora do Agendamento *
               </label>
               <input
+                id="agendamento-scheduled_time"
                 type="time"
                 name="scheduled_time"
                 value={formData.scheduled_time}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                  fieldErrors.scheduled_time ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
               />
+              {fieldErrors.scheduled_time && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.scheduled_time}</p>
+              )}
             </div>
           </div>
 
           {/* Doca */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="agendamento-dock" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <MapPin className="inline w-4 h-4 mr-2" />
               Doca *
             </label>
@@ -297,12 +322,15 @@ const NovoAgendamento: React.FC = () => {
             ) : (
               <>
                 <select
+                  id="agendamento-dock"
                   name="dock"
                   value={formData.dock}
                   onChange={handleChange}
                   required
                   disabled={docas.length === 0}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed ${
+                    fieldErrors.dock ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 >
                   <option value="">
                     {docas.length === 0 
@@ -315,6 +343,9 @@ const NovoAgendamento: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.dock && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.dock}</p>
+                )}
                 {docas.length === 0 && (
                   <p className="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
                     ⚠️ Nenhuma doca configurada. Por favor,{' '}

@@ -50,21 +50,24 @@ class ApiService {
     this.api = axios.create({
       baseURL,
       timeout: 10000,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    // Interceptor para adicionar token de autenticação
+    // Interceptor: envia cookie httpOnly automaticamente (withCredentials).
+    // Se ainda existir token no localStorage (compatibilidade), envia também no header.
     this.api.interceptors.request.use(
       (config) => {
         const startTime = Date.now();
         (config as any).startTime = startTime;
         
         const token = localStorage.getItem('token');
-        if (token) {
+        const isJwt = token && token !== 'cookie' && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token);
+        if (isJwt) {
           config.headers.Authorization = `Bearer ${token}`;
-          logger.debug('Token adicionado ao request', { 
+          logger.debug('Token adicionado ao request (header)', { 
             url: config.url, 
             method: config.method 
           }, 'API');
@@ -179,8 +182,8 @@ class ApiService {
   }
 
   async getProfile(): Promise<User> {
-    const response = await this.api.get<ApiResponse<User>>('/auth/profile');
-    return response.data.data;
+    const response = await this.api.get<ApiResponse<{ user: User }>>('/auth/profile');
+    return response.data.data.user;
   }
 
   // Usuários

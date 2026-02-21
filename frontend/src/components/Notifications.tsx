@@ -135,7 +135,8 @@ const Notifications: React.FC<NotificationsProps> = ({ isOpen, onClose, onNotifi
             )}
             <button
               onClick={onClose}
-              className="p-1 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+              aria-label="Fechar"
+              className="p-1 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>

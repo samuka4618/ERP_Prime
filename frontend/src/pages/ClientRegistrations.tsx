@@ -5,6 +5,7 @@ import { ClientRegistration, ClientRegistrationFilters } from '../types';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { ClientStatusBadge } from '../components/ClientStatusBadge';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export const ClientRegistrations: React.FC = () => {
   const { user } = useAuth();
@@ -99,7 +100,10 @@ export const ClientRegistrations: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <LoadingSpinner size="lg" className="mx-auto" />
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando cadastros...</p>
+        </div>
       </div>
     );
   }

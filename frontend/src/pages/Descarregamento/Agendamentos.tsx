@@ -143,7 +143,7 @@ const Agendamentos: React.FC = () => {
         {hasPermission('descarregamento.agendamentos.create') && (
           <Link
             to="/descarregamento/agendamentos/novo"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 font-medium"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 font-medium focus-ring"
           >
             <Plus className="w-5 h-5" />
             Novo Agendamento
@@ -239,7 +239,7 @@ const Agendamentos: React.FC = () => {
                     setDateFilter('');
                     setCurrentPage(1);
                   }}
-                  className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                  className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 rounded focus-ring"
                   title="Limpar filtro de data"
                 >
                   Limpar
@@ -271,7 +271,7 @@ const Agendamentos: React.FC = () => {
           <div className="flex items-end">
             <button
               type="submit"
-              className="bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 font-medium"
+              className="bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 font-medium focus-ring"
             >
               <Search className="w-5 h-5" />
               Buscar
@@ -320,6 +320,15 @@ const Agendamentos: React.FC = () => {
                           ? 'Tente ajustar os filtros de busca'
                           : 'Comece criando um novo agendamento'}
                       </p>
+                      {!searchTerm && statusFilter === 'all' && !dateFilter && hasPermission('descarregamento.agendamentos.create') && (
+                        <Link
+                          to="/descarregamento/agendamentos/novo"
+                          className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <Plus className="w-5 h-5" />
+                          Criar o primeiro agendamento
+                        </Link>
+                      )}
                     </div>
                   </td>
                 </tr>

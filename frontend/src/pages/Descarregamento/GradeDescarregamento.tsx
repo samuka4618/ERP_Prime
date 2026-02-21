@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Package, Truck, Users } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Package, Truck, Users, RefreshCw } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
@@ -47,6 +47,7 @@ const GradeDescarregamento: React.FC = () => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -64,11 +65,14 @@ const GradeDescarregamento: React.FC = () => {
   };
 
   const fetchData = async () => {
+    setLoadError(null);
     try {
       setLoading(true);
       await Promise.all([fetchAgendamentos(), fetchMotoristas()]);
     } catch (error) {
-      toast.error('Erro ao carregar dados');
+      const msg = 'Falha ao carregar agendamentos e motoristas. Tente novamente.';
+      setLoadError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -115,6 +119,7 @@ const GradeDescarregamento: React.FC = () => {
       setAgendamentos(data.data.data || []);
     } catch (error) {
       console.error('Erro ao buscar agendamentos:', error);
+      throw error;
     }
   };
 
@@ -132,6 +137,7 @@ const GradeDescarregamento: React.FC = () => {
       setMotoristas(data.data.responses || []);
     } catch (error) {
       console.error('Erro ao buscar motoristas:', error);
+      throw error;
     }
   };
 
@@ -219,6 +225,19 @@ const GradeDescarregamento: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {loadError && (
+        <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex flex-wrap items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => fetchData()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Tentar novamente
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>

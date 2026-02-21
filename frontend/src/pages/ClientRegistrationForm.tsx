@@ -209,6 +209,13 @@ export const ClientRegistrationForm: React.FC = () => {
         ? (value ? parseInt(value) : undefined)
         : value
     }));
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleFileChange = (field: 'imagem_externa' | 'imagem_interna', file: File | null) => {
@@ -235,27 +242,34 @@ export const ClientRegistrationForm: React.FC = () => {
 
   const handleCNPJChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCNPJ(e.target.value);
-    setFormData(prev => ({
-      ...prev,
-      cnpj: formatted
-    }));
+    setFormData(prev => ({ ...prev, cnpj: formatted }));
+    if (fieldErrors.cnpj) {
+      setFieldErrors(prev => {
+        const next = { ...prev };
+        delete next.cnpj;
+        return next;
+      });
+    }
   };
 
-  const validateForm = (): string | null => {
-    if (!formData.nome_cliente) return 'Nome do cliente é obrigatório';
-    if (!formData.cnpj) return 'CNPJ é obrigatório';
-    if (!formData.email) return 'Email é obrigatório';
-    if (!formData.ramo_atividade_id) return 'Ramo de atividade é obrigatório';
-    if (!formData.vendedor_id) return 'Vendedor é obrigatório';
-    if (!formData.gestor_id) return 'Gestor é obrigatório';
-    if (!formData.codigo_carteira_id) return 'Código da carteira é obrigatório';
-    if (!formData.lista_preco_id) return 'Lista de preço é obrigatória';
-    if (!formData.forma_pagamento_desejada_id) return 'Forma de pagamento desejada é obrigatória';
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const getFieldErrors = (): Record<string, string> => {
+    const err: Record<string, string> = {};
+    if (!formData.nome_cliente?.trim()) err.nome_cliente = 'Nome do cliente é obrigatório';
+    if (!formData.cnpj?.trim()) err.cnpj = 'CNPJ é obrigatório';
+    if (!formData.email?.trim()) err.email = 'Email é obrigatório';
+    if (!formData.ramo_atividade_id) err.ramo_atividade_id = 'Ramo de atividade é obrigatório';
+    if (!formData.vendedor_id) err.vendedor_id = 'Vendedor é obrigatório';
+    if (!formData.gestor_id) err.gestor_id = 'Gestor é obrigatório';
+    if (!formData.codigo_carteira_id) err.codigo_carteira_id = 'Código da carteira é obrigatório';
+    if (!formData.lista_preco_id) err.lista_preco_id = 'Lista de preço é obrigatória';
+    if (!formData.forma_pagamento_desejada_id) err.forma_pagamento_desejada_id = 'Forma de pagamento desejada é obrigatória';
     if (!isEditing) {
-      if (!files.imagem_externa) return 'Imagem externa é obrigatória';
-      if (!files.imagem_interna) return 'Imagem interna é obrigatória';
+      if (!files.imagem_externa) err.imagem_externa = 'Imagem externa é obrigatória';
+      if (!files.imagem_interna) err.imagem_interna = 'Imagem interna é obrigatória';
     }
-    return null;
+    return err;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -265,10 +279,10 @@ export const ClientRegistrationForm: React.FC = () => {
     console.log('📝 [FRONTEND] Dados do formulário:', formData);
     console.log('📁 [FRONTEND] Arquivos:', files);
     
-    const validationError = validateForm();
-    if (validationError) {
-      console.log('❌ [FRONTEND] Erro de validação:', validationError);
-      setError(validationError);
+    const err = getFieldErrors();
+    setFieldErrors(err);
+    if (Object.keys(err).length > 0) {
+      setError(Object.values(err)[0]);
       return;
     }
     
@@ -277,6 +291,7 @@ export const ClientRegistrationForm: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      setFieldErrors({});
 
       const formDataToSend = new FormData();
       
@@ -366,17 +381,21 @@ export const ClientRegistrationForm: React.FC = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              <label htmlFor="client-reg-nome_cliente" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Nome do Cliente *
               </label>
               <input
+                id="client-reg-nome_cliente"
                 type="text"
                 name="nome_cliente"
                 value={formData.nome_cliente || ''}
                 onChange={handleInputChange}
-                className="input w-full"
+                className={`input w-full ${fieldErrors.nome_cliente ? 'border-red-500 dark:border-red-500' : ''}`}
                 required
               />
+              {fieldErrors.nome_cliente && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.nome_cliente}</p>
+              )}
             </div>
 
             <div>
@@ -393,32 +412,40 @@ export const ClientRegistrationForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              <label htmlFor="client-reg-cnpj" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 CNPJ *
               </label>
               <input
+                id="client-reg-cnpj"
                 type="text"
                 name="cnpj"
                 value={formData.cnpj || ''}
                 onChange={handleCNPJChange}
                 placeholder="00.000.000/0000-00"
-                className="input w-full"
+                className={`input w-full ${fieldErrors.cnpj ? 'border-red-500 dark:border-red-500' : ''}`}
                 required
               />
+              {fieldErrors.cnpj && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.cnpj}</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              <label htmlFor="client-reg-email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Email *
               </label>
               <input
+                id="client-reg-email"
                 type="email"
                 name="email"
                 value={formData.email || ''}
                 onChange={handleInputChange}
-                className="input w-full"
+                className={`input w-full ${fieldErrors.email ? 'border-red-500 dark:border-red-500' : ''}`}
                 required
               />
+              {fieldErrors.email && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.email}</p>
+              )}
             </div>
           </div>
         </div>

@@ -12,6 +12,10 @@ export interface FormResponse {
   submitted_at: Date | string;
   checked_out_at?: Date | string;
   tracking_code?: string;
+  /** Preenchido quando o operador inicia a liberação para doca (status "realizando descarga") */
+  discharge_started_at?: Date | string;
+  /** Duração da descarga em minutos (preenchido no checkout) */
+  discharge_duration_minutes?: number;
   fornecedor?: {
     id: number;
     name: string;
@@ -147,9 +151,11 @@ export class FormResponseModel {
       fornecedor_id: response.fornecedor_id || undefined,
       agendamento_id: response.agendamento_id || undefined,
       is_in_yard: Boolean(response.is_in_yard),
-      submitted_at: response.submitted_at, // Retornar data ISO original para cálculos no frontend
+      submitted_at: response.submitted_at,
       checked_out_at: response.checked_out_at || undefined,
       tracking_code: response.tracking_code || undefined,
+      discharge_started_at: response.discharge_started_at || undefined,
+      discharge_duration_minutes: response.discharge_duration_minutes != null ? response.discharge_duration_minutes : undefined,
       fornecedor: response.fornecedor_id ? {
         id: response.fornecedor_id,
         name: response.fornecedor_name,
@@ -178,9 +184,11 @@ export class FormResponseModel {
       fornecedor_id: response.fornecedor_id || undefined,
       agendamento_id: response.agendamento_id || undefined,
       is_in_yard: Boolean(response.is_in_yard),
-      submitted_at: response.submitted_at, // Retornar data ISO original para cálculos no frontend
+      submitted_at: response.submitted_at,
       checked_out_at: response.checked_out_at || undefined,
       tracking_code: response.tracking_code || undefined,
+      discharge_started_at: response.discharge_started_at || undefined,
+      discharge_duration_minutes: response.discharge_duration_minutes != null ? response.discharge_duration_minutes : undefined,
       fornecedor: response.fornecedor_id ? {
         id: response.fornecedor_id,
         name: response.fornecedor_name,
@@ -199,7 +207,7 @@ export class FormResponseModel {
     ) as any[];
 
     return Promise.all(
-      responses.map(async (r) => ({
+      responses.map(async (r: any) => ({
         id: r.id,
         form_id: r.form_id || undefined,
         responses: JSON.parse(r.responses),
@@ -208,9 +216,11 @@ export class FormResponseModel {
         fornecedor_id: r.fornecedor_id || undefined,
         agendamento_id: r.agendamento_id || undefined,
         is_in_yard: Boolean(r.is_in_yard),
-        submitted_at: r.submitted_at, // Retornar data ISO original para cálculos no frontend
+        submitted_at: r.submitted_at,
         checked_out_at: r.checked_out_at || undefined,
         tracking_code: r.tracking_code || undefined,
+        discharge_started_at: r.discharge_started_at || undefined,
+        discharge_duration_minutes: r.discharge_duration_minutes != null ? r.discharge_duration_minutes : undefined,
         fornecedor: r.fornecedor_id ? {
           id: r.fornecedor_id,
           name: r.fornecedor_name,
@@ -220,10 +230,36 @@ export class FormResponseModel {
     );
   }
 
+  /** Marca início da descarga (status "realizando descarga"). Só aplica se is_in_yard = 1. */
+  static async startDischarge(id: number): Promise<FormResponse | null> {
+    const row = await dbGet(
+      'SELECT id, is_in_yard, discharge_started_at FROM form_responses_descarga WHERE id = ?',
+      [id]
+    ) as any;
+    if (!row || !row.is_in_yard) return null;
+    if (row.discharge_started_at) return this.findById(id); // já em descarga
+    await dbRun(
+      'UPDATE form_responses_descarga SET discharge_started_at = CURRENT_TIMESTAMP WHERE id = ? AND is_in_yard = 1',
+      [id]
+    );
+    // Enviar SMS "chamado para doca" e atualizar tela do motorista (liberado para descarregamento)
+    const { DescarregamentoNotificationService } = await import('../services/NotificationService');
+    DescarregamentoNotificationService.notifyDriverCalledToDock(id).catch(err => {
+      console.error('Erro ao enviar SMS de chamado para doca (não bloqueante):', err);
+    });
+    return this.findById(id);
+  }
+
   static async checkout(id: number): Promise<FormResponse | null> {
     await dbRun(
       `UPDATE form_responses_descarga 
-       SET is_in_yard = 0, checked_out_at = CURRENT_TIMESTAMP
+       SET is_in_yard = 0, 
+           checked_out_at = CURRENT_TIMESTAMP,
+           discharge_duration_minutes = CASE 
+             WHEN discharge_started_at IS NOT NULL THEN 
+               CAST((julianday(CURRENT_TIMESTAMP) - julianday(discharge_started_at)) * 24 * 60 AS INTEGER)
+             ELSE NULL 
+           END
        WHERE id = ?`,
       [id]
     );
@@ -314,6 +350,8 @@ export class FormResponseModel {
         submitted_at: r.submitted_at, // Retornar data ISO original para cálculos no frontend
         checked_out_at: r.checked_out_at || undefined,
         tracking_code: r.tracking_code || undefined,
+        discharge_started_at: r.discharge_started_at || undefined,
+        discharge_duration_minutes: r.discharge_duration_minutes != null ? r.discharge_duration_minutes : undefined,
         fornecedor: r.fornecedor_id ? {
           id: r.fornecedor_id,
           name: r.fornecedor_name,

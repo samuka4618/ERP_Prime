@@ -326,6 +326,18 @@ async function runSchemaMigrations(): Promise<void> {
       await dbRun('CREATE INDEX IF NOT EXISTS idx_form_responses_descarga_tracking ON form_responses_descarga(tracking_code)');
       console.log('Migração: tabela form_responses_descarga criada');
     }
+    // Colunas para controle de tempo de descarga (início e duração em minutos)
+    const formResponsesColumns = await dbAll("PRAGMA table_info(form_responses_descarga)") as { name: string }[];
+    const hasDischargeStarted = formResponsesColumns.some((c: { name: string }) => c.name === 'discharge_started_at');
+    if (!hasDischargeStarted) {
+      await dbRun('ALTER TABLE form_responses_descarga ADD COLUMN discharge_started_at DATETIME');
+      console.log('Migração: coluna discharge_started_at adicionada a form_responses_descarga');
+    }
+    const hasDischargeDuration = formResponsesColumns.some((c: { name: string }) => c.name === 'discharge_duration_minutes');
+    if (!hasDischargeDuration) {
+      await dbRun('ALTER TABLE form_responses_descarga ADD COLUMN discharge_duration_minutes INTEGER');
+      console.log('Migração: coluna discharge_duration_minutes adicionada a form_responses_descarga');
+    }
     const smsTemplatesDescarga = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sms_templates_descarga'");
     if (!smsTemplatesDescarga) {
       await dbRun(`

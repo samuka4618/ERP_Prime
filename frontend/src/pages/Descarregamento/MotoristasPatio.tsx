@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Truck, Phone, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle, Clock, Truck, Phone, Calendar, AlertCircle, RefreshCw, LogIn } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -16,6 +16,7 @@ interface FormResponse {
   };
   submitted_at: string;
   tracking_code?: string;
+  discharge_started_at?: string;
 }
 
 const MotoristasPatio: React.FC = () => {
@@ -55,26 +56,40 @@ const MotoristasPatio: React.FC = () => {
     }
   };
 
-  const handleLiberar = async (motoristaId: number, motoristaName: string) => {
-    if (!window.confirm(`Tem certeza que deseja liberar ${motoristaName} para descarregamento?`)) {
+  const handleStartDischarge = async (motoristaId: number) => {
+    try {
+      const res = await fetch(`/api/descarregamento/form-responses/${motoristaId}/start-discharge`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao iniciar descarga');
+      }
+      toast.success('Liberado para doca. Confirme a conclusão quando o motorista terminar.');
+      fetchMotoristas();
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao iniciar descarga');
+    }
+  };
+
+  const handleFinishDischarge = async (motoristaId: number, motoristaName: string) => {
+    if (!window.confirm(`Confirmar que o descarregamento de ${motoristaName} foi concluído? O motorista será liberado e receberá o SMS.`)) {
       return;
     }
-
     try {
-      const response = await fetch(`/api/descarregamento/form-responses/${motoristaId}/checkout`, {
+      const res = await fetch(`/api/descarregamento/form-responses/${motoristaId}/checkout`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-
-      if (!response.ok) throw new Error('Erro ao liberar motorista');
-
-      toast.success('Motorista liberado com sucesso!');
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao liberar');
+      }
+      toast.success('Motorista liberado. Tempo de descarga registrado.');
       fetchMotoristas();
-    } catch (error) {
-      toast.error('Erro ao liberar motorista');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao liberar');
     }
   };
 
@@ -195,10 +210,15 @@ const MotoristasPatio: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {motoristas.map((motorista) => {
             const waitTime = getWaitTime(motorista.submitted_at);
+            const realizando = !!motorista.discharge_started_at;
             return (
               <div
                 key={motorista.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border-l-4 border-blue-500 hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1"
+                className={`rounded-lg shadow-lg p-6 transition-all duration-200 border-l-4 ${
+                  realizando
+                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500 hover:shadow-xl'
+                    : 'bg-white dark:bg-gray-800 border-blue-500 hover:shadow-xl transform hover:-translate-y-1'
+                }`}
               >
                 {/* Header do Card */}
                 <div className="flex items-start justify-between mb-4">
@@ -258,21 +278,40 @@ const MotoristasPatio: React.FC = () => {
 
                 {/* Status Badge */}
                 <div className="mb-4 flex items-center gap-2 text-sm">
-                  <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
-                    <AlertCircle className="w-4 h-4 animate-pulse" />
-                    <span className="font-medium">Aguardando liberação</span>
-                  </div>
+                  {realizando ? (
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                      <Truck className="w-4 h-4" />
+                      <span className="font-medium">Realizando descarga</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                      <AlertCircle className="w-4 h-4 animate-pulse" />
+                      <span className="font-medium">Aguardando liberação</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Botão de Ação */}
+                {/* Botões de Ação */}
                 {hasPermission('descarregamento.motoristas.liberar') && (
-                  <button
-                    onClick={() => handleLiberar(motorista.id, motorista.driver_name)}
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-semibold transform hover:scale-105"
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                    Liberar para Descarregamento
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    {!realizando ? (
+                      <button
+                        onClick={() => handleStartDischarge(motorista.id)}
+                        className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-semibold"
+                      >
+                        <LogIn className="w-5 h-5" />
+                        Liberar para doca
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleFinishDischarge(motorista.id, motorista.driver_name)}
+                        className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-semibold"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        Concluir descarga (liberar motorista)
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             );

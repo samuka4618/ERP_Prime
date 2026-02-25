@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Package, Truck, Users, RefreshCw } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Package, Truck, Users, RefreshCw, LogIn, CheckCircle } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
+import { usePermissions } from '../../contexts/PermissionsContext';
 
 interface Agendamento {
   id: number;
@@ -30,6 +31,7 @@ interface Motorista {
   driver_name: string;
   phone_number?: string;
   submitted_at: string;
+  discharge_started_at?: string;
   fornecedor?: {
     id: number;
     name: string;
@@ -41,6 +43,8 @@ type ViewMode = 'dia' | 'semana';
 type StatusFilter = 'all' | 'pendente' | 'motorista_pronto' | 'em_andamento' | 'concluido';
 
 const GradeDescarregamento: React.FC = () => {
+  const { hasPermission } = usePermissions();
+  const canLiberar = hasPermission('descarregamento.motoristas.liberar');
   const [viewMode, setViewMode] = useState<ViewMode>('dia');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -49,6 +53,7 @@ const GradeDescarregamento: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const hasLoadedOnce = useRef(false);
 
   useEffect(() => {
@@ -231,6 +236,47 @@ const GradeDescarregamento: React.FC = () => {
     return `${start.getDate()}/${start.getMonth() + 1} a ${end.getDate()}/${end.getMonth() + 1}/${end.getFullYear()}`;
   };
 
+  const handleStartDischarge = async (m: Motorista) => {
+    setActionLoadingId(m.id);
+    try {
+      const res = await fetch(`/api/descarregamento/form-responses/${m.id}/start-discharge`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao iniciar descarga');
+      }
+      toast.success('Liberado para doca. Confirme a conclusão quando terminar.');
+      fetchData(false);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao iniciar descarga');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleFinishDischarge = async (m: Motorista) => {
+    if (!window.confirm(`Confirmar que o descarregamento de ${m.driver_name} foi concluído? O motorista será liberado e receberá o SMS.`)) return;
+    setActionLoadingId(m.id);
+    try {
+      const res = await fetch(`/api/descarregamento/form-responses/${m.id}/checkout`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao liberar');
+      }
+      toast.success('Motorista liberado. Tempo de descarga registrado.');
+      fetchData(false);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao liberar');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       {loadError && (
@@ -378,18 +424,56 @@ const GradeDescarregamento: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {motoristas.map((motorista) => (
-                  <div
-                    key={motorista.id}
-                    className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow"
-                  >
-                    <div className="font-semibold text-gray-900 dark:text-white mb-1">{motorista.driver_name}</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{motorista.fornecedor?.name || 'N/A'}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-500">
-                      <FormattedDate date={motorista.submitted_at} includeTime={true} />
+                {motoristas.map((motorista) => {
+                  const realizando = !!motorista.discharge_started_at;
+                  const loading = actionLoadingId === motorista.id;
+                  return (
+                    <div
+                      key={motorista.id}
+                      className={`rounded-lg p-4 border transition-shadow ${
+                        realizando
+                          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700'
+                          : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 hover:shadow-md'
+                      }`}
+                    >
+                      <div className="font-semibold text-gray-900 dark:text-white mb-1">{motorista.driver_name}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{motorista.fornecedor?.name || 'N/A'}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500 mb-3">
+                        <FormattedDate date={motorista.submitted_at} includeTime={true} />
+                      </div>
+                      {canLiberar && (
+                        <div className="flex flex-wrap gap-2">
+                          {!realizando ? (
+                            <button
+                              type="button"
+                              onClick={() => handleStartDischarge(motorista)}
+                              disabled={loading}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50"
+                            >
+                              <LogIn className="w-4 h-4" />
+                              {loading ? '...' : 'Liberar para doca'}
+                            </button>
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-amber-200 dark:bg-amber-800/50 text-amber-800 dark:text-amber-200 text-xs font-medium">
+                                Realizando descarga
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleFinishDischarge(motorista)}
+                                disabled={loading}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium disabled:opacity-50"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                                {loading ? '...' : 'Concluir descarga'}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -59,7 +59,65 @@ export class DescarregamentoNotificationService {
   }
 
   /**
-   * Envia SMS quando motorista é liberado (checkout)
+   * Envia SMS "chamado para doca" quando o operador clica em "Liberar para doca" (startDischarge).
+   * O motorista recebe o aviso para ir à doca e a tela dele passa a mostrar "Liberado para descarregamento".
+   */
+  static async notifyDriverCalledToDock(responseId: number): Promise<void> {
+    try {
+      const response = await FormResponseModel.findById(responseId);
+      if (!response || !response.phone_number) {
+        console.log(`⚠️ SMS não enviado: resposta ${responseId} não encontrada ou sem telefone`);
+        return;
+      }
+
+      const template = await SMSTemplateModel.findDefault('arrival');
+      if (!template) {
+        console.log('⚠️ SMS não enviado: template padrão de "arrival" não encontrado');
+        return;
+      }
+
+      let fornecedorName = response.fornecedor?.name || '';
+      let scheduledDate = '';
+      let scheduledTime = '';
+      let dock = '';
+
+      if (response.agendamento_id) {
+        const { AgendamentoModel } = await import('../models/Agendamento');
+        const agendamento = await AgendamentoModel.findById(response.agendamento_id);
+        if (agendamento) {
+          scheduledDate = this.formatDate(agendamento.scheduled_date);
+          scheduledTime = agendamento.scheduled_time || '';
+          dock = agendamento.dock || '';
+          if (agendamento.fornecedor?.name) fornecedorName = agendamento.fornecedor.name;
+        }
+      }
+      if (!fornecedorName && response.fornecedor_id) {
+        const fornecedor = await FornecedorModel.findById(response.fornecedor_id);
+        if (fornecedor) fornecedorName = fornecedor.name;
+      }
+
+      const variables: Record<string, string | number> = {
+        driver_name: response.driver_name || 'Motorista',
+        fornecedor_name: fornecedorName,
+        scheduled_date: scheduledDate,
+        scheduled_time: scheduledTime,
+        dock,
+        tracking_code: response.tracking_code || ''
+      };
+
+      const message = await SMSTemplateModel.replaceVariables(template.message, variables);
+      const result = await SMSService.sendSMS({ to: response.phone_number, message });
+
+      if (result.success) {
+        console.log(`✅ SMS de chamado para doca enviado para ${response.driver_name} (${response.phone_number})${result.messageId ? ` [${result.messageId}]` : ''}`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao enviar SMS de chamado para doca:', error);
+    }
+  }
+
+  /**
+   * Envia SMS quando motorista é liberado ao concluir descarga (checkout)
    */
   static async notifyDriverReleased(responseId: number): Promise<void> {
     try {

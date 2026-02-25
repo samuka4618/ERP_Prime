@@ -110,4 +110,38 @@ export class FormResponseController {
       data: { response: updatedResponse }
     });
   });
+
+  /** Inicia a descarga (status "realizando descarga"). Requer confirmação posterior via checkout. */
+  static startDischarge = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const responseId = parseInt(id);
+
+    if (isNaN(responseId)) {
+      res.status(400).json({ error: 'ID inválido' });
+      return;
+    }
+
+    const response = await FormResponseModel.findById(responseId);
+    if (!response) {
+      res.status(404).json({ error: 'Registro não encontrado' });
+      return;
+    }
+
+    if (!response.is_in_yard) {
+      res.status(400).json({ error: 'Motorista já não está mais no pátio' });
+      return;
+    }
+
+    const updatedResponse = await FormResponseModel.startDischarge(responseId);
+
+    if (!updatedResponse) {
+      res.status(400).json({ error: 'Não foi possível iniciar a descarga' });
+      return;
+    }
+
+    res.json({
+      message: 'Descarga iniciada. Confirme a conclusão quando o motorista terminar.',
+      data: { response: updatedResponse }
+    });
+  });
 }

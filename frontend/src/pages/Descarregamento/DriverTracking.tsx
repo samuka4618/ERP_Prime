@@ -18,6 +18,8 @@ interface FormResponse {
   checked_out_at?: string;
   is_in_yard: boolean;
   tracking_code?: string;
+  /** Preenchido quando o operador liberou para doca (motorista pode ir descarregar) */
+  discharge_started_at?: string;
 }
 
 const DriverTracking: React.FC = () => {
@@ -60,25 +62,38 @@ const DriverTracking: React.FC = () => {
 
   const getStatus = () => {
     if (!response) return null;
-    
+
+    // Concluído: operador confirmou que a descarga terminou (checkout)
     if (response.checked_out_at || !response.is_in_yard) {
       return {
-        type: 'liberado',
+        type: 'recebido',
         icon: CheckCircle,
         color: 'text-green-600',
         bgColor: 'bg-green-100',
-        message: 'LIBERADO PARA DESCARREGAMENTO!',
-        description: 'Você pode proceder com o descarregamento.'
+        message: 'RECEBIDO',
+        description: 'Descarregamento concluído. Obrigado!'
       };
     }
-    
+
+    // Liberado para doca: operador clicou em "Liberar para doca" e o SMS foi enviado
+    if (response.discharge_started_at) {
+      return {
+        type: 'liberado',
+        icon: Truck,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-100',
+        message: 'LIBERADO PARA DESCARREGAMENTO',
+        description: 'Você foi liberado para a doca. Dirija-se ao local indicado e proceda com o descarregamento.'
+      };
+    }
+
     return {
       type: 'aguardando',
       icon: Clock,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-100',
       message: 'AGUARDANDO LIBERAÇÃO',
-      description: 'Aguarde a liberação para iniciar o descarregamento.'
+      description: 'Aguarde a liberação para ir à doca e iniciar o descarregamento.'
     };
   };
 
@@ -180,7 +195,7 @@ const DriverTracking: React.FC = () => {
                       <CheckCircle className="w-5 h-5 text-green-600" />
                     </div>
                     <div className="flex-1">
-                      <div className="text-xs text-gray-500">Liberado em</div>
+                      <div className="text-xs text-gray-500">Descarregamento concluído em</div>
                       <div className="font-medium text-gray-900">
                         <FormattedDate date={response.checked_out_at} />
                       </div>

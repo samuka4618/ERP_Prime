@@ -28,6 +28,7 @@ router.use(authenticate);
 router.get('/patio', requirePermission('descarregamento.motoristas.view'), FormResponseController.findInYard);
 router.get('/', requirePermission('descarregamento.formularios.view_responses'), validateQuery(formResponseQuerySchema), FormResponseController.findAll);
 router.get('/:id', requirePermission('descarregamento.formularios.view_responses'), validateParams(paramsSchema), FormResponseController.findById);
+router.post('/:id/start-discharge', requirePermission('descarregamento.motoristas.liberar'), validateParams(paramsSchema), FormResponseController.startDischarge);
 router.post('/:id/checkout', requirePermission('descarregamento.motoristas.liberar'), validateParams(paramsSchema), FormResponseController.checkout);
 
 export default router;

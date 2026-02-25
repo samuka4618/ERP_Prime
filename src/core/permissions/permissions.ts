@@ -4,6 +4,7 @@ import { PermissionModel } from './PermissionModel';
 import { UserModel } from '../users/User';
 import { UserRole } from '../../shared/types';
 import { logger } from '../../shared/utils/logger';
+import { log as auditLog } from '../audit/AuditService';
 
 const router = Router();
 
@@ -193,6 +194,15 @@ router.put('/role/:role', authenticate, authorize(UserRole.ADMIN), async (req: R
     }
 
     logger.info('Permissões do role atualizadas', { role, count: permissions.length }, 'PERMISSIONS');
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'permissions.role.update',
+      resource: 'administration',
+      resourceId: role,
+      details: `${permissions.length} permissão(ões) atualizadas para o role ${role}`,
+      ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined
+    });
     res.json({ message: 'Permissões atualizadas com sucesso' });
     return;
   } catch (error: any) {
@@ -258,6 +268,16 @@ router.put('/user/:userId', authenticate, authorize(UserRole.ADMIN), async (req:
         isUndefined: p.granted === undefined
       }))
     }, 'PERMISSIONS');
+    const targetUser = await UserModel.findById(userId).catch(() => null);
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'permissions.user.update',
+      resource: 'administration',
+      resourceId: String(userId),
+      details: targetUser ? `${permissions.length} permissão(ões) atualizadas para ${targetUser.name} (${targetUser.email})` : `Permissões do usuário ${userId} atualizadas`,
+      ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined
+    });
     res.json({ message: 'Permissões atualizadas com sucesso' });
     return;
   } catch (error: any) {

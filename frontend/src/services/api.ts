@@ -38,6 +38,26 @@ export interface NotificationTemplateItem {
   updated_at?: string;
 }
 
+export interface AuditLogEntry {
+  id: number;
+  user_id: number | null;
+  user_name: string | null;
+  action: string;
+  resource: string | null;
+  resource_id: string | null;
+  details: string | null;
+  ip_address: string | null;
+  created_at: string;
+}
+
+export interface AuditLogListResponse {
+  rows: AuditLogEntry[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 class ApiService {
   private api: AxiosInstance;
 
@@ -312,6 +332,11 @@ class ApiService {
 
   async deletePermission(id: number): Promise<void> {
     await this.api.delete(`/permissions/${id}`);
+  }
+
+  async getAuditLogs(params?: { page?: number; limit?: number; date_from?: string; date_to?: string; user_id?: number; action?: string; resource?: string }): Promise<{ data: AuditLogListResponse }> {
+    const response = await this.api.get<ApiResponse<AuditLogListResponse>>('/system/audit-logs', { params });
+    return { data: response.data.data || response.data };
   }
 
   // Generic methods for API calls

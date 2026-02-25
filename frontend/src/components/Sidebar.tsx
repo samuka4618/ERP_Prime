@@ -145,6 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         { name: 'Relatórios', href: '/reports', icon: BarChart3 },
         { name: 'Monitoramento', href: '/admin-dashboard', icon: Monitor },
         { name: 'Performance', href: '/performance', icon: Activity },
+        { name: 'Auditoria', href: '/audit', icon: FileText },
         {
           name: 'Configurações',
           icon: Settings,

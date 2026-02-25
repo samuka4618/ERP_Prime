@@ -3,10 +3,13 @@ import { UserModel } from './User';
 import { CreateUserRequest, UpdateUserRequest, UserRole, User } from '../../shared/types';
 import { asyncHandler } from '../../shared/middleware/errorHandler';
 import { AuthService } from '../auth/AuthService';
+import { log as auditLog } from '../audit/AuditService';
 import path from 'path';
 import fs from 'fs';
 import { createUserSchema, updateUserSchema } from './schemas';
 import Joi from 'joi';
+
+const getIp = (req: Request) => req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
 
 
 const querySchema = Joi.object({
@@ -62,7 +65,15 @@ export class UserController {
       }
       
       const { password, ...userWithoutPassword } = updatedUser;
-      
+      auditLog({
+        userId: req.user?.id,
+        userName: req.user?.name,
+        action: 'user.reactivate',
+        resource: 'administration',
+        resourceId: String(inactiveUser.id),
+        details: `Usuário ${updatedUser.name} (${updatedUser.email}) reativado`,
+        ip: getIp(req)
+      });
       res.status(200).json({
         message: 'Usuário reativado com sucesso',
         data: { user: userWithoutPassword }
@@ -72,7 +83,15 @@ export class UserController {
 
     const user = await UserModel.create(userData);
     const { password, ...userWithoutPassword } = user;
-    
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'user.create',
+      resource: 'administration',
+      resourceId: String(user.id),
+      details: `Usuário criado: ${user.name} (${user.email}), role: ${user.role}`,
+      ip: getIp(req)
+    });
     res.status(201).json({
       message: 'Usuário criado com sucesso',
       data: { user: userWithoutPassword }
@@ -252,7 +271,15 @@ export class UserController {
     }
 
     const { password, ...userWithoutPassword } = user;
-    
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'user.update',
+      resource: 'administration',
+      resourceId: String(userId),
+      details: user.email ? `Perfil atualizado: ${user.name} (${user.email})` : `Perfil atualizado: ${user.name}`,
+      ip: getIp(req)
+    });
     res.json({
       message: 'Usuário atualizado com sucesso',
       data: { user: userWithoutPassword }
@@ -281,7 +308,15 @@ export class UserController {
     }
 
     await UserModel.delete(userId);
-    
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'user.delete',
+      resource: 'administration',
+      resourceId: String(userId),
+      details: `Usuário excluído: ${user.name} (${user.email})`,
+      ip: getIp(req)
+    });
     res.json({
       message: 'Usuário excluído com sucesso'
     });
@@ -320,7 +355,15 @@ export class UserController {
     }
 
     await UserModel.updatePassword(userId, newPassword);
-    
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'user.password.reset',
+      resource: 'administration',
+      resourceId: String(userId),
+      details: `Senha redefinida para usuário ${user.name} (${user.email})`,
+      ip: getIp(req)
+    });
     res.json({
       message: 'Senha redefinida com sucesso'
     });

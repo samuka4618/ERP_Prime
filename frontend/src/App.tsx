@@ -25,6 +25,7 @@ import PermissionsPage from './pages/Permissions';
 import Reports from './pages/Reports';
 import AdminDashboard from './pages/AdminDashboard';
 import Performance from './pages/Performance';
+import Audit from './pages/Audit';
 import { ClientRegistrations } from './pages/ClientRegistrations';
 import { ClientRegistrationForm } from './pages/ClientRegistrationForm';
 import { ClientRegistrationDetail } from './pages/ClientRegistrationDetail';
@@ -154,6 +155,7 @@ const AppRoutes: React.FC = () => {
         <Route path="reports" element={<Reports />} />
         <Route path="admin-dashboard" element={<AdminDashboard />} />
         <Route path="performance" element={<Performance />} />
+        <Route path="audit" element={<Audit />} />
       </Route>
     </Routes>
     </PublicFormOnlyGuard>

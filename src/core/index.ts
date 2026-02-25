@@ -4,6 +4,8 @@ import userRoutes from './users/users';
 import systemRoutes from './system/system';
 import performanceRoutes from './system/performance';
 import permissionRoutes from './permissions/permissions';
+import { authenticate } from './auth/middleware';
+import { auditRoutes } from './audit';
 
 /**
  * Módulos Core do ERP
@@ -13,6 +15,7 @@ export function registerCoreRoutes(router: Router, authLimiter: any) {
   router.use('/auth', authLimiter, authRoutes);
   router.use('/users', userRoutes);
   router.use('/system', systemRoutes);
+  router.use('/system/audit-logs', authenticate, auditRoutes);
   router.use('/performance', performanceRoutes);
   router.use('/permissions', permissionRoutes);
 }

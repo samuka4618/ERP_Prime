@@ -435,6 +435,30 @@ async function runSchemaMigrations(): Promise<void> {
     `);
     console.log('Migração: tabela notification_email_templates criada');
   }
+
+  // Tabela de auditoria (quem fez o quê e quando)
+  const auditLogTable = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'audit_log'");
+  if (!auditLogTable) {
+    await dbRun(`
+      CREATE TABLE audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        user_name VARCHAR(255),
+        action VARCHAR(120) NOT NULL,
+        resource VARCHAR(80),
+        resource_id VARCHAR(80),
+        details TEXT,
+        ip_address VARCHAR(45),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+    await dbRun(`CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)`);
+    await dbRun(`CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)`);
+    await dbRun(`CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)`);
+    await dbRun(`CREATE INDEX IF NOT EXISTS idx_audit_log_resource ON audit_log(resource)`);
+    console.log('Migração: tabela audit_log criada');
+  }
 }
 
 // Função para executar queries de schema

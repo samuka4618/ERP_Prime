@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { FornecedorModel } from '../models/Fornecedor';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
+import { log as auditLog } from '../../../core/audit/AuditService';
 import { createFornecedorSchema, updateFornecedorSchema, fornecedorQuerySchema } from '../schemas/fornecedor';
 
 export class FornecedorController {
@@ -98,7 +99,15 @@ export class FornecedorController {
     }
 
     await FornecedorModel.delete(fornecedorId);
-
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'fornecedor.delete',
+      resource: 'descarregamento',
+      resourceId: String(fornecedorId),
+      details: fornecedor ? `Fornecedor ${(fornecedor as any).nome || fornecedorId}` : undefined,
+      ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined
+    });
     res.json({
       message: 'Fornecedor excluído com sucesso'
     });

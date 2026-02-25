@@ -6,6 +6,7 @@ import { asyncHandler, type AppError } from '../../shared/middleware/errorHandle
 import { tokenCacheService } from './TokenCacheService';
 import { config } from '../../config/database';
 import { logger } from '../../shared/utils/logger';
+import { log as auditLog } from '../audit/AuditService';
 import jwt from 'jsonwebtoken';
 import Joi from 'joi';
 
@@ -75,7 +76,12 @@ export class AuthController {
         role: result.user.role,
         responseTime: Date.now() - startTime
       }, 'AUTH');
-      
+      auditLog({
+        userId: result.user.id,
+        userName: result.user.name,
+        action: 'login.success',
+        ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined
+      });
       res.cookie(AUTH_COOKIE_NAME, result.token, getCookieOptions());
       res.json({
         message: 'Login realizado com sucesso',
@@ -84,6 +90,12 @@ export class AuthController {
     } catch (error) {
       const err = error as AppError;
       const isInvalidCredentials = err?.message === 'Credenciais inválidas' || err?.statusCode === 401;
+      auditLog({
+        userName: credentials.email,
+        action: 'login.failed',
+        details: isInvalidCredentials ? 'Credenciais inválidas' : (err?.message || 'Erro desconhecido'),
+        ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined
+      });
       if (isInvalidCredentials) {
         logger.warn('Credenciais inválidas', { 
           requestId, 

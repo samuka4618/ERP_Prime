@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AgendamentoModel } from '../models/Agendamento';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
+import { log as auditLog } from '../../../core/audit/AuditService';
 import { createAgendamentoSchema, updateAgendamentoSchema, agendamentoQuerySchema } from '../schemas/agendamento';
 
 export class AgendamentoController {
@@ -105,7 +106,15 @@ export class AgendamentoController {
     }
 
     await AgendamentoModel.delete(agendamentoId);
-
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'agendamento.delete',
+      resource: 'descarregamento',
+      resourceId: String(agendamentoId),
+      details: agendamento ? `Agendamento ${agendamento.id} (placa/fornecedor: ${(agendamento as any).placa || (agendamento as any).fornecedor_nome || '-'})` : undefined,
+      ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined
+    });
     res.json({
       message: 'Agendamento excluído com sucesso'
     });

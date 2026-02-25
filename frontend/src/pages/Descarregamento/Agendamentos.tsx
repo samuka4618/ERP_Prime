@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Calendar, Truck, Clock, CheckCircle, AlertCircle, Package } from 'lucide-react';
+import { Plus, Search, Calendar, Truck, Clock, CheckCircle, AlertCircle, Package, Trash2 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -33,6 +33,24 @@ const Agendamentos: React.FC = () => {
   useEffect(() => {
     fetchAgendamentos();
   }, [currentPage, statusFilter, dateFilter]);
+
+  const handleDelete = async (id: number, label: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o agendamento "${label}"? A resposta de chegada (se houver) permanecerá, mas não ficará vinculada a um agendamento.`)) return;
+    try {
+      const res = await fetch(`/api/descarregamento/agendamentos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Erro ao excluir');
+      }
+      toast.success('Agendamento excluído.');
+      fetchAgendamentos();
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao excluir agendamento');
+    }
+  };
 
   const fetchAgendamentos = async () => {
     try {
@@ -390,12 +408,25 @@ const Agendamentos: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Link
-                          to={`/descarregamento/agendamentos/${agendamento.id}`}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
-                        >
-                          Ver Detalhes
-                        </Link>
+                        <div className="flex items-center justify-end gap-3">
+                          <Link
+                            to={`/descarregamento/agendamentos/${agendamento.id}`}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                          >
+                            Ver Detalhes
+                          </Link>
+                          {hasPermission('descarregamento.agendamentos.delete') && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(agendamento.id, `${agendamento.fornecedor?.name || 'Agendamento'} - ${agendamento.scheduled_date} ${agendamento.scheduled_time}`)}
+                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium transition-colors inline-flex items-center gap-1"
+                              title="Excluir agendamento"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Excluir
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

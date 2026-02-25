@@ -336,7 +336,9 @@ export class AgendamentoModel {
   }
 
   static async delete(id: number): Promise<void> {
-    // Excluir histórico primeiro
+    // Desvincular respostas de formulário (evita FK constraint; a resposta de chegada continua existindo)
+    await dbRun('UPDATE form_responses_descarga SET agendamento_id = NULL WHERE agendamento_id = ?', [id]);
+    // Excluir histórico de status
     await dbRun('DELETE FROM agendamentos_descarga_status_history WHERE agendamento_id = ?', [id]);
     // Excluir agendamento
     await dbRun('DELETE FROM agendamentos_descarga WHERE id = ?', [id]);

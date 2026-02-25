@@ -247,7 +247,24 @@ export class FormResponseModel {
     DescarregamentoNotificationService.notifyDriverCalledToDock(id).catch(err => {
       console.error('Erro ao enviar SMS de chamado para doca (não bloqueante):', err);
     });
-    return this.findById(id);
+
+    // Atualizar status do agendamento vinculado para "em_andamento" (reflete na grade/tabela de agendamentos)
+    const updated = await this.findById(id);
+    if (updated?.agendamento_id) {
+      const current = await dbGet('SELECT status FROM agendamentos_descarga WHERE id = ?', [updated.agendamento_id]) as any;
+      if (current && current.status !== 'em_andamento') {
+        await dbRun(
+          'UPDATE agendamentos_descarga SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          ['em_andamento', updated.agendamento_id]
+        );
+        await dbRun(
+          `INSERT INTO agendamentos_descarga_status_history (agendamento_id, previous_status, new_status, changed_by)
+           VALUES (?, ?, ?, NULL)`,
+          [updated.agendamento_id, current.status, 'em_andamento']
+        );
+      }
+    }
+    return updated;
   }
 
   static async checkout(id: number): Promise<FormResponse | null> {
@@ -270,7 +287,23 @@ export class FormResponseModel {
       console.error('Erro ao enviar SMS de liberação (não bloqueante):', err);
     });
 
-    return this.findById(id);
+    // Atualizar status do agendamento vinculado para "concluido" (reflete na grade/tabela de agendamentos)
+    const updated = await this.findById(id);
+    if (updated?.agendamento_id) {
+      const current = await dbGet('SELECT status FROM agendamentos_descarga WHERE id = ?', [updated.agendamento_id]) as any;
+      if (current && current.status !== 'concluido') {
+        await dbRun(
+          'UPDATE agendamentos_descarga SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          ['concluido', updated.agendamento_id]
+        );
+        await dbRun(
+          `INSERT INTO agendamentos_descarga_status_history (agendamento_id, previous_status, new_status, changed_by)
+           VALUES (?, ?, ?, NULL)`,
+          [updated.agendamento_id, current.status, 'concluido']
+        );
+      }
+    }
+    return updated;
   }
 
   static async findAll(params: {

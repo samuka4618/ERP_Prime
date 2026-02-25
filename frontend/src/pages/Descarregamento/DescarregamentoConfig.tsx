@@ -506,8 +506,18 @@ const DescarregamentoConfig: React.FC = () => {
         throw new Error(error.error || 'Erro ao enviar SMS de teste');
       }
 
-      await response.json();
-      toast.success('SMS de teste enviado com sucesso!');
+      const data = await response.json();
+      const messageId = data?.data?.message_id;
+      const apiUrl = data?.data?.api_url;
+      toast.success(
+        messageId
+          ? `SMS aceito pela Infobip (ID: ${messageId}). Se não recebeu: confira no painel Infobip em Analyze > Logs. Em contas trial, o número precisa estar verificado.`
+          : 'SMS de teste enviado com sucesso!',
+        { duration: 6000 }
+      );
+      if (apiUrl && typeof console !== 'undefined' && console.info) {
+        console.info('[SMS Test] API URL usada:', apiUrl);
+      }
       setShowTestSmsModal(false);
       setTestingTemplate(null);
       setTestPhoneNumber('');

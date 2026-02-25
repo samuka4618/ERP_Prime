@@ -45,13 +45,13 @@ export class DescarregamentoNotificationService {
       const message = await SMSTemplateModel.replaceVariables(template.message, variables);
 
       // Enviar SMS
-      const sent = await SMSService.sendSMS({
+      const result = await SMSService.sendSMS({
         to: agendamento.motorista.phone_number,
         message
       });
 
-      if (sent) {
-        console.log(`✅ SMS de chamado enviado para motorista ${agendamento.motorista.driver_name} (${agendamento.motorista.phone_number})`);
+      if (result.success) {
+        console.log(`✅ SMS de chamado enviado para motorista ${agendamento.motorista.driver_name} (${agendamento.motorista.phone_number})${result.messageId ? ` [${result.messageId}]` : ''}`);
       }
     } catch (error) {
       console.error('❌ Erro ao enviar SMS de chamado:', error);
@@ -97,13 +97,13 @@ export class DescarregamentoNotificationService {
       const message = await SMSTemplateModel.replaceVariables(template.message, variables);
 
       // Enviar SMS
-      const sent = await SMSService.sendSMS({
+      const result = await SMSService.sendSMS({
         to: response.phone_number,
         message
       });
 
-      if (sent) {
-        console.log(`✅ SMS de liberação enviado para motorista ${response.driver_name} (${response.phone_number})`);
+      if (result.success) {
+        console.log(`✅ SMS de liberação enviado para motorista ${response.driver_name} (${response.phone_number})${result.messageId ? ` [${result.messageId}]` : ''}`);
       }
     } catch (error) {
       console.error('❌ Erro ao enviar SMS de liberação:', error);

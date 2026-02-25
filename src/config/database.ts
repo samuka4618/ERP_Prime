@@ -38,9 +38,9 @@ export const config = {
     reopenDays: parseInt(process.env.REOPEN_DAYS || '7')
   },
   sms: {
-    apiKey: process.env.VONAGE_API_KEY || '',
-    apiSecret: process.env.VONAGE_API_SECRET || '',
-    fromNumber: process.env.VONAGE_FROM_NUMBER || ''
+    baseUrl: (process.env.INFOBIP_BASE_URL || 'https://api.infobip.com').replace(/\/$/, ''),
+    apiKey: process.env.INFOBIP_API_KEY || '',
+    sender: process.env.INFOBIP_SENDER || ''
   },
   /** URL base do frontend (para links em e-mails, ex.: link "Ver detalhes do cadastro") */
   clientUrl: process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173',

@@ -130,22 +130,24 @@ export class SMSTemplateController {
     const message = await SMSTemplateModel.replaceVariables(template.message, variables);
 
     // Enviar SMS de teste
-    const sent = await SMSService.sendSMS({
+    const result = await SMSService.sendSMS({
       to: phone_number,
       message
     });
 
-    if (sent) {
+    if (result.success) {
       res.json({
         message: 'SMS de teste enviado com sucesso',
         data: {
           phone_number,
-          message_sent: message
+          message_sent: message,
+          message_id: result.messageId,
+          api_url: result.apiUrl
         }
       });
     } else {
       res.status(500).json({
-        error: 'Erro ao enviar SMS de teste. Verifique as configurações da API Vonage.'
+        error: result.statusDescription || 'Erro ao enviar SMS de teste. Verifique INFOBIP_API_KEY, INFOBIP_SENDER e INFOBIP_BASE_URL.'
       });
     }
   });

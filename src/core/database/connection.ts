@@ -341,6 +341,26 @@ async function runSchemaMigrations(): Promise<void> {
       `);
       console.log('Migração: tabela sms_templates_descarga criada');
     }
+    // Seed: templates SMS padrão do sistema (se não existir nenhum)
+    const smsCount = await dbGet("SELECT COUNT(*) as count FROM sms_templates_descarga");
+    if (smsCount && (smsCount as { count: number }).count === 0) {
+      await dbRun(`
+        INSERT INTO sms_templates_descarga (name, message, template_type, is_default) VALUES
+        (
+          'Chamado para doca (padrão)',
+          '{{fornecedor_name}}: {{driver_name}}, você foi chamado para descarregamento. Data: {{scheduled_date}} {{scheduled_time}}. Doca: {{dock}}. Código: {{tracking_code}}.',
+          'arrival',
+          1
+        ),
+        (
+          'Liberação (padrão)',
+          '{{fornecedor_name}}: {{driver_name}}, você foi liberado. Código: {{tracking_code}}. Obrigado!',
+          'release',
+          1
+        )
+      `);
+      console.log('Migração: templates SMS padrão (arrival/release) inseridos');
+    }
 
     // Permissões do módulo Descarregamento
     await dbRun(`

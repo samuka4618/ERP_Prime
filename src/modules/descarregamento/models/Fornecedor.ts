@@ -47,7 +47,7 @@ export class FornecedorModel {
 
   static async findById(id: number): Promise<Fornecedor | null> {
     const fornecedor = await dbGet(
-      'SELECT * FROM fornecedores_descarga WHERE id = ?',
+      'SELECT * FROM fornecedores_descarga WHERE id = ? AND (deleted_at IS NULL)',
       [id]
     ) as any;
 
@@ -92,6 +92,7 @@ export class FornecedorModel {
       queryParams.push(params.category);
     }
 
+    whereClause += ' AND (deleted_at IS NULL)';
     const fornecedores = await dbAll(
       `SELECT * FROM fornecedores_descarga ${whereClause} ORDER BY name LIMIT ? OFFSET ?`,
       [...queryParams, limit, offset]
@@ -150,13 +151,17 @@ export class FornecedorModel {
     return this.findById(id);
   }
 
+  /** Exclusão lógica (soft delete): marca deleted_at para não aparecer nas listagens; histórico (agendamentos, respostas) permanece. */
   static async delete(id: number): Promise<void> {
-    await dbRun('DELETE FROM fornecedores_descarga WHERE id = ?', [id]);
+    await dbRun(
+      'UPDATE fornecedores_descarga SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND (deleted_at IS NULL)',
+      [id]
+    );
   }
 
   static async getCategories(): Promise<string[]> {
     const categories = await dbAll(
-      'SELECT DISTINCT category FROM fornecedores_descarga ORDER BY category'
+      'SELECT DISTINCT category FROM fornecedores_descarga WHERE deleted_at IS NULL ORDER BY category'
     ) as any[];
 
     return categories.map(c => c.category);

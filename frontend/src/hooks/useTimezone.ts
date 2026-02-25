@@ -2,6 +2,24 @@ import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 
 /**
+ * Converte string de data do backend (UTC, formato SQLite "YYYY-MM-DD HH:MM:SS")
+ * para Date interpretado como UTC. Evita que o navegador interprete como hora local.
+ * Só aplica quando a string está em formato ISO (YYYY-MM-DD); caso contrário usa new Date() normal.
+ */
+function parseDateAsUTC(dateString: string | Date): Date {
+  if (dateString instanceof Date) return dateString;
+  const str = String(dateString).trim();
+  if (!str) return new Date(NaN);
+  // Formato ISO do backend/SQLite (UTC): "YYYY-MM-DD HH:MM:SS" ou "YYYY-MM-DDTHH:MM:SS"
+  if (/^\d{4}-\d{2}-\d{2}[\sT]/.test(str)) {
+    const iso = str.includes('T') ? str.replace(/\s/g, '') : str.replace(' ', 'T');
+    const asUtc = /Z$|[-+]\d{2}:?\d{2}$/.test(iso) ? iso : iso + 'Z';
+    return new Date(asUtc);
+  }
+  return new Date(str);
+}
+
+/**
  * Hook para gerenciar timezone do sistema
  */
 export const useTimezone = () => {
@@ -31,7 +49,7 @@ export const useTimezone = () => {
     }
 
     try {
-      const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+      const date = parseDateAsUTC(dateString as string | Date);
       
       if (isNaN(date.getTime())) {
         console.warn('Data inválida recebida:', dateString);

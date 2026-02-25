@@ -100,16 +100,9 @@ const MotoristasPatio: React.FC = () => {
     
     try {
       const now = new Date();
-      
-      // SQLite retorna datas no formato 'YYYY-MM-DD HH:MM:SS'
-      // Converter para formato ISO (YYYY-MM-DDTHH:MM:SS) para garantir interpretação correta
-      let dateStr = submittedAt.trim();
-      if (dateStr && !dateStr.includes('T') && !dateStr.includes('Z')) {
-        // Se for formato 'YYYY-MM-DD HH:MM:SS', converter para ISO sem timezone
-        // JavaScript interpreta 'YYYY-MM-DDTHH:MM:SS' como hora local
-        dateStr = dateStr.replace(' ', 'T');
-      }
-      
+      // Backend/SQLite retorna UTC no formato 'YYYY-MM-DD HH:MM:SS'; interpretar como UTC
+      let dateStr = submittedAt.trim().replace(' ', 'T');
+      if (!/Z$|[-+]\d{2}/.test(dateStr)) dateStr += 'Z';
       const submitted = new Date(dateStr);
       
       // Verificar se a data é válida

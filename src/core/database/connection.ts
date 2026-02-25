@@ -235,6 +235,13 @@ async function runSchemaMigrations(): Promise<void> {
       await dbRun('CREATE INDEX IF NOT EXISTS idx_fornecedores_descarga_category ON fornecedores_descarga(category)');
       console.log('Migração: tabela fornecedores_descarga criada');
     }
+    // Exclusão lógica (soft delete): histórico de agendamentos/respostas permanece
+    const fornecedoresCols = await dbAll('PRAGMA table_info(fornecedores_descarga)') as { name: string }[];
+    const hasDeletedAt = fornecedoresCols.some((c: { name: string }) => c.name === 'deleted_at');
+    if (!hasDeletedAt) {
+      await dbRun('ALTER TABLE fornecedores_descarga ADD COLUMN deleted_at DATETIME');
+      console.log('Migração: coluna deleted_at adicionada a fornecedores_descarga');
+    }
     const docasConfig = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'docas_config'");
     if (!docasConfig) {
       await dbRun(`

@@ -150,7 +150,7 @@ export class AgendamentoModel {
         id: agendamento.motorista_id,
         driver_name: agendamento.driver_name,
         phone_number: agendamento.motorista_phone || undefined,
-        submitted_at: await formatSystemDate(agendamento.motorista_submitted_at)
+        submitted_at: agendamento.motorista_submitted_at
       } : undefined
     };
   }
@@ -259,7 +259,7 @@ export class AgendamentoModel {
           id: a.motorista_id,
           driver_name: a.driver_name,
           phone_number: a.motorista_phone || undefined,
-          submitted_at: await formatSystemDate(a.motorista_submitted_at)
+          submitted_at: a.motorista_submitted_at
         } : undefined
       }))
     );

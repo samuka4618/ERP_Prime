@@ -7,6 +7,8 @@ import { Notification, TicketStatus } from '../../../shared/types';
 import type { NotificationTemplateKey } from '../../../shared/types';
 import { PushNotificationService } from './PushNotificationService';
 import { NotificationTemplateModel } from '../../../core/system/NotificationTemplateModel';
+import { buildContextFor } from '../../../core/system/notificationContextBuilders';
+import { getClientRegistrationStatusLabel } from '../../cadastros/clientRegistrationStatusConfig';
 
 export class NotificationService {
   private static transporter = nodemailer.createTransport({
@@ -76,6 +78,9 @@ export class NotificationService {
 
   static async notifyClientRegistrationCreated(registrationId: number, userId: number): Promise<void> {
     const admins = await UserModel.findByRole('admin' as any);
+    const adminContext = buildContextFor('client_registration_created', {
+      registration_message: 'Um novo cadastro de cliente foi enviado e está aguardando análise.',
+    });
     for (const admin of admins) {
       await this.createClientRegistrationNotification(
         admin.id,
@@ -83,9 +88,7 @@ export class NotificationService {
         'Novo Cadastro de Cliente',
         `Um novo cadastro de cliente foi enviado e está aguardando análise.`
       );
-      await this.sendTemplatedEmail('client_registration_created', admin.email, {
-        registration_message: 'Um novo cadastro de cliente foi enviado e está aguardando análise.',
-      });
+      await this.sendTemplatedEmail('client_registration_created', admin.email, adminContext);
     }
 
     await this.createClientRegistrationNotification(
@@ -96,9 +99,10 @@ export class NotificationService {
     );
     const user = await UserModel.findById(userId);
     if (user) {
-      await this.sendTemplatedEmail('client_registration_created', user.email, {
+      const userContext = buildContextFor('client_registration_created', {
         registration_message: 'Seu cadastro de cliente foi enviado com sucesso e está aguardando análise.',
       });
+      await this.sendTemplatedEmail('client_registration_created', user.email, userContext);
     }
   }
 
@@ -109,30 +113,24 @@ export class NotificationService {
     newStatus: string,
     statusDescription: string
   ): Promise<void> {
-    // Notificar o usuário que criou o cadastro
+    const newStatusLabel = getClientRegistrationStatusLabel(newStatus);
     await this.createClientRegistrationNotification(
       userId,
       'status_change',
       'Status do Cadastro Alterado',
-      `O status do seu cadastro foi alterado de "${statusDescription}" para "${this.getStatusDescription(newStatus)}".`
+      `O status do seu cadastro foi alterado de "${statusDescription}" para "${newStatusLabel}".`
     );
 
     const user = await UserModel.findById(userId);
-    if (user) {
-      await this.sendTemplatedEmail('client_registration_status_change', user.email, {
-        old_status: statusDescription,
-        new_status: this.getStatusDescription(newStatus),
-      });
-    }
-  }
+    if (!user) return;
 
-  private static getStatusDescription(status: string): string {
-    const descriptions: Record<string, string> = {
-      'cadastro_enviado': 'Cadastro Enviado',
-      'aguardando_analise_credito': 'Aguardando Análise de Crédito',
-      'cadastro_finalizado': 'Cadastro Finalizado'
-    };
-    return descriptions[status] || status;
+    const context = buildContextFor('client_registration_status_change', {
+      registrationId,
+      oldStatus,
+      newStatus,
+      statusDescription,
+    });
+    await this.sendTemplatedEmail('client_registration_status_change', user.email, context);
   }
 
   static async notifyTicketCreated(ticketId: number): Promise<void> {
@@ -142,6 +140,7 @@ export class NotificationService {
     // Notificar administradores
     const admins = await UserModel.findByRole('admin' as any);
     
+    const ticketContext = buildContextFor('ticket_created_admin', { ticket });
     for (const admin of admins) {
       await this.createNotification(
         admin.id,
@@ -150,18 +149,10 @@ export class NotificationService {
         'Novo Chamado Criado',
         `Um novo chamado foi criado: "${ticket.subject}"`
       );
-
-      await this.sendTemplatedEmail('ticket_created_admin', admin.email, {
-        'ticket.subject': ticket.subject,
-        'ticket.category': ticket.category?.name || 'N/A',
-        'ticket.priority': ticket.priority,
-        'ticket.user_name': ticket.user?.name || 'N/A',
-      });
+      await this.sendTemplatedEmail('ticket_created_admin', admin.email, ticketContext);
     }
 
-    // Notificar atendentes (para chamados de alta/urgente prioridade)
     const attendants = await UserModel.findByRole('attendant' as any);
-    
     for (const attendant of attendants) {
       if (ticket.priority === 'urgent' || ticket.priority === 'high') {
         await this.createNotification(
@@ -171,13 +162,8 @@ export class NotificationService {
           'Novo Chamado - Alta Prioridade',
           `Um novo chamado de alta prioridade foi criado: "${ticket.subject}"`
         );
-
-        await this.sendTemplatedEmail('ticket_created_attendant_high_priority', attendant.email, {
-          'ticket.subject': ticket.subject,
-          'ticket.category': ticket.category?.name || 'N/A',
-          'ticket.priority': ticket.priority,
-          'ticket.user_name': ticket.user?.name || 'N/A',
-        });
+        const highPriorityContext = buildContextFor('ticket_created_attendant_high_priority', { ticket });
+        await this.sendTemplatedEmail('ticket_created_attendant_high_priority', attendant.email, highPriorityContext);
       }
     }
   }
@@ -198,7 +184,6 @@ export class NotificationService {
       [TicketStatus.OVERDUE_RESOLUTION]: 'Atrasado - Resolução'
     };
 
-    // Notificar o usuário do chamado
     await this.createNotification(
       ticket.user_id,
       ticketId,
@@ -208,11 +193,12 @@ export class NotificationService {
     );
 
     if (ticket.user) {
-      await this.sendTemplatedEmail('status_change', ticket.user.email, {
-        'ticket.subject': ticket.subject,
-        old_status: statusNames[oldStatus],
-        new_status: statusNames[newStatus],
+      const context = buildContextFor('status_change', {
+        ticket,
+        oldStatusLabel: statusNames[oldStatus],
+        newStatusLabel: statusNames[newStatus],
       });
+      await this.sendTemplatedEmail('status_change', ticket.user.email, context);
     }
   }
 
@@ -236,9 +222,8 @@ export class NotificationService {
       `Há uma nova mensagem no chamado "${ticket.subject}".`
     );
 
-    await this.sendTemplatedEmail('new_message', user.email, {
-      'ticket.subject': ticket.subject,
-    });
+    const context = buildContextFor('new_message', { ticket });
+    await this.sendTemplatedEmail('new_message', user.email, context);
   }
 
   static async notifySlaAlert(ticketId: number, slaType: 'first_response' | 'resolution'): Promise<void> {
@@ -247,7 +232,7 @@ export class NotificationService {
 
     const alertType = slaType === 'first_response' ? 'Primeira Resposta' : 'Resolução';
     const templateKey: NotificationTemplateKey = slaType === 'first_response' ? 'sla_alert_first_response' : 'sla_alert_resolution';
-    const context = { 'ticket.subject': ticket.subject, 'ticket.category': ticket.category?.name || 'N/A' };
+    const context = buildContextFor(templateKey, { ticket });
 
     if (ticket.attendant_id) {
       await this.createNotification(
@@ -277,7 +262,7 @@ export class NotificationService {
   static async notifyTicketReopened(ticketId: number): Promise<void> {
     const ticket = await TicketModel.findById(ticketId);
     if (!ticket) return;
-    const context = { 'ticket.subject': ticket.subject };
+    const context = buildContextFor('ticket_reopened', { ticket });
 
     if (ticket.attendant_id) {
       await this.createNotification(
@@ -330,11 +315,12 @@ export class NotificationService {
     if (!template?.enabled) return;
     const subject = this.replacePlaceholders(template.subject_template, context);
     const bodyHtml = this.replacePlaceholders(template.body_html, context);
+    const systemName = context.system_name || config.systemName || 'ERP PRIME';
     try {
       await this.transporter.sendMail({
         from: config.email.from,
         to,
-        subject: `[ERP PRIME] ${subject}`,
+        subject: `[${systemName}] ${subject}`,
         html: bodyHtml,
         text: bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
       });
@@ -472,9 +458,8 @@ export class NotificationService {
     );
 
     if (ticket.user) {
-      await this.sendTemplatedEmail('approval_required', ticket.user.email, {
-        'ticket.subject': ticket.subject,
-      });
+      const context = buildContextFor('approval_required', { ticket });
+      await this.sendTemplatedEmail('approval_required', ticket.user.email, context);
     }
   }
 
@@ -495,11 +480,12 @@ export class NotificationService {
     );
 
     if (ticket.attendant) {
-      await this.sendTemplatedEmail('approval_received', ticket.attendant.email, {
-        'ticket.subject': ticket.subject,
-        approval_action: action,
-        approval_status: status,
+      const context = buildContextFor('approval_received', {
+        ticket,
+        approved: action === 'aprovado',
+        statusLabel: status,
       });
+      await this.sendTemplatedEmail('approval_received', ticket.attendant.email, context);
     }
   }
 

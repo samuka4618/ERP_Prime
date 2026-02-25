@@ -41,5 +41,9 @@ export const config = {
     apiKey: process.env.VONAGE_API_KEY || '',
     apiSecret: process.env.VONAGE_API_SECRET || '',
     fromNumber: process.env.VONAGE_FROM_NUMBER || ''
-  }
+  },
+  /** URL base do frontend (para links em e-mails, ex.: link "Ver detalhes do cadastro") */
+  clientUrl: process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173',
+  /** Nome do sistema (e-mails, assuntos, etc.) */
+  systemName: process.env.SYSTEM_NAME || 'ERP PRIME',
 };

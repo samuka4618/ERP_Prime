@@ -9,11 +9,20 @@ const PREVIEW_PLACEHOLDERS: Record<string, string> = {
   '{{ticket.category}}': 'Suporte Técnico',
   '{{ticket.priority}}': 'Alta',
   '{{ticket.user_name}}': 'João Silva',
-  '{{old_status}}': 'Aberto',
-  '{{new_status}}': 'Em Atendimento',
+  '{{old_status}}': 'Aguardando Análise de Crédito',
+  '{{new_status}}': 'Cadastro Aprovado',
   '{{approval_action}}': 'aprovado',
   '{{approval_status}}': 'confirmado como resolvido',
   '{{registration_message}}': 'Seu cadastro foi enviado e está aguardando análise.',
+  // Variáveis inteligentes – status do cadastro de cliente
+  '{{status_title}}': 'Cadastro Aprovado',
+  '{{status_message}}': 'Seu cadastro foi analisado e aprovado com sucesso.',
+  '{{status_color}}': '#198754',
+  '{{status_badge_bg}}': '#d1e7dd',
+  '{{status_badge_text}}': '#0f5132',
+  '{{client.url}}': 'https://app.empresa.com/cadastros/123',
+  '{{current_year}}': String(new Date().getFullYear()),
+  '{{system_name}}': 'ERP PRIME',
 };
 
 interface NotificationTemplateModalProps {

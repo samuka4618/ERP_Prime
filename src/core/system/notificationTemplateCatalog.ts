@@ -205,7 +205,7 @@ export const NOTIFICATION_TEMPLATE_DEFINITIONS: NotificationTemplateDefinition[]
   {
     key: 'client_registration_status_change',
     label: 'Status do cadastro de cliente alterado',
-    description: 'Enviado ao usuário quando o status do cadastro de cliente é alterado.',
+    description: 'Enviado ao usuário quando o status do cadastro de cliente é alterado. Use as variáveis inteligentes para título, mensagem e cores conforme o status (aprovado, em análise, reprovado, bloqueado).',
     default_subject: 'Status do Cadastro Alterado',
     default_body_html: `<!DOCTYPE html>
 <html>
@@ -219,7 +219,17 @@ export const NOTIFICATION_TEMPLATE_DEFINITIONS: NotificationTemplateDefinition[]
   <p>Acesse o sistema para mais detalhes.</p>
 </body>
 </html>`,
-    placeholders: ['{{old_status}}', '{{new_status}}'],
+    placeholders: [
+      '{{status_title}}',
+      '{{status_message}}',
+      '{{status_color}}',
+      '{{status_badge_bg}}',
+      '{{status_badge_text}}',
+      '{{old_status}}',
+      '{{new_status}}',
+      '{{client.url}}',
+      '{{current_year}}',
+    ],
   },
 ];
 

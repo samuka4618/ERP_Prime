@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Package, Truck, Users, RefreshCw } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
@@ -47,12 +47,13 @@ const GradeDescarregamento: React.FC = () => {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const hasLoadedOnce = useRef(false);
 
   useEffect(() => {
-    fetchData();
-    // Atualizar a cada 30 segundos
-    const interval = setInterval(fetchData, 30000);
+    fetchData(true);
+    const interval = setInterval(() => fetchData(false), 30000);
     return () => clearInterval(interval);
   }, [currentDate, statusFilter, viewMode]);
 
@@ -64,17 +65,24 @@ const GradeDescarregamento: React.FC = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const fetchData = async () => {
-    setLoadError(null);
-    try {
+  const fetchData = async (isInitialOrUserAction: boolean) => {
+    const showFullLoading = isInitialOrUserAction && !hasLoadedOnce.current;
+    if (showFullLoading) {
+      setLoadError(null);
       setLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
+    try {
       await Promise.all([fetchAgendamentos(), fetchMotoristas()]);
+      hasLoadedOnce.current = true;
     } catch (error) {
       const msg = 'Falha ao carregar agendamentos e motoristas. Tente novamente.';
       setLoadError(msg);
-      toast.error(msg);
+      if (!hasLoadedOnce.current) toast.error(msg);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -230,7 +238,7 @@ const GradeDescarregamento: React.FC = () => {
           <span>{loadError}</span>
           <button
             type="button"
-            onClick={() => fetchData()}
+            onClick={() => fetchData(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <RefreshCw className="w-4 h-4" />
@@ -240,11 +248,19 @@ const GradeDescarregamento: React.FC = () => {
       )}
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Grade de Descarregamento</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {viewMode === 'semana' && weekDates.length ? getWeekRangeLabel() : `${dateHeader.dayOfWeek}, ${dateHeader.day} de ${dateHeader.month} de ${dateHeader.year}`}
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Grade de Descarregamento</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {viewMode === 'semana' && weekDates.length ? getWeekRangeLabel() : `${dateHeader.dayOfWeek}, ${dateHeader.day} de ${dateHeader.month} de ${dateHeader.year}`}
+            </p>
+          </div>
+          {isRefreshing && (
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400" aria-live="polite">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Atualizando...</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-4">

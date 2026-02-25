@@ -13,6 +13,9 @@ import { NotificationTemplateModel } from './NotificationTemplateModel';
 import { NOTIFICATION_TEMPLATE_DEFINITIONS } from './notificationTemplateCatalog';
 import type { NotificationTemplateKey } from '../../shared/types';
 
+/** Placeholders globais disponíveis em todos os templates (variáveis de sistema). */
+const GLOBAL_PLACEHOLDERS = ['{{system_name}}', '{{current_year}}', '{{client.url}}'];
+
 const router = Router();
 
 console.log('✅ Módulo de rotas do sistema carregado - Rota /logo será registrada');
@@ -97,11 +100,13 @@ router.get('/notification-templates', async (req, res) => {
     const storedByKey = new Map(stored.map((t) => [t.notification_key, t]));
     const list = NOTIFICATION_TEMPLATE_DEFINITIONS.map((def) => {
       const t = storedByKey.get(def.key);
+      const existing = new Set(def.placeholders);
+      GLOBAL_PLACEHOLDERS.forEach((ph) => existing.add(ph));
       return {
         key: def.key,
         label: def.label,
         description: def.description,
-        placeholders: def.placeholders,
+        placeholders: Array.from(existing),
         enabled: t?.enabled ?? true,
         subject_template: t?.subject_template ?? def.default_subject,
         body_html: t?.body_html ?? def.default_body_html,

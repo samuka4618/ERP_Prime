@@ -139,6 +139,39 @@ export interface SystemConfig {
   system_version?: string;
 }
 
+/** Chave única que identifica cada tipo de notificação por e-mail no sistema */
+export type NotificationTemplateKey =
+  | 'ticket_created_admin'
+  | 'ticket_created_attendant_high_priority'
+  | 'status_change'
+  | 'new_message'
+  | 'sla_alert_first_response'
+  | 'sla_alert_resolution'
+  | 'ticket_reopened'
+  | 'approval_required'
+  | 'approval_received'
+  | 'client_registration_created'
+  | 'client_registration_status_change';
+
+/** Configuração de template de e-mail para uma notificação (persistida) */
+export interface NotificationEmailTemplate {
+  notification_key: NotificationTemplateKey;
+  enabled: boolean;
+  subject_template: string;
+  body_html: string;
+  updated_at?: string;
+}
+
+/** Definição padrão de um tipo de notificação (catálogo + defaults) */
+export interface NotificationTemplateDefinition {
+  key: NotificationTemplateKey;
+  label: string;
+  description: string;
+  default_subject: string;
+  default_body_html: string;
+  placeholders: string[];
+}
+
 export interface LoginRequest {
   email: string;
   password: string;

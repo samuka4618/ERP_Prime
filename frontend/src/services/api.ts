@@ -27,6 +27,17 @@ import {
 } from '../types';
 import { logger } from '../utils/logger';
 
+export interface NotificationTemplateItem {
+  key: string;
+  label: string;
+  description: string;
+  placeholders: string[];
+  enabled: boolean;
+  subject_template: string;
+  body_html: string;
+  updated_at?: string;
+}
+
 class ApiService {
   private api: AxiosInstance;
 
@@ -225,6 +236,23 @@ class ApiService {
   async getSystemStats(): Promise<any> {
     const response = await this.api.get<ApiResponse<any>>('/system/stats');
     return response.data.data;
+  }
+
+  async testSystemEmail(): Promise<{ message: string }> {
+    const response = await this.api.post<{ message?: string; data?: { message: string } }>('/system/test-email');
+    const data = response.data as any;
+    return { message: data?.data?.message ?? data?.message ?? 'E-mail de teste enviado.' };
+  }
+
+  async getNotificationTemplates(): Promise<NotificationTemplateItem[]> {
+    const response = await this.api.get<{ data: NotificationTemplateItem[] }>('/system/notification-templates');
+    return response.data.data ?? [];
+  }
+
+  async updateNotificationTemplates(
+    updates: Array<{ notification_key: string; enabled?: boolean; subject_template?: string; body_html?: string }>
+  ): Promise<void> {
+    await this.api.put('/system/notification-templates', updates);
   }
 
   // Permissions

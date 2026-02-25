@@ -8,6 +8,10 @@ import { uploadSingle } from '../../shared/middleware/upload';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { NotificationService } from '../../modules/chamados/services/NotificationService';
+import { NotificationTemplateModel } from './NotificationTemplateModel';
+import { NOTIFICATION_TEMPLATE_DEFINITIONS } from './notificationTemplateCatalog';
+import type { NotificationTemplateKey } from '../../shared/types';
 
 const router = Router();
 
@@ -83,6 +87,75 @@ router.put('/config', validate(updateSystemConfigSchema), async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao atualizar configurações globais:', error);
     res.status(500).json({ error: 'Erro ao atualizar configurações' });
+  }
+});
+
+// Listar todas as notificações por e-mail (catálogo + configuração armazenada)
+router.get('/notification-templates', async (req, res) => {
+  try {
+    const stored = await NotificationTemplateModel.getAll();
+    const storedByKey = new Map(stored.map((t) => [t.notification_key, t]));
+    const list = NOTIFICATION_TEMPLATE_DEFINITIONS.map((def) => {
+      const t = storedByKey.get(def.key);
+      return {
+        key: def.key,
+        label: def.label,
+        description: def.description,
+        placeholders: def.placeholders,
+        enabled: t?.enabled ?? true,
+        subject_template: t?.subject_template ?? def.default_subject,
+        body_html: t?.body_html ?? def.default_body_html,
+        updated_at: t?.updated_at,
+      };
+    });
+    res.json({ message: 'OK', data: list });
+  } catch (error: any) {
+    console.error('Erro ao listar templates de notificação:', error);
+    res.status(500).json({ error: error.message || 'Erro ao listar templates' });
+  }
+});
+
+// Atualizar um ou mais templates de notificação
+router.put('/notification-templates', async (req, res) => {
+  try {
+    const body = req.body as
+      | { notification_key: NotificationTemplateKey; enabled?: boolean; subject_template?: string; body_html?: string }
+      | Array<{ notification_key: NotificationTemplateKey; enabled?: boolean; subject_template?: string; body_html?: string }>;
+    const updates = Array.isArray(body) ? body : [body];
+    const results = [];
+    for (const u of updates) {
+      if (!u?.notification_key) continue;
+      const updated = await NotificationTemplateModel.update(u.notification_key, {
+        enabled: u.enabled,
+        subject_template: u.subject_template,
+        body_html: u.body_html,
+      });
+      results.push(updated);
+    }
+    res.json({ message: 'Templates atualizados', data: results });
+  } catch (error: any) {
+    console.error('Erro ao atualizar templates de notificação:', error);
+    res.status(500).json({ error: error.message || 'Erro ao atualizar templates' });
+  }
+});
+
+// Rota para testar envio de e-mail (envia para o e-mail do usuário logado)
+router.post('/test-email', async (req, res) => {
+  try {
+    const email = req.user?.email;
+    if (!email) {
+      res.status(400).json({ error: 'Usuário sem e-mail cadastrado' });
+      return;
+    }
+    const result = await NotificationService.sendTestEmail(email);
+    if (result.success) {
+      res.json({ message: `E-mail de teste enviado para ${email}. Verifique sua caixa de entrada.` });
+      return;
+    }
+    res.status(400).json({ error: result.error || 'Falha ao enviar e-mail de teste' });
+  } catch (error: any) {
+    console.error('Erro ao enviar e-mail de teste:', error);
+    res.status(500).json({ error: error.message || 'Erro ao enviar e-mail de teste' });
   }
 });
 

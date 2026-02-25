@@ -381,6 +381,21 @@ async function runSchemaMigrations(): Promise<void> {
   } catch (err) {
     console.warn('Migração de schema (aprovacoes_orcamento/orcamentos/anexos):', (err as Error).message);
   }
+
+  // Tabela de templates de notificação por e-mail (configuráveis pelo admin)
+  const notificationTemplatesTable = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'notification_email_templates'");
+  if (!notificationTemplatesTable) {
+    await dbRun(`
+      CREATE TABLE notification_email_templates (
+        notification_key VARCHAR(80) PRIMARY KEY,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        subject_template TEXT NOT NULL,
+        body_html TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('Migração: tabela notification_email_templates criada');
+  }
 }
 
 // Função para executar queries de schema

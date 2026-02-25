@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { apiService } from '../services/api';
+import { apiService, type NotificationTemplateItem } from '../services/api';
 import axios from 'axios';
-import { Settings, Save, Upload, Globe } from 'lucide-react';
+import { Settings, Save, Upload, Globe, Mail, Mailbox, Edit3 } from 'lucide-react';
 import clsx from 'clsx';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
+import { NotificationTemplateModal } from '../components/NotificationTemplateModal';
 
 interface SystemSettings {
   sla_first_response_hours: number;
@@ -37,8 +38,12 @@ const SystemSettings: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [selectedLogoPreview, setSelectedLogoPreview] = useState<string | null>(null);
+  const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplateItem[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<NotificationTemplateItem | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -48,7 +53,7 @@ const SystemSettings: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiService.get('/system/config');
-      setSettings(response.data || settings);
+      setSettings(response.data?.data ?? response.data ?? settings);
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
       toast.error('Erro ao carregar configurações');
@@ -56,6 +61,23 @@ const SystemSettings: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const fetchNotificationTemplates = async () => {
+    try {
+      setTemplatesLoading(true);
+      const list = await apiService.getNotificationTemplates();
+      setNotificationTemplates(list);
+    } catch (error) {
+      console.error('Erro ao carregar templates de notificação:', error);
+      toast.error('Erro ao carregar notificações por e-mail');
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!loading) fetchNotificationTemplates();
+  }, [loading]);
 
   const handleInputChange = (field: keyof SystemSettings, value: any) => {
     setSettings(prev => ({
@@ -327,6 +349,32 @@ const SystemSettings: React.FC = () => {
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Notificações por email</span>
               </label>
+
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Envie um e-mail de teste para o endereço da sua conta (usuário logado) para verificar se o SMTP está configurado.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setTestingEmail(true);
+                      const result = await apiService.testSystemEmail();
+                      toast.success(result?.message ?? 'E-mail de teste enviado. Verifique sua caixa de entrada.');
+                    } catch (err: any) {
+                      const msg = err.response?.data?.error ?? err.message ?? 'Falha ao enviar e-mail de teste';
+                      toast.error(msg);
+                    } finally {
+                      setTestingEmail(false);
+                    }
+                  }}
+                  disabled={testingEmail}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 rounded-md hover:bg-primary-100 dark:hover:bg-primary-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Mail className="w-4 h-4" />
+                  {testingEmail ? 'Enviando...' : 'Testar envio de e-mail'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -475,6 +523,64 @@ const SystemSettings: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Notificações por e-mail */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 lg:col-span-2">
+            <div className="flex items-center gap-2 mb-4">
+              <Mailbox className="w-6 h-6 text-primary-600" />
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Notificações por e-mail
+              </h2>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Ative ou desative cada tipo de notificação globalmente e personalize o assunto e o corpo do e-mail (HTML). As alterações valem para todos os usuários.
+            </p>
+            {templatesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notificationTemplates.map((t) => (
+                  <div
+                    key={t.key}
+                    className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/30"
+                  >
+                    <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={t.enabled}
+                        onChange={async () => {
+                          try {
+                            await apiService.updateNotificationTemplates([{ notification_key: t.key, enabled: !t.enabled }]);
+                            setNotificationTemplates((prev) =>
+                              prev.map((x) => (x.key === t.key ? { ...x, enabled: !t.enabled } : x))
+                            );
+                            toast.success(t.enabled ? 'Notificação desativada.' : 'Notificação ativada.');
+                          } catch (err: any) {
+                            toast.error(err.response?.data?.error || 'Erro ao atualizar');
+                          }
+                        }}
+                        className="h-4 w-4 text-primary-600 rounded border-gray-300 dark:border-gray-600"
+                      />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{t.label}</span>
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 w-full ml-6 flex-shrink-0 max-w-md">
+                      {t.description}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setEditingTemplate(t)}
+                      className="ml-auto flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Personalizar e-mail
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Botão Salvar */}
@@ -489,6 +595,21 @@ const SystemSettings: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {editingTemplate && (
+        <NotificationTemplateModal
+          template={editingTemplate}
+          onClose={() => setEditingTemplate(null)}
+          onSave={async (key, subject_template, body_html) => {
+            await apiService.updateNotificationTemplates([{ notification_key: key, subject_template, body_html }]);
+            setNotificationTemplates((prev) =>
+              prev.map((x) => (x.key === key ? { ...x, subject_template, body_html } : x))
+            );
+            setEditingTemplate((t) => (t?.key === key ? { ...t, subject_template, body_html } : t));
+            toast.success('Template de e-mail salvo.');
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -4,7 +4,9 @@ import { UserModel } from '../../../core/users/User';
 import { TicketModel } from '../models/Ticket';
 import { config } from '../../../config/database';
 import { Notification, TicketStatus } from '../../../shared/types';
+import type { NotificationTemplateKey } from '../../../shared/types';
 import { PushNotificationService } from './PushNotificationService';
+import { NotificationTemplateModel } from '../../../core/system/NotificationTemplateModel';
 
 export class NotificationService {
   private static transporter = nodemailer.createTransport({
@@ -73,9 +75,7 @@ export class NotificationService {
   }
 
   static async notifyClientRegistrationCreated(registrationId: number, userId: number): Promise<void> {
-    // Criar notificação para administradores
     const admins = await UserModel.findByRole('admin' as any);
-    
     for (const admin of admins) {
       await this.createClientRegistrationNotification(
         admin.id,
@@ -83,15 +83,23 @@ export class NotificationService {
         'Novo Cadastro de Cliente',
         `Um novo cadastro de cliente foi enviado e está aguardando análise.`
       );
+      await this.sendTemplatedEmail('client_registration_created', admin.email, {
+        registration_message: 'Um novo cadastro de cliente foi enviado e está aguardando análise.',
+      });
     }
 
-    // Notificar o próprio usuário que enviou
     await this.createClientRegistrationNotification(
       userId,
       'new_message',
       'Cadastro Enviado',
       'Seu cadastro de cliente foi enviado com sucesso e está aguardando análise.'
     );
+    const user = await UserModel.findById(userId);
+    if (user) {
+      await this.sendTemplatedEmail('client_registration_created', user.email, {
+        registration_message: 'Seu cadastro de cliente foi enviado com sucesso e está aguardando análise.',
+      });
+    }
   }
 
   static async notifyClientRegistrationStatusChange(
@@ -109,17 +117,12 @@ export class NotificationService {
       `O status do seu cadastro foi alterado de "${statusDescription}" para "${this.getStatusDescription(newStatus)}".`
     );
 
-    // Enviar email se configurado
     const user = await UserModel.findById(userId);
-    if (config.email.user && user) {
-      await this.sendEmail(
-        user.email,
-        'Status do Cadastro Alterado',
-        `O status do seu cadastro foi alterado:\n\n` +
-        `Status anterior: ${statusDescription}\n` +
-        `Novo status: ${this.getStatusDescription(newStatus)}\n\n` +
-        `Acesse o sistema para mais detalhes.`
-      );
+    if (user) {
+      await this.sendTemplatedEmail('client_registration_status_change', user.email, {
+        old_status: statusDescription,
+        new_status: this.getStatusDescription(newStatus),
+      });
     }
   }
 
@@ -148,19 +151,12 @@ export class NotificationService {
         `Um novo chamado foi criado: "${ticket.subject}"`
       );
 
-      // Enviar email se configurado
-      if (config.email.user) {
-        await this.sendEmail(
-          admin.email,
-          'Novo Chamado Criado',
-          `Um novo chamado foi criado no sistema:\n\n` +
-          `Assunto: ${ticket.subject}\n` +
-          `Categoria: ${ticket.category?.name || 'N/A'}\n` +
-          `Prioridade: ${ticket.priority}\n` +
-          `Criado por: ${ticket.user?.name}\n\n` +
-          `Acesse o sistema para visualizar o chamado.`
-        );
-      }
+      await this.sendTemplatedEmail('ticket_created_admin', admin.email, {
+        'ticket.subject': ticket.subject,
+        'ticket.category': ticket.category?.name || 'N/A',
+        'ticket.priority': ticket.priority,
+        'ticket.user_name': ticket.user?.name || 'N/A',
+      });
     }
 
     // Notificar atendentes (para chamados de alta/urgente prioridade)
@@ -176,19 +172,12 @@ export class NotificationService {
           `Um novo chamado de alta prioridade foi criado: "${ticket.subject}"`
         );
 
-        // Enviar email para atendentes em casos de urgência
-        if (config.email.user) {
-          await this.sendEmail(
-            attendant.email,
-            'Novo Chamado - Alta Prioridade',
-            `Um novo chamado de alta prioridade foi criado no sistema:\n\n` +
-            `Assunto: ${ticket.subject}\n` +
-            `Categoria: ${ticket.category?.name || 'N/A'}\n` +
-            `Prioridade: ${ticket.priority}\n` +
-            `Criado por: ${ticket.user?.name}\n\n` +
-            `Acesse o sistema para visualizar o chamado.`
-          );
-        }
+        await this.sendTemplatedEmail('ticket_created_attendant_high_priority', attendant.email, {
+          'ticket.subject': ticket.subject,
+          'ticket.category': ticket.category?.name || 'N/A',
+          'ticket.priority': ticket.priority,
+          'ticket.user_name': ticket.user?.name || 'N/A',
+        });
       }
     }
   }
@@ -218,17 +207,12 @@ export class NotificationService {
       `O status do seu chamado "${ticket.subject}" foi alterado de "${statusNames[oldStatus]}" para "${statusNames[newStatus]}".`
     );
 
-    // Enviar email se configurado
-    if (config.email.user && ticket.user) {
-      await this.sendEmail(
-        ticket.user.email,
-        'Status do Chamado Alterado',
-        `O status do seu chamado foi alterado:\n\n` +
-        `Assunto: ${ticket.subject}\n` +
-        `Status anterior: ${statusNames[oldStatus]}\n` +
-        `Novo status: ${statusNames[newStatus]}\n\n` +
-        `Acesse o sistema para mais detalhes.`
-      );
+    if (ticket.user) {
+      await this.sendTemplatedEmail('status_change', ticket.user.email, {
+        'ticket.subject': ticket.subject,
+        old_status: statusNames[oldStatus],
+        new_status: statusNames[newStatus],
+      });
     }
   }
 
@@ -252,16 +236,9 @@ export class NotificationService {
       `Há uma nova mensagem no chamado "${ticket.subject}".`
     );
 
-    // Enviar email se configurado
-    if (config.email.user) {
-      await this.sendEmail(
-        user.email,
-        'Nova Mensagem no Chamado',
-        `Há uma nova mensagem no chamado:\n\n` +
-        `Assunto: ${ticket.subject}\n\n` +
-        `Acesse o sistema para visualizar a mensagem.`
-      );
-    }
+    await this.sendTemplatedEmail('new_message', user.email, {
+      'ticket.subject': ticket.subject,
+    });
   }
 
   static async notifySlaAlert(ticketId: number, slaType: 'first_response' | 'resolution'): Promise<void> {
@@ -269,8 +246,9 @@ export class NotificationService {
     if (!ticket) return;
 
     const alertType = slaType === 'first_response' ? 'Primeira Resposta' : 'Resolução';
-    
-    // Notificar atendente se atribuído
+    const templateKey: NotificationTemplateKey = slaType === 'first_response' ? 'sla_alert_first_response' : 'sla_alert_resolution';
+    const context = { 'ticket.subject': ticket.subject, 'ticket.category': ticket.category?.name || 'N/A' };
+
     if (ticket.attendant_id) {
       await this.createNotification(
         ticket.attendant_id,
@@ -279,11 +257,11 @@ export class NotificationService {
         `Alerta de SLA - ${alertType}`,
         `O chamado "${ticket.subject}" está próximo de violar o SLA de ${alertType.toLowerCase()}.`
       );
+      const attendant = await UserModel.findById(ticket.attendant_id);
+      if (attendant) await this.sendTemplatedEmail(templateKey, attendant.email, context);
     }
 
-    // Notificar administradores
     const admins = await UserModel.findByRole('admin' as any);
-    
     for (const admin of admins) {
       await this.createNotification(
         admin.id,
@@ -292,14 +270,15 @@ export class NotificationService {
         `Alerta de SLA - ${alertType}`,
         `O chamado "${ticket.subject}" está próximo de violar o SLA de ${alertType.toLowerCase()}.`
       );
+      await this.sendTemplatedEmail(templateKey, admin.email, context);
     }
   }
 
   static async notifyTicketReopened(ticketId: number): Promise<void> {
     const ticket = await TicketModel.findById(ticketId);
     if (!ticket) return;
+    const context = { 'ticket.subject': ticket.subject };
 
-    // Notificar atendente se atribuído
     if (ticket.attendant_id) {
       await this.createNotification(
         ticket.attendant_id,
@@ -308,11 +287,11 @@ export class NotificationService {
         'Chamado Reaberto',
         `O chamado "${ticket.subject}" foi reaberto pelo usuário.`
       );
+      const attendant = await UserModel.findById(ticket.attendant_id);
+      if (attendant) await this.sendTemplatedEmail('ticket_reopened', attendant.email, context);
     }
 
-    // Notificar administradores
     const admins = await UserModel.findByRole('admin' as any);
-    
     for (const admin of admins) {
       await this.createNotification(
         admin.id,
@@ -321,10 +300,84 @@ export class NotificationService {
         'Chamado Reaberto',
         `O chamado "${ticket.subject}" foi reaberto pelo usuário.`
       );
+      await this.sendTemplatedEmail('ticket_reopened', admin.email, context);
     }
   }
 
   private static emailErrorLogged = false; // Flag para evitar logs repetidos
+
+  /** Substitui placeholders {{key}} no texto pelo valor em context (ex: {{ticket.subject}}, {{old_status}}). */
+  private static replacePlaceholders(template: string, context: Record<string, string>): string {
+    return template.replace(/\{\{([\w.]+)\}\}/g, (_, key) => context[key] ?? `{{${key}}}`);
+  }
+
+  /**
+   * Envia e-mail usando o template configurado para a chave. Se o template estiver desabilitado ou SMTP não configurado, não envia.
+   */
+  static async sendTemplatedEmail(
+    key: NotificationTemplateKey,
+    to: string,
+    context: Record<string, string>
+  ): Promise<void> {
+    if (!config.email.user) {
+      if (!this.emailErrorLogged) {
+        console.log('⚠️ [EMAIL] Email não configurado. Notificações por email serão ignoradas.');
+        this.emailErrorLogged = true;
+      }
+      return;
+    }
+    const template = await NotificationTemplateModel.getByKey(key);
+    if (!template?.enabled) return;
+    const subject = this.replacePlaceholders(template.subject_template, context);
+    const bodyHtml = this.replacePlaceholders(template.body_html, context);
+    try {
+      await this.transporter.sendMail({
+        from: config.email.from,
+        to,
+        subject: `[ERP PRIME] ${subject}`,
+        html: bodyHtml,
+        text: bodyHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+      });
+      this.emailErrorLogged = false;
+    } catch (error: any) {
+      if (error.code === 'EAUTH' || error.responseCode === 535) {
+        if (!this.emailErrorLogged) {
+          console.error('[BACKEND] ⚠️ Erro de autenticação ao enviar email.');
+          console.error('[BACKEND] ⚠️ Verifique as credenciais SMTP no arquivo .env.');
+          this.emailErrorLogged = true;
+        }
+      } else {
+        console.error(`[BACKEND] ⚠️ Erro ao enviar email para ${to}:`, error.message || error);
+      }
+    }
+  }
+
+  /**
+   * Envia um e-mail de teste para o destinatário. Retorna sucesso ou mensagem de erro
+   * (para uso em "Testar envio" nas configurações do sistema).
+   */
+  static async sendTestEmail(to: string): Promise<{ success: boolean; error?: string }> {
+    if (!config.email.user) {
+      return { success: false, error: 'E-mail não configurado. Configure SMTP_USER e SMTP_PASS no .env' };
+    }
+    const subject = 'Teste de envio de e-mail';
+    const text = `Esta é uma mensagem de teste do sistema ERP PRIME.\n\nSe você recebeu este e-mail, o envio está configurado corretamente.\n\nEnviado em: ${new Date().toLocaleString('pt-BR')}`;
+    try {
+      await this.transporter.sendMail({
+        from: config.email.from,
+        to,
+        subject: `[ERP PRIME] ${subject}`,
+        text
+      });
+      this.emailErrorLogged = false;
+      return { success: true };
+    } catch (error: any) {
+      const msg = error.code === 'EAUTH' || error.responseCode === 535
+        ? 'Erro de autenticação SMTP. Verifique SMTP_USER e SMTP_PASS (use Senha de app no Gmail).'
+        : (error.message || String(error));
+      return { success: false, error: msg };
+    }
+  }
 
   static async sendEmail(to: string, subject: string, text: string): Promise<void> {
     if (!config.email.user) {
@@ -418,16 +471,10 @@ export class NotificationService {
       `Seu chamado "${ticket.subject}" foi finalizado pelo atendente. Por favor, confirme se o problema foi realmente resolvido.`
     );
 
-    // Enviar email se configurado
-    if (config.email.user && ticket.user) {
-      await this.sendEmail(
-        ticket.user.email,
-        'Chamado Finalizado - Confirmação Necessária',
-        `Seu chamado foi finalizado pelo atendente e precisa da sua confirmação:\n\n` +
-        `Assunto: ${ticket.subject}\n` +
-        `Status: Aguardando Sua Aprovação\n\n` +
-        `Por favor, acesse o sistema para confirmar se o problema foi realmente resolvido.`
-      );
+    if (ticket.user) {
+      await this.sendTemplatedEmail('approval_required', ticket.user.email, {
+        'ticket.subject': ticket.subject,
+      });
     }
   }
 
@@ -447,16 +494,12 @@ export class NotificationService {
       `O chamado "${ticket.subject}" foi ${action} pelo solicitante - ${status}.`
     );
 
-    // Enviar email se configurado
-    if (config.email.user && ticket.attendant) {
-      await this.sendEmail(
-        ticket.attendant.email,
-        `Chamado ${action.charAt(0).toUpperCase() + action.slice(1)} pelo Solicitante`,
-        `O chamado foi ${action} pelo solicitante:\n\n` +
-        `Assunto: ${ticket.subject}\n` +
-        `Status: ${status}\n\n` +
-        `Acesse o sistema para mais detalhes.`
-      );
+    if (ticket.attendant) {
+      await this.sendTemplatedEmail('approval_received', ticket.attendant.email, {
+        'ticket.subject': ticket.subject,
+        approval_action: action,
+        approval_status: status,
+      });
     }
   }
 

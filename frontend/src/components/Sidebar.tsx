@@ -26,7 +26,8 @@ import {
   ShoppingBag,
   Truck,
   Calendar,
-  Warehouse
+  Warehouse,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
@@ -146,6 +147,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         { name: 'Monitoramento', href: '/admin-dashboard', icon: Monitor },
         { name: 'Performance', href: '/performance', icon: Activity },
         { name: 'Auditoria', href: '/audit', icon: FileText },
+        { name: 'Backup e Restore', href: '/backup', icon: Database },
         {
           name: 'Configurações',
           icon: Settings,

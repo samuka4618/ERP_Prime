@@ -8,6 +8,8 @@ import { uploadSingle } from '../../shared/middleware/upload';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { log as auditLog } from '../audit/AuditService';
+import { createBackup, restoreBackup } from '../backup/BackupService';
 import { NotificationService } from '../../modules/chamados/services/NotificationService';
 import { NotificationTemplateModel } from './NotificationTemplateModel';
 import { NOTIFICATION_TEMPLATE_DEFINITIONS } from './notificationTemplateCatalog';
@@ -15,6 +17,8 @@ import type { NotificationTemplateKey } from '../../shared/types';
 
 /** Placeholders globais disponíveis em todos os templates (variáveis de sistema). */
 const GLOBAL_PLACEHOLDERS = ['{{system_name}}', '{{current_year}}', '{{client.url}}'];
+
+const getIp = (req: any) => req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
 
 const router = Router();
 
@@ -276,6 +280,69 @@ router.post('/logo', (req, res, next) => {
   } catch (error) {
     console.error('Erro ao fazer upload do logo:', error);
     res.status(500).json({ error: 'Erro ao fazer upload do logo' });
+  }
+});
+
+// Backup: apenas admin (já está em router.use(authorize(ADMIN)))
+router.get('/backup', async (req, res) => {
+  try {
+    const { stream, filename } = await createBackup();
+    auditLog({
+      userId: (req as any).user?.id,
+      userName: (req as any).user?.name,
+      action: 'system.backup.create',
+      resource: 'system',
+      resourceId: filename,
+      details: `Backup gerado: ${filename}`,
+      ip: getIp(req)
+    });
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    stream.pipe(res);
+  } catch (error: any) {
+    console.error('Erro ao gerar backup:', error);
+    res.status(500).json({ error: error.message || 'Erro ao gerar backup' });
+  }
+});
+
+// Restore: upload ZIP (max 500 MB)
+const restoreUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = file.mimetype === 'application/zip' || file.originalname?.toLowerCase().endsWith('.zip');
+    cb(null, !!ok);
+  }
+});
+
+router.post('/restore', restoreUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      res.status(400).json({ error: 'Envie um arquivo ZIP de backup (campo: file).' });
+      return;
+    }
+    const result = await restoreBackup(req.file.buffer);
+    auditLog({
+      userId: (req as any).user?.id,
+      userName: (req as any).user?.name,
+      action: 'system.backup.restore',
+      resource: 'system',
+      resourceId: result.createdAt,
+      details: `Restauração: backup de ${result.createdAt}, versão ${result.backupVersion}`,
+      ip: getIp(req)
+    });
+    res.json({
+      message: result.message,
+      data: {
+        backupVersion: result.backupVersion,
+        appVersion: result.appVersion,
+        backupCreatedAt: result.createdAt,
+        restartRequired: true
+      }
+    });
+  } catch (error: any) {
+    console.error('Erro ao restaurar backup:', error);
+    res.status(400).json({ error: error.message || 'Erro ao restaurar backup' });
   }
 });
 

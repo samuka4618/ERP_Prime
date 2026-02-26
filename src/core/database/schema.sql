@@ -411,6 +411,8 @@ INSERT OR IGNORE INTO permissions (name, code, module, description) VALUES
 ('Redefinir Senhas', 'users.password.reset', 'administration', 'Permite redefinir senhas de usuários'),
 ('Visualizar Logs do Sistema', 'system.logs.view', 'administration', 'Permite visualizar logs do sistema'),
 ('Gerenciar Backups', 'system.backup.manage', 'administration', 'Permite gerenciar backups do sistema'),
+('Criar Backup do Sistema', 'system.backup.create', 'administration', 'Permite gerar arquivo de backup (banco e storage)'),
+('Restaurar Backup do Sistema', 'system.backup.restore', 'administration', 'Permite restaurar sistema a partir de arquivo de backup'),
 ('Manutenção do Sistema', 'system.maintenance', 'administration', 'Permite colocar sistema em manutenção'),
 ('Visualizar Auditoria', 'system.audit.view', 'administration', 'Permite visualizar auditoria do sistema'),
 ('Gerenciar Alertas de Monitoramento', 'monitoring.alerts.manage', 'administration', 'Permite gerenciar alertas de monitoramento');

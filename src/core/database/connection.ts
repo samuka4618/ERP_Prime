@@ -4,14 +4,29 @@ import path from 'path';
 import fs from 'fs';
 import { config } from '../../config/database';
 
+const dbPath = path.isAbsolute(config.database.path)
+  ? config.database.path
+  : path.join(process.cwd(), config.database.path);
+
+// Aplicar banco restaurado se existir (evita sobrescrever DB em uso no Windows)
+if (fs.existsSync(dbPath + '.restored')) {
+  try {
+    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+    fs.renameSync(dbPath + '.restored', dbPath);
+    console.log('Backup restaurado aplicado (chamados.db).');
+  } catch (e) {
+    console.error('Erro ao aplicar backup restaurado:', e);
+  }
+}
+
 // Garantir que o diretório do banco existe
-const dbDir = path.dirname(config.database.path);
+const dbDir = path.dirname(dbPath);
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
 // Criar conexão com o banco
-const db = new sqlite3.Database(config.database.path, (err) => {
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Erro ao conectar com o banco de dados:', err.message);
   } else {
@@ -458,6 +473,22 @@ async function runSchemaMigrations(): Promise<void> {
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)`);
     await dbRun(`CREATE INDEX IF NOT EXISTS idx_audit_log_resource ON audit_log(resource)`);
     console.log('Migração: tabela audit_log criada');
+  }
+
+  // Permissões de backup (create/restore)
+  await dbRun(`
+    INSERT OR IGNORE INTO permissions (name, code, module, description) VALUES
+    ('Criar Backup do Sistema', 'system.backup.create', 'administration', 'Permite gerar arquivo de backup (banco e storage)'),
+    ('Restaurar Backup do Sistema', 'system.backup.restore', 'administration', 'Permite restaurar sistema a partir de arquivo de backup')
+  `);
+  const backupPerms = await dbAll("SELECT id FROM permissions WHERE code IN ('system.backup.create', 'system.backup.restore')") as { id: number }[];
+  if (backupPerms.length > 0) {
+    for (const p of backupPerms) {
+      await dbRun(
+        `INSERT OR IGNORE INTO role_permissions (role, permission_id, granted) VALUES ('admin', ?, 1)`,
+        [p.id]
+      );
+    }
   }
 }
 

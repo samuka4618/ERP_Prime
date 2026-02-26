@@ -67,6 +67,8 @@ async function migrateAddPermissions() {
       // Sistema - Permissões Adicionais
       { name: 'Visualizar Logs do Sistema', code: 'system.logs.view', module: 'administration', description: 'Permite visualizar logs do sistema' },
       { name: 'Gerenciar Backups', code: 'system.backup.manage', module: 'administration', description: 'Permite gerenciar backups do sistema' },
+      { name: 'Criar Backup do Sistema', code: 'system.backup.create', module: 'administration', description: 'Permite gerar arquivo de backup (banco e storage)' },
+      { name: 'Restaurar Backup do Sistema', code: 'system.backup.restore', module: 'administration', description: 'Permite restaurar sistema a partir de arquivo de backup' },
       { name: 'Manutenção do Sistema', code: 'system.maintenance', module: 'administration', description: 'Permite colocar sistema em manutenção' },
       { name: 'Visualizar Auditoria', code: 'system.audit.view', module: 'administration', description: 'Permite visualizar auditoria do sistema' },
       

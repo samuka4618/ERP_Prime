@@ -26,6 +26,7 @@ import Reports from './pages/Reports';
 import AdminDashboard from './pages/AdminDashboard';
 import Performance from './pages/Performance';
 import Audit from './pages/Audit';
+import BackupRestore from './pages/BackupRestore';
 import { ClientRegistrations } from './pages/ClientRegistrations';
 import { ClientRegistrationForm } from './pages/ClientRegistrationForm';
 import { ClientRegistrationDetail } from './pages/ClientRegistrationDetail';
@@ -156,6 +157,7 @@ const AppRoutes: React.FC = () => {
         <Route path="admin-dashboard" element={<AdminDashboard />} />
         <Route path="performance" element={<Performance />} />
         <Route path="audit" element={<Audit />} />
+        <Route path="backup" element={<BackupRestore />} />
       </Route>
     </Routes>
     </PublicFormOnlyGuard>

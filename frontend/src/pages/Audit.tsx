@@ -6,9 +6,12 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { FileText, ChevronLeft, ChevronRight, Filter, Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+/** Formata data/hora do log. Valores vindos do backend (SQLite) são UTC sem 'Z'; tratamos como UTC para exibir no fuso local. */
 const formatDateTime = (iso: string | null) => {
   if (!iso) return '-';
-  const d = new Date(iso);
+  const asUtc = iso && !/Z$/i.test(iso) ? iso.replace(' ', 'T') + 'Z' : iso;
+  const d = new Date(asUtc);
+  if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('pt-BR', {
     day: '2-digit',
     month: '2-digit',

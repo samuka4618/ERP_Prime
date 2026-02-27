@@ -25,7 +25,8 @@
     "create-user": "ts-node scripts/create-user.ts",
     "db:reset": "node scripts/reset-db.js",
     "install:nginx:linux": "bash scripts/install-nginx.sh",
-    "install:nginx:win": "powershell -ExecutionPolicy Bypass -File scripts/install-nginx.ps1"
+    "install:nginx:win": "powershell -ExecutionPolicy Bypass -File scripts/install-nginx.ps1",
+    "generate:ssl-cert": "node scripts/generate-ssl-cert.js"
   },
   "keywords": [
     "erp",

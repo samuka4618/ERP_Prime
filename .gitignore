@@ -41,6 +41,12 @@ mobile/android/.gradle/
 .metro-health-check*
 
 # =========================
+# Certificados SSL (gerados por generate:ssl-cert)
+# =========================
+certs/
+nginx/ssl-cert.conf
+
+# =========================
 # Variáveis de ambiente e segredos
 # =========================
 .env

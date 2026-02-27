@@ -12,7 +12,10 @@ const net = require('net');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 const projectRoot = path.resolve(__dirname, '..');
-const nginxConf = path.join(projectRoot, 'nginx', 'nginx-standalone.conf');
+const nginxDir = path.join(projectRoot, 'nginx');
+const sslCertConf = path.join(nginxDir, 'ssl-cert.conf');
+const nginxConfDefault = path.join(nginxDir, 'nginx-standalone.conf');
+const nginxConfHttps = path.join(nginxDir, 'nginx-standalone-https.conf');
 const nodeServer = path.join(projectRoot, 'dist', 'src', 'server.js');
 const port = process.env.PORT || '3000';
 const ngrokPort = process.env.NGROK_PORT || port;
@@ -64,13 +67,20 @@ function startNgrok() {
 }
 
 function startNginx() {
+  const useHttps = fs.existsSync(sslCertConf);
+  const nginxConf = useHttps ? nginxConfHttps : nginxConfDefault;
+
   if (!fs.existsSync(nginxConf)) {
     console.warn('⚠️  Arquivo nginx não encontrado:', nginxConf);
     return false;
   }
 
   const nginxCmd = findNginx();
-  const child = spawn(nginxCmd, ['-c', nginxConf], {
+  const args = useHttps
+    ? ['-p', nginxDir.replace(/\\/g, '/'), '-c', nginxConf.replace(/\\/g, '/')]
+    : ['-c', nginxConf];
+
+  const child = spawn(nginxCmd, args, {
     stdio: 'ignore',
     detached: true,
     cwd: projectRoot,
@@ -118,7 +128,10 @@ async function main() {
         console.log('ℹ️  Porta 80 já em uso (Nginx ou outro serviço). Pulando início do Nginx.');
       } else {
         await startNginx();
-        console.log('✅ Nginx iniciado (proxy na porta 80 → Node na porta 3000)');
+        const useHttps = fs.existsSync(sslCertConf);
+        console.log(useHttps
+          ? '✅ Nginx iniciado (porta 80 + HTTPS em https://erp.empresa.local → Node na porta 3000)'
+          : '✅ Nginx iniciado (proxy na porta 80 → Node na porta 3000)');
       }
     } catch (e) {
       console.warn('⚠️  Nginx não iniciado (pode não estar instalado). Iniciando apenas o Node.');

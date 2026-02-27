@@ -350,14 +350,53 @@ const DescarregamentoConfig: React.FC = () => {
     }
   };
 
-  const copyUrl = async (url: string, formularioId: number) => {
-    try {
-      await navigator.clipboard.writeText(url);
+  const copyUrl = (url: string, formularioId: number) => {
+    const fallbackCopy = (text: string): boolean => {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      textarea.setSelectionRange(0, text.length);
+      let ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch {
+        // ignorar
+      }
+      document.body.removeChild(textarea);
+      return ok;
+    };
+
+    // Tentar fallback primeiro e de forma síncrona (no mesmo evento do clique),
+    // para funcionar em HTTP e quando o navegador bloqueia clipboard.
+    let copied = fallbackCopy(url);
+
+    if (!copied && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).then(
+        () => {
+          copied = true;
+          setCopiedUrl(formularioId);
+          toast.success('URL copiada para a área de transferência!');
+          setTimeout(() => setCopiedUrl(null), 2000);
+        },
+        () => {
+          setCopiedUrl(null);
+          toast.error('Não foi possível copiar. Selecione o link e use Ctrl+C para copiar.');
+        }
+      );
+      return;
+    }
+
+    if (copied) {
       setCopiedUrl(formularioId);
       toast.success('URL copiada para a área de transferência!');
       setTimeout(() => setCopiedUrl(null), 2000);
-    } catch (error) {
-      toast.error('Erro ao copiar URL');
+    } else {
+      toast.error('Não foi possível copiar. Selecione o link e use Ctrl+C para copiar.');
     }
   };
 

@@ -104,7 +104,9 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
 
   const hasPermission = (code: string): boolean => {
     if (!user) {
-      console.log(`[hasPermission] ${code}: false (sem usuário)`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[hasPermission] ${code}: false (sem usuário)`);
+      }
       return false;
     }
     
@@ -112,7 +114,9 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
     
     // Se não encontrou a permissão na lista, retornar false
     if (!permission) {
-      console.log(`[hasPermission] ${code}: false (permissão não encontrada)`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[hasPermission] ${code}: false (permissão não encontrada)`);
+      }
       return false;
     }
     
@@ -121,7 +125,7 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
     const result = permission.granted === true;
     
     // Log especial para permissão 24
-    if (code === 'admin.dashboard.view') {
+    if (code === 'admin.dashboard.view' && process.env.NODE_ENV === 'development') {
       console.log(`[hasPermission] ${code}:`, {
         granted: permission.granted,
         source: permission.source,

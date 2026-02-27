@@ -33,6 +33,13 @@ export interface PermissionWithStatus extends Permission {
 
 export class PermissionModel {
   /**
+   * Normaliza valores booleanos vindos do banco (0/1, '0'/'1', true/false)
+   */
+  private static normalizeDbBoolean(value: any): boolean {
+    return value === 1 || value === true || value === '1';
+  }
+
+  /**
    * Buscar todas as permissões
    */
   static async findAll(): Promise<Permission[]> {
@@ -114,7 +121,7 @@ export class PermissionModel {
 
     return rolePermissions.map(rp => ({
       ...rp,
-      granted: Boolean(rp.granted),
+      granted: PermissionModel.normalizeDbBoolean(rp.granted),
       created_at: new Date(rp.created_at)
     }));
   }
@@ -138,7 +145,7 @@ export class PermissionModel {
     // Criar mapa de permissões do role para consulta rápida
     const rolePermsMap = new Map<number, boolean>();
     rolePermissions.forEach(rp => {
-      rolePermsMap.set(rp.permission_id, rp.granted === 1 || rp.granted === true || rp.granted === '1');
+      rolePermsMap.set(rp.permission_id, PermissionModel.normalizeDbBoolean(rp.granted));
     });
 
     // Buscar permissões individuais do usuário (sobrescrevem as do role)
@@ -151,7 +158,7 @@ export class PermissionModel {
     const userPermsMap = new Map<number, boolean>();
     userPermissions.forEach(up => {
       // Converter para boolean explicitamente
-      const granted = up.granted === 1 || up.granted === true || up.granted === '1' || up.granted === 1;
+      const granted = PermissionModel.normalizeDbBoolean(up.granted);
       userPermsMap.set(up.permission_id, granted);
     });
 
@@ -160,7 +167,11 @@ export class PermissionModel {
       // Se há permissão individual, ela prevalece
       if (userPermsMap.has(perm.id)) {
         const granted = userPermsMap.get(perm.id)!;
-        console.log(`[findByUser] Permissão ${perm.id} (${perm.code}): individual do usuário, granted=${granted}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(
+            `[findByUser] Permissão ${perm.id} (${perm.code}): individual do usuário, granted=${granted}`
+          );
+        }
         return {
           id: perm.id,
           name: perm.name,
@@ -176,14 +187,25 @@ export class PermissionModel {
 
       // Se não há permissão individual, usar o valor do role
       // Para admin, se não há permissão no role_permissions, assume true (admin tem tudo por padrão)
-      let granted = false;
-      if (userRole === 'admin') {
-        granted = rolePermsMap.has(perm.id) ? rolePermsMap.get(perm.id)! : true;
+      let granted: boolean;
+      let source: 'role' | 'user' | 'default' = 'role';
+
+      if (rolePermsMap.has(perm.id)) {
+        granted = rolePermsMap.get(perm.id)!;
+        source = 'role';
+      } else if (userRole === 'admin') {
+        granted = true;
+        source = 'default';
       } else {
-        granted = rolePermsMap.get(perm.id) || false;
+        granted = false;
+        source = 'role';
       }
-      
-      console.log(`[findByUser] Permissão ${perm.id} (${perm.code}): do role ${userRole}, granted=${granted}`);
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log(
+          `[findByUser] Permissão ${perm.id} (${perm.code}): do role ${userRole}, granted=${granted}, source=${source}`
+        );
+      }
 
       return {
         id: perm.id,
@@ -192,7 +214,7 @@ export class PermissionModel {
         module: perm.module,
         description: perm.description,
         granted,
-        source: 'role',
+        source,
         created_at: new Date(perm.created_at),
         updated_at: new Date(perm.updated_at)
       };
@@ -223,23 +245,29 @@ export class PermissionModel {
       [userId, permission.id]
     ) as any;
 
-    if (userPermission !== undefined) {
+    if (userPermission !== undefined && userPermission !== null) {
       // Se há permissão individual, ela sempre prevalece (mesmo para admin)
-      return userPermission.granted === 1 || userPermission.granted === true || userPermission.granted === '1';
+      return PermissionModel.normalizeDbBoolean(userPermission.granted);
     }
 
     // Se não há permissão individual, verificar permissão do role
-    // Admin tem todas as permissões por padrão (se não houver permissão individual)
-    if (userRole === 'admin') {
-      return true;
-    }
-
     const rolePermission = await dbGet(
       'SELECT granted FROM role_permissions WHERE role = ? AND permission_id = ?',
       [userRole, permission.id]
     ) as any;
 
-    return rolePermission ? (rolePermission.granted === 1 || rolePermission.granted === true || rolePermission.granted === '1') : false;
+    if (rolePermission !== undefined && rolePermission !== null) {
+      return PermissionModel.normalizeDbBoolean(rolePermission.granted);
+    }
+
+    // Se não há permissão individual nem de role:
+    // - Admin tem todas as permissões por padrão
+    // - Demais roles não têm permissão
+    if (userRole === 'admin') {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -269,7 +297,11 @@ export class PermissionModel {
     // Garantir que granted é um boolean
     const grantedValue = granted === true ? 1 : 0;
     
-    console.log(`[updateUserPermission] Salvando permissão: userId=${userId}, permissionId=${permissionId}, granted=${granted} (valor no DB: ${grantedValue})`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(
+        `[updateUserPermission] Salvando permissão: userId=${userId}, permissionId=${permissionId}, granted=${granted} (valor no DB: ${grantedValue})`
+      );
+    }
     
     await dbRun(
       `INSERT INTO user_permissions (user_id, permission_id, granted)
@@ -284,7 +316,11 @@ export class PermissionModel {
       [userId, permissionId]
     ) as any;
     
-    console.log(`[updateUserPermission] Verificação após salvar: granted=${saved?.granted}, tipo=${typeof saved?.granted}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(
+        `[updateUserPermission] Verificação após salvar: granted=${saved?.granted}, tipo=${typeof saved?.granted}`
+      );
+    }
   }
 
   /**

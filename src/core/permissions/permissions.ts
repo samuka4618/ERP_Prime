@@ -5,8 +5,32 @@ import { UserModel } from '../users/User';
 import { UserRole } from '../../shared/types';
 import { logger } from '../../shared/utils/logger';
 import { log as auditLog } from '../audit/AuditService';
+import Joi from 'joi';
+import { dbRun } from '../database/connection';
 
 const router = Router();
+
+const updateRolePermissionsSchema = Joi.object({
+  permissions: Joi.array()
+    .items(
+      Joi.object({
+        permissionId: Joi.number().integer().required(),
+        granted: Joi.boolean().required()
+      })
+    )
+    .required()
+});
+
+const updateUserPermissionsSchema = Joi.object({
+  permissions: Joi.array()
+    .items(
+      Joi.object({
+        permissionId: Joi.number().integer().required(),
+        granted: Joi.boolean().allow(null)
+      })
+    )
+    .required()
+});
 
 /**
  * GET /api/permissions
@@ -176,21 +200,31 @@ router.put('/role/:role', authenticate, authorize(UserRole.ADMIN), async (req: R
       return;
     }
 
-    const { permissions } = req.body; // Array de { permissionId, granted }
-    if (!Array.isArray(permissions)) {
-      res.status(400).json({ error: 'Formato inválido. Esperado array de permissões' });
+    const { error, value } = updateRolePermissionsSchema.validate(req.body);
+    if (error) {
+      res.status(400).json({
+        error: 'Formato inválido. Esperado array de permissões',
+        details: error.details.map(d => d.message)
+      });
       return;
     }
 
-    // Atualizar cada permissão
-    for (const perm of permissions) {
-      if (perm.permissionId && typeof perm.granted === 'boolean') {
+    const { permissions } = value as { permissions: Array<{ permissionId: number; granted: boolean }> };
+
+    // Atualizar permissões em transação
+    await dbRun('BEGIN TRANSACTION');
+    try {
+      for (const perm of permissions) {
         await PermissionModel.updateRolePermission(
           role,
           perm.permissionId,
           perm.granted
         );
       }
+      await dbRun('COMMIT');
+    } catch (err) {
+      await dbRun('ROLLBACK');
+      throw err;
     }
 
     logger.info('Permissões do role atualizadas', { role, count: permissions.length }, 'PERMISSIONS');
@@ -223,38 +257,50 @@ router.put('/user/:userId', authenticate, authorize(UserRole.ADMIN), async (req:
       return res.status(400).json({ error: 'ID de usuário inválido' });
     }
 
-    const { permissions } = req.body; // Array de { permissionId, granted } ou null para remover
-    if (!Array.isArray(permissions)) {
-      return res.status(400).json({ error: 'Formato inválido. Esperado array de permissões' });
+    const { error, value } = updateUserPermissionsSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        error: 'Formato inválido. Esperado array de permissões',
+        details: error.details.map(d => d.message)
+      });
     }
 
-    // Atualizar cada permissão
-    for (const perm of permissions) {
-      if (perm.permissionId) {
-        if (perm.granted === null || perm.granted === undefined) {
-          // Remover permissão individual (volta para o padrão do role)
-          logger.info('Removendo permissão individual', { 
-            userId, 
-            permissionId: perm.permissionId,
-            granted: perm.granted,
-            grantedType: typeof perm.granted
-          }, 'PERMISSIONS');
-          await PermissionModel.removeUserPermission(userId, perm.permissionId);
-          logger.info('Permissão individual removida com sucesso', { userId, permissionId: perm.permissionId }, 'PERMISSIONS');
-        } else {
-          // Atualizar ou criar permissão individual
-          logger.debug('Atualizando permissão individual', { 
-            userId, 
-            permissionId: perm.permissionId, 
-            granted: perm.granted 
-          }, 'PERMISSIONS');
-          await PermissionModel.updateUserPermission(
-            userId,
-            perm.permissionId,
-            Boolean(perm.granted) // Garantir que é boolean
-          );
+    const { permissions } = value as { permissions: Array<{ permissionId: number; granted: boolean | null }> };
+
+    // Atualizar permissões em transação
+    await dbRun('BEGIN TRANSACTION');
+    try {
+      for (const perm of permissions) {
+        if (perm.permissionId) {
+          if (perm.granted === null) {
+            // Remover permissão individual (volta para o padrão do role)
+            logger.info('Removendo permissão individual', { 
+              userId, 
+              permissionId: perm.permissionId,
+              granted: perm.granted,
+              grantedType: typeof perm.granted
+            }, 'PERMISSIONS');
+            await PermissionModel.removeUserPermission(userId, perm.permissionId);
+            logger.info('Permissão individual removida com sucesso', { userId, permissionId: perm.permissionId }, 'PERMISSIONS');
+          } else {
+            // Atualizar ou criar permissão individual
+            logger.debug('Atualizando permissão individual', { 
+              userId, 
+              permissionId: perm.permissionId, 
+              granted: perm.granted 
+            }, 'PERMISSIONS');
+            await PermissionModel.updateUserPermission(
+              userId,
+              perm.permissionId,
+              Boolean(perm.granted) // Garantir que é boolean
+            );
+          }
         }
       }
+      await dbRun('COMMIT');
+    } catch (err) {
+      await dbRun('ROLLBACK');
+      throw err;
     }
 
     logger.info('Permissões do usuário atualizadas', { 

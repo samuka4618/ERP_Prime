@@ -26,6 +26,7 @@ import {
   AnaliseCredito
 } from '../types';
 import { logger } from '../utils/logger';
+import { getApiBaseUrl } from '../utils/apiUrl';
 
 export interface NotificationTemplateItem {
   key: string;
@@ -62,20 +63,8 @@ class ApiService {
   private api: AxiosInstance;
 
   constructor() {
-    // Detectar automaticamente a URL base baseada no hostname atual
-    const hostname = window.location.hostname;
-    
-    let baseURL: string;
-    
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      // Para localhost, usar URL relativa
-      baseURL = '/api';
-    } else {
-      // Para IPs da rede, usar porta atual do frontend ou padrão 3004
-      const port = window.location.port || '3004';
-      baseURL = `${window.location.protocol}//${hostname}:${port}/api`;
-    }
-    
+    // Usar VITE_API_URL em produção (ex.: Vercel + Render); em dev usa /api ou hostname:port
+    const baseURL = getApiBaseUrl();
     console.log('API Base URL configurada:', baseURL);
     
     this.api = axios.create({

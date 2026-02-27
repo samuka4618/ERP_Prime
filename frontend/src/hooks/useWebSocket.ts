@@ -1,21 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { logger } from '../utils/logger';
 import { useRealtime } from './useRealtime';
-
-// Função para obter a URL base do servidor automaticamente
-function getServerBaseUrl(): string {
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-  const port = window.location.port || '3000';
-  
-  // Se estiver em localhost, usar localhost
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `${protocol}//localhost:${port}`;
-  }
-  
-  // Caso contrário, usar o hostname atual (pode ser IP ou domínio)
-  return `${protocol}//${hostname}:${port}`;
-}
+import { getApiOriginUrl, getWsUrl } from '../utils/apiUrl';
 
 interface WebSocketEvent {
   type: 'message' | 'ticket_update' | 'notification' | 'heartbeat' | 'connection';
@@ -104,16 +90,11 @@ export const useWebSocket = ({
         wsRef.current = null;
       }
 
-      // Obter URL base do servidor
-      const serverBaseUrl = getServerBaseUrl();
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = window.location.hostname;
-      const wsPort = window.location.port || '3000';
-      
-      // Verificar conectividade primeiro
+      // Obter URL do WebSocket (usa VITE_API_URL quando definido; senão ws://hostname:port)
+      const serverOrigin = getApiOriginUrl();
+      const healthUrl = `${serverOrigin}/health`;
       console.log('🔌 Verificando conectividade com o servidor...');
       try {
-        const healthUrl = `${serverBaseUrl}/health`;
         const response = await fetch(healthUrl, {
           method: 'GET',
           mode: 'cors',
@@ -127,7 +108,7 @@ export const useWebSocket = ({
         return;
       }
 
-      const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}/ws?token=${encodeURIComponent(token)}`;
+      const wsUrl = `${getWsUrl()}/ws?token=${encodeURIComponent(token)}`;
       console.log('🔌 ===== CONECTANDO AO WEBSOCKET =====');
       console.log('🔌 URL completa:', wsUrl);
       console.log('🔌 Token (primeiros 50 chars):', token.substring(0, 50) + '...');

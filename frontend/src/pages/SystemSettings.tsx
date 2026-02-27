@@ -6,6 +6,7 @@ import { Settings, Save, Upload, Globe, Mail, Mailbox, Edit3 } from 'lucide-reac
 import clsx from 'clsx';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
 import { NotificationTemplateModal } from '../components/NotificationTemplateModal';
+import { getApiBaseUrl } from '../utils/apiUrl';
 
 interface SystemSettings {
   sla_first_response_hours: number;
@@ -144,13 +145,8 @@ const SystemSettings: React.FC = () => {
       const formData = new FormData();
       formData.append('attachment', file);
 
-      // Usar axios diretamente para FormData
-      const hostname = window.location.hostname;
-      const port = window.location.port || '3004'; // Usar porta atual ou padrão 3004
-      const baseURL = hostname === 'localhost' || hostname === '127.0.0.1' 
-        ? '/api' 
-        : `${window.location.protocol}//${hostname}:${port}/api`;
-      
+      const baseURL = getApiBaseUrl();
+
       const response = await axios.post(`${baseURL}/system/logo`, formData, {
         headers: {
           // NÃO definir Content-Type manualmente - o axios/browser define automaticamente com o boundary correto

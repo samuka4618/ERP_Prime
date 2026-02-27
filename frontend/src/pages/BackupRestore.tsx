@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Database, Download, Upload, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { getApiBaseUrl } from '../utils/apiUrl';
 
 const BackupRestore: React.FC = () => {
   const { hasPermission, loading: loadingPermissions } = usePermissions();
@@ -20,7 +21,7 @@ const BackupRestore: React.FC = () => {
     if (!canCreate) return;
     setGenerating(true);
     try {
-      const baseURL = '/api';
+      const baseURL = getApiBaseUrl();
       const token = localStorage.getItem('token');
       const headers: Record<string, string> = {};
       if (token && token !== 'cookie') headers.Authorization = `Bearer ${token}`;
@@ -61,7 +62,7 @@ const BackupRestore: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      const baseURL = '/api';
+      const baseURL = getApiBaseUrl();
       const token = localStorage.getItem('token');
       const headers: Record<string, string> = {};
       if (token && token !== 'cookie') headers.Authorization = `Bearer ${token}`;

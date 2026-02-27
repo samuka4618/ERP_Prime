@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { logger } from '../utils/logger';
+import { getApiOriginUrl } from '../utils/apiUrl';
 
 interface RealtimeEvent {
   type: 'message' | 'ticket_update' | 'notification' | 'heartbeat' | 'connection';
@@ -56,15 +57,9 @@ export const useRealtime = (options: UseRealtimeOptions = {}) => {
     }
 
     try {
-      // Construir URL baseada no hostname atual
-      const hostname = window.location.hostname;
-      let baseURL: string;
-      
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        baseURL = '/api/realtime';
-      } else {
-        baseURL = `${window.location.protocol}//${hostname}:3000/api/realtime`;
-      }
+      // Usar VITE_API_URL quando definido (deploy Vercel + Render); senão /api/realtime ou origem:port
+      const origin = getApiOriginUrl();
+      const baseURL = origin.startsWith('http') ? `${origin}/api/realtime` : '/api/realtime';
 
       const url = ticketId 
         ? `${baseURL}/ticket/${ticketId}?token=${encodeURIComponent(token)}`
@@ -193,14 +188,8 @@ export const useRealtime = (options: UseRealtimeOptions = {}) => {
     if (!isConnected) return;
 
     try {
-      const hostname = window.location.hostname;
-      let baseURL: string;
-      
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        baseURL = '/api/realtime';
-      } else {
-        baseURL = `${window.location.protocol}//${hostname}:3000/api/realtime`;
-      }
+      const origin = getApiOriginUrl();
+      const baseURL = origin.startsWith('http') ? `${origin}/api/realtime` : '/api/realtime';
 
       const response = await fetch(`${baseURL}/heartbeat`, {
         method: 'POST',

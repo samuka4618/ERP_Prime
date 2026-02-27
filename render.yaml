@@ -1,0 +1,37 @@
+# Render Blueprint - Backend ERP Prime (use com frontend na Vercel)
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: erp-prime-api
+    runtime: node
+    region: oregon
+    plan: free
+
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/src/server.js
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # PORT é definido automaticamente pelo Render
+      # CORS: lista de origens permitidas (URL do front na Vercel)
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # URL do frontend para links em e-mails
+      - key: CLIENT_URL
+        sync: false
+      # Banco e storage: em plano pago use Render Disk e aponte para /data
+      # - key: DB_PATH
+      #   value: /data/database/chamados.db
+      # - key: UPLOAD_PATH
+      #   value: /data/storage/uploads
+      # - key: IMAGES_PATH
+      #   value: /data/storage/images
+      # - key: UPLOADS_PATH
+      #   value: /data/storage/uploads
+
+    # Descomente para persistência (requer disco no Render)
+    # disk:
+    #   name: data
+    #   mountPath: /data
+    #   sizeGB: 1

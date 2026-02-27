@@ -180,7 +180,7 @@ A raiz do repositório contém backend + pasta `frontend/`. O arquivo **`vercel.
 | Campo | Valor |
 |-------|--------|
 | **Project Name** | `erp-prime` ou o nome que preferir (vira parte da URL). |
-| **Framework Preset** | **Other** (ou Vite, se aparecer; o Vercel detecta às vezes). |
+| **Framework Preset** / **Application Preset** | **Other** ou **Vite**. **Não** use **Express** — o frontend é React/Vite (estático); o Express é o backend e fica no Render. |
 | **Root Directory** | Deixe **em branco** (raiz). O `vercel.json` usa `cd frontend` no build. |
 | **Build Command** | Pode deixar em branco; o `vercel.json` usa: `cd frontend && npm ci && npm run build`. |
 | **Output Directory** | Pode deixar em branco; o `vercel.json` usa: `frontend/dist`. |

@@ -6,6 +6,7 @@
   "scripts": {
     "test-sql": "ts-node scripts/test-sql-connection.ts",
     "build": "tsc",
+    "build:render": "npm ci --include=dev && npm run build",
     "start": "node scripts/start-with-nginx.js",
     "start:server": "node dist/src/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",

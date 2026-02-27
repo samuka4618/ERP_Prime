@@ -81,17 +81,50 @@ Preencha exatamente como abaixo (ajuste nome se quiser):
 
 | Campo | Valor |
 |-------|--------|
-| **Build Command** | `npm ci && npm run build` |
+| **Build Command** | `npm ci --include=dev && npm run build` |
 | **Start Command** | `node dist/src/server.js` |
 
-- **npm ci** usa o `package-lock.json` e garante dependências iguais ao local.
-- O script **build** do `package.json` da raiz roda `tsc` e gera a pasta `dist/`.
+- **`npm ci --include=dev`** — No Render, `NODE_ENV=production` faz o `npm ci` **não** instalar as devDependencies (pacotes `@types/*`). O TypeScript precisa deles para compilar. O flag `--include=dev` garante que as devDependencies sejam instaladas no build.
+- O script **build** do `package.json` roda `tsc` e gera a pasta `dist/`.
 
-### 3.5 Variáveis de ambiente (primeira leva)
+### 3.5 Variáveis de ambiente
 
-Antes do primeiro deploy, cadastre pelo menos estas variáveis na seção **Environment** do serviço:
+Você pode **importar o .env inteiro** ou **adicionar variáveis uma a uma**.
 
-Clique em **"Add Environment Variable"** e adicione uma a uma:
+#### Opção 1: Importar o .env inteiro (recomendado)
+
+1. Na seção **Environment** do Web Service, procure **"Bulk Edit"** ou o botão que abre o editor em massa (às vezes um ícone de tabela ou "Import").
+2. Copie **todo o conteúdo** do seu arquivo `.env` local (o que está na raiz do projeto ERP_Prime).
+3. Cole no campo de edição em massa. O Render aceita o formato `KEY=valor`, uma variável por linha. Linhas em branco e comentários (`#`) são ignorados.
+4. Clique em **"Save Changes"** (ou equivalente).
+5. **Depois de importar, edite estas variáveis** (clique no lápis ao lado de cada uma):
+
+| Variável | Ajuste obrigatório em produção |
+|----------|---------------------------------|
+| `NODE_ENV` | Troque para `production`. |
+| `PORT` | **Apague** ou deixe em branco — o Render define automaticamente. |
+| `ALLOWED_ORIGINS` | Deixe em branco por enquanto; preencha depois com a URL do front (ex.: `https://erp-prime.vercel.app`). |
+| `CLIENT_URL` | Deixe em branco por enquanto; preencha depois com a mesma URL do front. |
+| `JWT_SECRET` | **Recomendado:** gere uma nova chave só para produção (ex.: `openssl rand -hex 32`) e substitua o valor atual. |
+
+6. **Revise também** (opcional mas importante):
+
+| Variável | Sugestão para produção |
+|----------|-------------------------|
+| `DB_SERVER` | Se o SQL Server estiver na sua rede local (ex.: `192.168.14.1`), o Render **não** conseguirá acessar. Remova ou use um servidor acessível pela internet (VPN/túnel). |
+| `ATAK_BASE_URL` | Se for `http://192.168.14.13:9010`, o Render não acessa. Ajuste para uma URL pública do Atak, se houver. |
+| `USE_NGROK` | Defina como `false` no Render (Ngrok é para expor ambiente local). |
+| `DB_PATH`, `UPLOAD_PATH`, `IMAGES_PATH`, `UPLOADS_PATH` | No plano Free podem ficar como estão (ex.: `./data/...`); os dados não persistem. Se ativar [Render Disk](#6-persistência-de-dados-render-disk), troque para `/data/database/chamados.db`, `/data/storage/uploads`, etc. |
+
+**Segurança:** Nunca faça commit do `.env` no Git. Use apenas o arquivo que está na sua máquina para copiar e colar no Render.
+
+**Se aparecer "too long?" no valor de uma variável:** O Render limita o tamanho do valor de cada variável. Isso costuma acontecer quando, ao colar o .env no **Bulk Edit**, uma linha fica quebrada ou várias linhas são interpretadas como um único valor (ex.: tudo depois de `JWT_SECRET=` vira o valor). **Solução:** edite a variável que mostra "too long?" (clique nela), apague o conteúdo e digite só o valor correto em uma linha (ex.: para `JWT_SECRET`, apenas a chave em hex, sem quebras de linha). Se precisar, use **"Add from .env"** de novo com um .env que tenha uma variável por linha, sem valores com quebra de linha.
+
+#### Opção 2: Adicionar variáveis uma a uma
+
+Se preferir não importar o .env:
+
+Clique em **"Add Environment Variable"** e cadastre pelo menos:
 
 | Key | Value | Observação |
 |-----|--------|------------|
@@ -100,11 +133,15 @@ Clique em **"Add Environment Variable"** e adicione uma a uma:
 | `ALLOWED_ORIGINS` | *(deixe em branco por enquanto)* | Será preenchido depois com a URL do front (ex.: `https://seu-app.vercel.app`). |
 | `CLIENT_URL` | *(deixe em branco por enquanto)* | Será preenchido depois com a mesma URL do front. |
 
+Depois adicione as demais (SMTP, SQL Server, Atak, CNPJÁ, TESS, Infobip, etc.) conforme a [Seção 7](#7-variáveis-de-ambiente--referência-completa).
+
+---
+
 **Importante:** No plano **Free**, o Render não persiste arquivos entre deploys. Ou seja, SQLite e uploads são perdidos ao redeploy ou após inatividade. Para persistência, veja a [Seção 6](#6-persistência-de-dados-render-disk).
 
-Se você já tiver as demais variáveis (SMTP, SQL Server, Atak, etc.), pode adicionar agora. Caso contrário, adicione depois; o app pode subir mesmo assim (algumas funcionalidades só funcionarão após configurar). Veja a [Seção 7](#7-variáveis-de-ambiente--referência-completa) com a lista completa.
-
 ### 3.6 Deploy
+
+Antes de clicar em **"Create Web Service"**, confira se não há erro em nenhum campo (às vezes o Render mostra *"There's an error above"* em vermelho sem destacar o campo). Veja a lista abaixo e a [Seção 10](#10-problemas-comuns-e-solução) (*"Erro 'There's an error above' no Render"*).
 
 1. Clique em **"Create Web Service"**.
 2. O Render vai clonar o repositório, rodar `npm ci`, `npm run build` e depois `node dist/src/server.js`.
@@ -362,10 +399,13 @@ Após o deploy:
 
 | Problema | Causa provável | Solução |
 |----------|-----------------|--------|
+| **"There's an error above. Please fix it to continue."** (Render não mostra onde) | Algum campo obrigatório acima do aviso está vazio ou inválido. | **Confira de cima para baixo:** (1) **Repositório** — está conectado e a **branch** (ex.: `main`) está selecionada? (2) **Name** — preenchido (ex.: `erp-prime-api`)? (3) **Build Command** — exatamente `npm ci && npm run build`. (4) **Start Command** — exatamente `node dist/src/server.js`. (5) **Environment** — se usou Bulk Edit com o .env, não pode ter linha com só `KEY=` sem valor; variáveis vazias às vezes dão erro: remova ou preencha. (6) **Plan** — selecione **Free** se a página pedir. Role a tela inteira e verifique cada seção. |
+| **Variável com "too long?" no valor** (ex.: JWT_SECRET) | O valor colado ficou grande demais ou várias linhas do .env foram interpretadas como um único valor. | Clique na variável, apague o conteúdo do valor e digite **apenas** o valor correto em uma linha (ex.: para `JWT_SECRET`, só a chave em hex). Se usou "Add from .env", confira se no arquivo não há valores com quebra de linha; no .env cada variável deve ser `KEY=valor` em uma única linha. |
 | Erro de CORS no navegador | Front em um domínio e back em outro sem CORS | Garantir `ALLOWED_ORIGINS` no Render com a URL **exata** do front (incluindo `https://`), sem barra no final. Redeploy do backend. |
 | "Failed to fetch" / rede | URL da API errada ou backend fora do ar | Verificar `VITE_API_URL` na Vercel. Testar no navegador: `https://SEU-BACKEND.onrender.com/health`. No plano Free, o serviço “acorda” após alguns segundos. |
 | Build do front falha na Vercel | Comando ou pasta errada | Se **Root Directory** estiver vazio, o `vercel.json` deve comandar `cd frontend && npm ci && npm run build` e output `frontend/dist`. Ou defina Root = `frontend`, Build = `npm run build`, Output = `dist`. |
-| Build do back falha no Render | Erro de TypeScript ou dependência | Ver logs no Render. Rodar localmente `npm ci && npm run build` na raiz. Corrigir erros e dar push. |
+| Build do back falha no Render (erros "Could not find a declaration file for module 'express'") | Com `NODE_ENV=production`, o `npm ci` não instala devDependencies; o `tsc` precisa dos `@types/*`. | Use **Build Command**: `npm ci --include=dev && npm run build`. Veja a [Seção 3.4](#34-build--start). |
+| Build do back falha no Render (outros erros TS ou dependência) | Erro de TypeScript ou dependência | Ver logs no Render. Rodar localmente `npm ci && npm run build` na raiz. Corrigir erros e dar push. |
 | Login não funciona / 401 | JWT ou cookie/origem | Confirmar `JWT_SECRET` definido no Render. Verificar se `ALLOWED_ORIGINS` inclui a origem do front e se `withCredentials`/cookies estão corretos no front. |
 | Dados sumiram após redeploy | Plano Free sem disco | Normal no Free. Para persistir, ativar Render Disk e configurar `DB_PATH` e paths de upload em `/data/...` (Seção 6). |
 | SQL Server não conecta | Backend na nuvem, SQL na rede local | O Render não acessa sua rede. Opções: expor o SQL Server (com segurança/VPN), ou usar um banco na nuvem para esses dados. |

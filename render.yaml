@@ -7,7 +7,8 @@ services:
     region: oregon
     plan: free
 
-    buildCommand: npm ci && npm run build
+    # --include=dev: no Render, NODE_ENV=production faz npm ci pular devDependencies; o tsc precisa dos @types/*
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: node dist/src/server.js
 
     envVars:

@@ -1,6 +1,6 @@
-# Deploy completo: ERP Prime (Vercel + Render)
+# Deploy completo: ERP Prime (Vercel + Render / Fly.io / Railway)
 
-Guia passo a passo para publicar o **frontend** na **Vercel** e o **backend** no **Render**. Siga a ordem indicada.
+Guia passo a passo para publicar o **frontend** na **Vercel** e o **backend** no **Render**, no **Fly.io** ou no **Railway**. Escolha um backend e siga a ordem indicada.
 
 ---
 
@@ -9,14 +9,16 @@ Guia passo a passo para publicar o **frontend** na **Vercel** e o **backend** no
 1. [Pré-requisitos](#1-pré-requisitos)
 2. [Ordem do deploy](#2-ordem-do-deploy)
 3. [Parte A: Deploy do backend (Render)](#3-parte-a-deploy-do-backend-render)
-4. [Parte B: Deploy do frontend (Vercel)](#4-parte-b-deploy-do-frontend-vercel)
-5. [Parte C: Ligar front e back](#5-parte-c-ligar-front-e-back)
-6. [Persistência de dados (Render Disk)](#6-persistência-de-dados-render-disk)
-7. [Variáveis de ambiente – referência completa](#7-variáveis-de-ambiente--referência-completa)
-8. [Domínios customizados](#8-domínios-customizados)
-9. [Testes e validação](#9-testes-e-validação)
-10. [Problemas comuns e solução](#10-problemas-comuns-e-solução)
-11. [Checklist final](#11-checklist-final)
+4. [Parte A2: Deploy do backend (Fly.io)](#4-parte-a2-deploy-do-backend-flyio)
+5. [Parte A3: Deploy do backend (Railway)](#5-parte-a3-deploy-do-backend-railway)
+6. [Parte B: Deploy do frontend (Vercel)](#6-parte-b-deploy-do-frontend-vercel)
+7. [Parte C: Ligar front e back](#7-parte-c-ligar-front-e-back)
+8. [Persistência de dados (Render / Fly.io / Railway)](#8-persistência-de-dados-render--flyio--railway)
+9. [Variáveis de ambiente – referência completa](#9-variáveis-de-ambiente--referência-completa)
+10. [Domínios customizados](#10-domínios-customizados)
+11. [Testes e validação](#11-testes-e-validação)
+12. [Problemas comuns e solução](#12-problemas-comuns-e-solução)
+13. [Checklist final](#13-checklist-final)
 
 ---
 
@@ -24,7 +26,7 @@ Guia passo a passo para publicar o **frontend** na **Vercel** e o **backend** no
 
 - [ ] **Conta no GitHub** (ou GitLab) com o repositório do ERP Prime.
 - [ ] **Conta na Vercel**: [vercel.com](https://vercel.com) → Sign Up (pode usar GitHub).
-- [ ] **Conta no Render**: [render.com](https://render.com) → Get Started (pode usar GitHub).
+- [ ] **Conta no Render**: [render.com](https://render.com) → Get Started (pode usar GitHub). *Ou* **Fly.io**: [fly.io](https://fly.io) (e CLI `flyctl`). *Ou* **Railway**: [railway.app](https://railway.app) (login com GitHub).
 - [ ] Código **commitado e pushed** na branch que será usada no deploy (ex.: `main` ou `master`).
 - [ ] **Node.js 18+** instalado localmente (só para testar build antes, se quiser).
 
@@ -137,7 +139,7 @@ Depois adicione as demais (SMTP, SQL Server, Atak, CNPJÁ, TESS, Infobip, etc.) 
 
 ---
 
-**Importante:** No plano **Free**, o Render não persiste arquivos entre deploys. Ou seja, SQLite e uploads são perdidos ao redeploy ou após inatividade. Para persistência, veja a [Seção 6](#6-persistência-de-dados-render-disk).
+**Importante:** No plano **Free**, o Render não persiste arquivos entre deploys. Ou seja, SQLite e uploads são perdidos ao redeploy ou após inatividade. Para persistência, veja a [Seção 8](#8-persistência-de-dados-render--flyio--railway).
 
 ### 3.6 Deploy
 
@@ -161,19 +163,129 @@ Se retornar JSON (ex.: `{"ok":true}` ou lista de rotas), o backend está no ar.
 
 ---
 
-## 4. Parte B: Deploy do frontend (Vercel)
+## 4. Parte A2: Deploy do backend (Fly.io)
 
-### 4.1 Acessar a Vercel
+O Fly.io usa **Docker** (o repositório já inclui `Dockerfile` e `fly.toml`). O backend sobe como container e escuta na porta **8080**.
+
+### 4.1 Pré-requisitos Fly.io
+
+- Conta em [fly.io](https://fly.io) (login com GitHub).
+- **flyctl** instalado: `powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"` (Windows) ou `curl -L https://fly.io/install.sh | sh` (Linux/macOS).
+- No terminal: `fly auth login`.
+
+### 4.2 Primeiro deploy
+
+1. Na **raiz** do repositório (onde está o `Dockerfile` e o `fly.toml`):
+   ```bash
+   fly launch
+   ```
+2. Se perguntar **nome do app**, use ex.: `erp-prime-api` (ou outro único).
+3. **Region**: escolha a mais próxima (ex.: `gru` para São Paulo, `iad` para Virginia).
+4. **Postgres/Redis**: responda **No** (o app usa SQLite e não exige outros serviços para subir).
+5. O Fly cria o app e pergunta se quer fazer o primeiro deploy; responda **Yes** (ou faça depois com `fly deploy`).
+
+### 4.3 Configuração no fly.toml
+
+O `fly.toml` na raiz já define `PORT=8080` e `internal_port=8080`. Se alterar a porta, mantenha os dois iguais.
+
+### 4.4 Variáveis de ambiente (secrets)
+
+Defina as variáveis no Fly (elas ficam como *secrets*):
+
+```bash
+fly secrets set NODE_ENV=production
+fly secrets set JWT_SECRET="sua-chave-longa-aleatoria"
+fly secrets set ALLOWED_ORIGINS="https://erp-prime.vercel.app"
+fly secrets set CLIENT_URL="https://erp-prime.vercel.app"
+```
+
+Para várias de uma vez (ex.: copiar do .env, **sem** colar senhas em logs):
+
+```bash
+fly secrets set SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_USER=... SMTP_PASS=...
+```
+
+**Importante:** No Fly.io **não** use `DB_PATH=/data/...` a menos que tenha criado um [volume](#8-persistência-de-dados-render--flyio--railway) e montado em `/data`. Sem volume, use caminhos relativos ou deixe o padrão (`./data/database/chamados.db`); os dados serão efêmeros.
+
+### 4.5 URL do backend
+
+Após o deploy, a URL do app será algo como:
+
+`https://erp-prime-api.fly.dev`
+
+Use essa URL em **VITE_API_URL** no frontend (Vercel) e em **ALLOWED_ORIGINS** / **CLIENT_URL** no backend (secrets).
+
+### 4.6 Comandos úteis
+
+- Ver logs: `fly logs`
+- Abrir o app no navegador: `fly open`
+- Redeploy: `fly deploy`
+
+---
+
+## 5. Parte A3: Deploy do backend (Railway)
+
+O Railway detecta Node.js pelo `package.json` e usa **build** e **start** configuráveis. Não é necessário Docker.
+
+### 5.1 Pré-requisitos Railway
+
+- Conta em [railway.app](https://railway.app) (login com GitHub).
+
+### 5.2 Criar o projeto e o serviço
+
+1. Acesse [dashboard.railway.app](https://dashboard.railway.app).
+2. **New Project** → **Deploy from GitHub repo**.
+3. Selecione o repositório **ERP_Prime** e a branch (ex.: `main`).
+4. O Railway cria um projeto e um **service** ligado ao repo.
+
+### 5.3 Configurações do serviço
+
+1. Clique no serviço (backend).
+2. Aba **Settings** (ou **Variables**):
+   - **Root Directory**: deixe **vazio** (raiz do repositório).
+   - **Build Command**: `npm ci --include=dev && npm run build`
+   - **Start Command**: `node dist/src/server.js`
+   - **Watch Paths** (opcional): deixe em branco ou `src` para redeploy só quando o backend mudar.
+
+O Railway define **PORT** automaticamente; o backend já usa `process.env.PORT`.
+
+### 5.4 Variáveis de ambiente
+
+1. No serviço: **Variables** (ou **Environment**).
+2. Clique em **Add Variable** ou **Raw Editor** e adicione as mesmas variáveis do [Render](#35-variáveis-de-ambiente), por exemplo:
+   - `NODE_ENV` = `production`
+   - `JWT_SECRET` = *(chave longa aleatória)*
+   - `ALLOWED_ORIGINS` = `https://erp-prime.vercel.app`
+   - `CLIENT_URL` = `https://erp-prime.vercel.app`
+   - Demais (SMTP, DB_PATH, etc.) conforme a [Seção 9](#9-variáveis-de-ambiente--referência-completa).
+
+**Importante:** Sem volume, **não** use `DB_PATH=/data/...`. Use relativos (`./data/database/chamados.db`) ou deixe o padrão; dados serão efêmeros. Para persistência, crie um [Volume](#8-persistência-de-dados-render--flyio--railway).
+
+### 5.5 Domínio e URL
+
+1. Aba **Settings** → **Networking** → **Generate Domain** (ou **Public Networking**).
+2. O Railway gera um domínio como `erp-prime-api-production-xxxx.up.railway.app`.
+3. Anote a URL (com `https://`) e use em **VITE_API_URL** no front e em **ALLOWED_ORIGINS** / **CLIENT_URL** no backend.
+
+### 5.6 Redeploy
+
+A cada push na branch conectada o Railway faz redeploy automático (se estiver ativo). Para redeploy manual: **Deployments** → **Redeploy**.
+
+---
+
+## 6. Parte B: Deploy do frontend (Vercel)
+
+### 6.1 Acessar a Vercel
 
 1. Acesse [vercel.com](https://vercel.com) e faça login (com GitHub, se preferir).
 2. No dashboard, clique em **"Add New…"** → **"Project"**.
 
-### 4.2 Importar o repositório
+### 6.2 Importar o repositório
 
 1. Selecione o **mesmo repositório** do ERP Prime (GitHub/GitLab).
 2. Clique em **"Import"**.
 
-### 4.3 Configurações do projeto
+### 6.3 Configurações do projeto
 
 A raiz do repositório contém backend + pasta `frontend/`. O arquivo **`vercel.json`** na raiz já está configurado para buildar apenas o frontend. Use:
 
@@ -195,7 +307,7 @@ A raiz do repositório contém backend + pasta `frontend/`. O arquivo **`vercel.
 
 Nesse caso, o `vercel.json` da raiz do repo pode ser ignorado para esse projeto (a Vercel usa as configurações da UI quando Root Directory está definido).
 
-### 4.4 Variáveis de ambiente (Vercel)
+### 6.4 Variáveis de ambiente (Vercel)
 
 Antes de dar Deploy, vá em **Environment Variables** e adicione:
 
@@ -208,7 +320,7 @@ Antes de dar Deploy, vá em **Environment Variables** e adicione:
 - O Vite só injeta variáveis que começam com `VITE_` no bundle; por isso o nome `VITE_API_URL`.
 - **Importante:** sempre que alterar `VITE_API_URL` (ou qualquer variável `VITE_*`), é necessário fazer um **novo deploy** do projeto na Vercel (Deployments → ⋮ no último deploy → Redeploy).
 
-### 4.5 Deploy
+### 6.5 Deploy
 
 1. Clique em **"Deploy"**.
 2. Aguarde o build (instalação de dependências + `npm run build` no frontend).
@@ -216,19 +328,19 @@ Antes de dar Deploy, vá em **Environment Variables** e adicione:
    `https://erp-prime.vercel.app`  
    Anote essa URL.
 
-### 4.6 Teste rápido do front
+### 6.6 Teste rápido do front
 
 Abra a URL do projeto. Você deve ver a tela de login do ERP Prime. Ainda pode dar erro ao logar se o CORS no backend não estiver configurado — isso é ajustado na Parte C.
 
 ---
 
-## 5. Parte C: Ligar front e back
+## 7. Parte C: Ligar front e back
 
 O front (Vercel) precisa poder chamar o back (Render). Isso exige **CORS** e **URL do cliente** no backend.
 
-### 5.1 No Render (backend)
+### 7.1 No backend (Render / Fly.io / Railway)
 
-1. Vá no seu **Web Service** no Render.
+1. No **Render**: vá no seu Web Service. No **Fly.io**: use `fly secrets set ALLOWED_ORIGINS=...` e `CLIENT_URL=...`. No **Railway**: aba Variables do serviço.
 2. Aba **"Environment"**.
 3. Edite ou adicione:
 
@@ -243,9 +355,9 @@ Se você tiver mais de um domínio (ex.: preview da Vercel e domínio customizad
 ALLOWED_ORIGINS=https://erp-prime.vercel.app,https://app.seudominio.com.br
 ```
 
-4. Salve. O Render faz um **redeploy automático** ao alterar variáveis.
+4. Salve. No Render/Railway isso dispara redeploy; no Fly.io use `fly secrets set` e depois `fly deploy` se necessário.
 
-### 5.2 Aguardar redeploy e testar
+### 7.2 Aguardar redeploy e testar
 
 1. Espere o redeploy do Render terminar (status "Live").
 2. Abra de novo o front na Vercel e tente **fazer login**.
@@ -253,39 +365,34 @@ ALLOWED_ORIGINS=https://erp-prime.vercel.app,https://app.seudominio.com.br
 
 ---
 
-## 6. Persistência de dados (Render Disk)
+## 8. Persistência de dados (Render / Fly.io / Railway)
 
-No plano **Free**, o sistema de arquivos do Render é **efêmero**: tudo em disco (SQLite, uploads) é perdido em redeploy ou após o serviço “dormir”.
+Sem disco/volume, SQLite e uploads são **efêmeros** (perdidos em redeploy). Para persistir, use a opção da sua plataforma abaixo.
 
-Para **persistir** banco e arquivos:
+### 8.1 Render (Disk)
 
-1. **Plano pago** no Render (ex.: Starter) com **Disk**.
-2. No seu Web Service: **Settings** → **Disks** → **Add Disk**:
-   - **Name**: `data`
-   - **Mount Path**: `/data`
-   - **Size**: 1 GB (ou o que precisar).
-3. Variáveis de ambiente (ajuste no **Environment**):
+1. **Plano pago** (ex.: Starter) e **Settings** → **Disks** → **Add Disk**: Name `data`, Mount Path `/data`, tamanho ex.: 1 GB.
+2. Variáveis: `DB_PATH=/data/database/chamados.db`, `UPLOAD_PATH=/data/storage/uploads`, `IMAGES_PATH=/data/storage/images`, `UPLOADS_PATH=/data/storage/uploads`.
+3. **Start Command** (opcional): `mkdir -p /data/database /data/storage/uploads /data/storage/images && node dist/src/server.js`.
 
-```env
-DB_PATH=/data/database/chamados.db
-UPLOAD_PATH=/data/storage/uploads
-IMAGES_PATH=/data/storage/images
-UPLOADS_PATH=/data/storage/uploads
-```
+### 8.2 Fly.io (Volume)
 
-4. O backend precisa **criar** esses diretórios na primeira subida. No **Start Command** você pode usar:
+1. Crie o volume na **mesma região** do app (ex.: `gru`): `fly volumes create data --region gru --size 1`
+2. No `fly.toml`, descomente o bloco `[mounts]` com `source = "data"` e `destination = "/data"`.
+3. Defina os secrets: `fly secrets set DB_PATH=/data/database/chamados.db UPLOAD_PATH=/data/storage/uploads IMAGES_PATH=/data/storage/images UPLOADS_PATH=/data/storage/uploads`
+4. Redeploy: `fly deploy`. O código já cria os subdiretórios em `/data` se necessário.
 
-```bash
-mkdir -p /data/database /data/storage/uploads /data/storage/images && node dist/src/server.js
-```
+### 8.3 Railway (Volume)
 
-Ou garantir no código que esses diretórios existem ao iniciar (já é uma boa prática). Após isso, SQLite e uploads passam a persistir entre deploys.
+1. No serviço: **Settings** → **Volumes** → **Add Volume**. Mount Path: `/data`, tamanho ex.: 1 GB.
+2. Variáveis: `DB_PATH=/data/database/chamados.db`, `UPLOAD_PATH=/data/storage/uploads`, `IMAGES_PATH=/data/storage/images`, `UPLOADS_PATH=/data/storage/uploads`.
+3. Redeploy. O backend cria os diretórios sob `/data` na primeira subida (quando tiver permissão).
 
 ---
 
-## 7. Variáveis de ambiente – referência completa
+## 9. Variáveis de ambiente – referência completa
 
-### 7.1 Backend (Render)
+### 9.1 Backend (Render / Fly.io / Railway)
 
 Todas as variáveis que o backend pode usar, com indicação de uso em produção.
 
@@ -338,7 +445,7 @@ Todas as variáveis que o backend pode usar, com indicação de uso em produçã
 
 \* Em produção com disco, use os paths em `/data/...`; sem disco, o app sobe mas dados não persistem.
 
-### 7.2 Frontend (Vercel)
+### 9.2 Frontend (Vercel)
 
 | Variável | Obrigatório (produção) | Descrição |
 |----------|-------------------------|-----------|
@@ -352,25 +459,25 @@ Opcional (desenvolvimento local):
 
 ---
 
-## 8. Domínios customizados
+## 10. Domínios customizados
 
-### 8.1 Backend (Render)
+### 10.1 Backend (Render / Fly.io / Railway)
 
 1. No Web Service: **Settings** → **Custom Domains** → **Add Custom Domain**.
 2. Informe o domínio (ex.: `api.seudominio.com.br`).
 3. Siga as instruções do Render para criar o registro CNAME (ou A) no seu DNS.
 4. Depois de ativo, use essa URL em `VITE_API_URL` no front e inclua em `ALLOWED_ORIGINS` e `CLIENT_URL` se for o mesmo domínio do front.
 
-### 8.2 Frontend (Vercel)
+### 10.2 Frontend (Vercel)
 
 1. No projeto: **Settings** → **Domains** → **Add**.
 2. Digite o domínio (ex.: `app.seudominio.com.br`).
 3. Configure no seu provedor de DNS conforme a Vercel indicar (CNAME ou A).
-4. Atualize no Render: `ALLOWED_ORIGINS` e `CLIENT_URL` com esse domínio.
+4. Atualize no backend (Render/Fly.io/Railway): `ALLOWED_ORIGINS` e `CLIENT_URL` com esse domínio. No Fly.io: `fly certs add seu-dominio.com` e configurar CNAME; no Railway: **Settings** → **Networking** → **Custom Domain**.
 
 ---
 
-## 9. Testes e validação
+## 11. Testes e validação
 
 Após o deploy:
 
@@ -395,7 +502,7 @@ Após o deploy:
 
 ---
 
-## 10. Problemas comuns e solução
+## 12. Problemas comuns e solução
 
 | Problema | Causa provável | Solução |
 |----------|-----------------|--------|
@@ -412,15 +519,15 @@ Após o deploy:
 
 ---
 
-## 11. Checklist final
+## 13. Checklist final
 
-- [ ] Backend no Render: serviço **Live**, URL anotada.
+- [ ] Backend (Render, Fly.io ou Railway): serviço no ar, URL anotada.
 - [ ] Variáveis do backend: `NODE_ENV`, `JWT_SECRET`, `ALLOWED_ORIGINS`, `CLIENT_URL` (e as que você usa: SMTP, DB_PATH, etc.).
 - [ ] Frontend na Vercel: projeto deployado, URL anotada.
 - [ ] Variável do front: `VITE_API_URL` = URL do backend (sem barra no final).
 - [ ] CORS: `ALLOWED_ORIGINS` = URL do front (e de outros domínios, se houver).
 - [ ] Teste de login e navegação no front.
-- [ ] (Opcional) Persistência: Render Disk + paths em `/data/...` e Start Command criando pastas.
+- [ ] (Opcional) Persistência: Disk/Volume (Render/Fly.io/Railway) + paths em `/data/...`.
 - [ ] (Opcional) Domínios customizados configurados e refletidos em `VITE_API_URL`, `ALLOWED_ORIGINS` e `CLIENT_URL`.
 
-Com isso, o deploy do ERP Prime com front na Vercel e back no Render está completo e atualizado.
+Com isso, o deploy do ERP Prime com front na Vercel e back no Render, Fly.io ou Railway está completo e atualizado.

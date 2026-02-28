@@ -29,22 +29,21 @@ export const sqlServerConfig: SqlServerConfig = {
 
 class SqlServerConnection {
   private pool: sql.ConnectionPool | null = null;
+  /** true quando as variáveis DB_* não estão definidas (ex.: Railway só com Postgres) */
+  private configMissing = false;
 
   async connect(): Promise<void> {
     try {
-      // Verificar se as variáveis de ambiente estão configuradas
+      // Se variáveis não estão configuradas, não tentar conectar (evita erro em produção sem SQL Server)
       if (!sqlServerConfig.server || !sqlServerConfig.database || !sqlServerConfig.user || !sqlServerConfig.password) {
-        const missing = [];
-        if (!sqlServerConfig.server) missing.push('DB_SERVER');
-        if (!sqlServerConfig.database) missing.push('DB_DATABASE');
-        if (!sqlServerConfig.user) missing.push('DB_USER');
-        if (!sqlServerConfig.password) missing.push('DB_PASSWORD');
-        
-        throw new Error(
-          `Variáveis de ambiente do SQL Server não configuradas: ${missing.join(', ')}. ` +
-          `Verifique o arquivo .env na raiz do projeto.`
+        this.configMissing = true;
+        console.warn(
+          'SQL Server não configurado (DB_SERVER, DB_DATABASE, DB_USER, DB_PASSWORD). ' +
+          'Módulos que dependem do SQL Server (ex.: cadastros externos) estarão indisponíveis.'
         );
+        return;
       }
+      this.configMissing = false;
 
       // Log das configurações (sem senha)
       console.log('🔌 Tentando conectar ao SQL Server...');
@@ -162,7 +161,12 @@ class SqlServerConnection {
     if (!this.pool || !this.pool.connected) {
       await this.connect();
     }
-    return this.pool!;
+    if (this.configMissing || !this.pool) {
+      throw new Error(
+        'SQL Server não configurado. Defina DB_SERVER, DB_DATABASE, DB_USER e DB_PASSWORD no .env para usar este recurso.'
+      );
+    }
+    return this.pool;
   }
 
   async executeQuery(query: string, params?: Record<string, any>): Promise<any[]> {
@@ -211,8 +215,22 @@ class SqlServerConnection {
 
 export const sqlServerConnection = new SqlServerConnection();
 
+/** Indica se as variáveis de ambiente do SQL Server estão definidas (sem testar conexão). */
+export function isSqlServerConfigured(): boolean {
+  return !!(sqlServerConfig.server && sqlServerConfig.database && sqlServerConfig.user && sqlServerConfig.password);
+}
+
 // Helper functions
 export async function getSqlConnection(databaseName?: string): Promise<sql.ConnectionPool> {
+  if (!isSqlServerConfigured()) {
+    console.warn(
+      'Recurso que exige SQL Server acessado sem configuração (DB_SERVER, DB_DATABASE, DB_USER, DB_PASSWORD). ' +
+      'Retornando erro ao cliente.'
+    );
+    throw new Error(
+      'SQL Server não configurado. Defina DB_SERVER, DB_DATABASE, DB_USER e DB_PASSWORD no .env para usar este recurso.'
+    );
+  }
   // Se especificou um banco diferente, criar conexão específica
   if (databaseName && databaseName !== sqlServerConfig.database) {
     const customConfig: sql.config = {

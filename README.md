@@ -321,18 +321,44 @@ Sistema de cadastro de clientes e análise de crédito com:
 - Integração com sistemas externos
 
 ## 🔐 Primeiro usuário administrador
-Em ambiente de produção (ou quando o registro estiver desabilitado), crie o primeiro admin via script:
+
+Em ambiente de produção (ou quando o registro estiver desabilitado), o primeiro admin pode ser criado pelo **script** `create-user` ou pela **tela de registro** no frontend (quando ainda não existe nenhum usuário).
+
+### Criar usuário via script (local ou SSH)
+
+O script usa o **mesmo banco** que o backend (variáveis `DATABASE_URL` + `USE_POSTGRES` no PostgreSQL, ou `DB_PATH` no SQLite). Rode no mesmo ambiente onde o banco está acessível.
+
+**Local (ou servidor com acesso ao banco):**
 ```bash
 npm run build    # compilar antes, se ainda não fez
 npm run create-user
 ```
-Exemplo de dados para o primeiro acesso:
-| Campo   | Valor              |
-|---------|--------------------|
-| Email   | admin@localhost.com |
-| Senha   | Admin@123456        |
-| Nome    | Administrador       |
-| Perfil  | admin               |
+
+**No Railway (via SSH):**  
+1. Conecte ao serviço pelo dashboard: **Serviço da API** → **Settings** → **SSH** (ou use a [Railway CLI](https://docs.railway.app/develop/cli): `railway run bash` no diretório do projeto).  
+2. No shell do container/serviço, as variáveis de ambiente (ex.: `DATABASE_URL`, `USE_POSTGRES`) já estão disponíveis. Compile e rode o script:
+```bash
+npm run build
+npm run create-user
+```
+3. Para usar e-mail/senha/nome/role próprios, defina as variáveis antes do comando (ou no painel Variables do Railway e depois rode só `npm run create-user`):
+```bash
+CREATE_USER_NAME="Seu Nome" \
+CREATE_USER_EMAIL="admin@seudominio.com" \
+CREATE_USER_PASSWORD="SuaSenhaSegura123" \
+CREATE_USER_ROLE="admin" \
+npm run create-user
+```
+
+**Valores padrão** (se não definir as variáveis):
+| Variável                 | Padrão              |
+|--------------------------|---------------------|
+| `CREATE_USER_NAME`       | Administrador       |
+| `CREATE_USER_EMAIL`      | admin@localhost.com |
+| `CREATE_USER_PASSWORD`   | Admin@123456         |
+| `CREATE_USER_ROLE`       | admin               |
+
+**Se o usuário já existir:** o script atualiza a senha e reativa o usuário se estiver inativo; não cria duplicado.
 
 ## 📝 Licença
 

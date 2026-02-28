@@ -1,5 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../database/connection';
-import { sqlBooleanTrue, sqlBooleanFalse } from '../database/sql-dialect';
+import { sqlBooleanTrue, sqlBooleanFalse, bindBoolean } from '../database/sql-dialect';
 import { User, UserRole, CreateUserRequest, UpdateUserRequest } from '../../shared/types';
 import bcrypt from 'bcryptjs';
 
@@ -19,11 +19,14 @@ export class UserModel {
         userData.email,
         hashedPassword,
         userData.role,
-        userData.is_active !== undefined ? (userData.is_active ? 1 : 0) : 1
+        userData.is_active !== undefined ? bindBoolean(userData.is_active) : bindBoolean(true)
       ]
     );
 
-    const user = await this.findById(result.lastID);
+    // No PostgreSQL o INSERT sem coluna "id" não retorna lastID; buscar por email
+    const user = result.lastID
+      ? await this.findById(result.lastID)
+      : await this.findByEmail(userData.email);
     if (!user) {
       throw new Error('Erro ao criar usuário');
     }

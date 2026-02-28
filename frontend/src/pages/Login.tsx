@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
 import { Eye, EyeOff, Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { getApiBaseUrl } from '../utils/apiUrl';
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -12,8 +14,27 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
   const { login } = useAuth();
   const { config } = useSystemConfig();
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const base = getApiBaseUrl();
+        const res = await fetch(`${base}/auth/registration-open`);
+        if (res.ok) {
+          const data = await res.json();
+          setRegistrationOpen(data.canRegister === true);
+        } else {
+          setRegistrationOpen(false);
+        }
+      } catch {
+        setRegistrationOpen(false);
+      }
+    };
+    check();
+  }, []);
 
   const systemName = config?.system_name || 'ERP PRIME';
   const systemSubtitle = config?.system_subtitle || 'Sistema de Gestão Empresarial';
@@ -180,6 +201,15 @@ const Login: React.FC = () => {
                 </>
               )}
             </button>
+
+            {registrationOpen === true && (
+              <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+                Não tem conta?{' '}
+                <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400">
+                  Criar conta
+                </Link>
+              </p>
+            )}
           </form>
 
           <p className="mt-8 text-center text-xs text-gray-500 dark:text-gray-400">

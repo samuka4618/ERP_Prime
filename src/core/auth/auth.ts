@@ -7,6 +7,7 @@ import { authenticate } from './middleware';
 const router = Router();
 
 // Rotas públicas
+router.get('/registration-open', AuthController.registrationOpen);
 router.post('/login', validate(loginSchema), AuthController.login);
 router.post('/register', validate(registerSchema), AuthController.register);
 

@@ -13,12 +13,13 @@ Guia passo a passo para publicar o **frontend** na **Vercel** e o **backend** no
 5. [Parte A3: Deploy do backend (Railway)](#5-parte-a3-deploy-do-backend-railway)
 6. [Parte B: Deploy do frontend (Vercel)](#6-parte-b-deploy-do-frontend-vercel)
 7. [Parte C: Ligar front e back](#7-parte-c-ligar-front-e-back)
-8. [Persistência de dados (Render / Fly.io / Railway)](#8-persistência-de-dados-render--flyio--railway)
-9. [Variáveis de ambiente – referência completa](#9-variáveis-de-ambiente--referência-completa)
-10. [Domínios customizados](#10-domínios-customizados)
-11. [Testes e validação](#11-testes-e-validação)
-12. [Problemas comuns e solução](#12-problemas-comuns-e-solução)
-13. [Checklist final](#13-checklist-final)
+8. [Primeiro acesso (criar usuário administrador)](#8-primeiro-acesso-criar-usuário-administrador)
+9. [Persistência de dados (Render / Fly.io / Railway)](#9-persistência-de-dados-render--flyio--railway)
+10. [Variáveis de ambiente – referência completa](#10-variáveis-de-ambiente--referência-completa)
+11. [Domínios customizados](#11-domínios-customizados)
+12. [Testes e validação](#12-testes-e-validação)
+13. [Problemas comuns e solução](#13-problemas-comuns-e-solução)
+14. [Checklist final](#14-checklist-final)
 
 ---
 
@@ -380,24 +381,61 @@ ALLOWED_ORIGINS=https://erp-prime.vercel.app,https://app.seudominio.com.br
 
 ---
 
-## 8. Persistência de dados (Render / Fly.io / Railway)
+## 8. Primeiro acesso (criar usuário administrador)
+
+Se o banco estiver vazio (deploy novo ou volume novo), **não há usuários**. É preciso criar o primeiro usuário para acessar o sistema.
+
+**Importante:** a rota de registro (`POST /api/auth/register`) e o link **“Criar conta”** só ficam ativos quando **não existe nenhum usuário** no sistema (nenhuma role). Depois que o primeiro usuário for criado, o registro é desativado automaticamente e novos cadastros pela tela ou pela API retornam 403.
+
+### 8.1 Pela tela de registro (recomendado)
+
+1. Abra a URL do **frontend** (ex.: `https://seu-projeto.vercel.app`).
+2. Na tela de login, o link **“Criar conta”** só aparece quando o sistema ainda não tem usuários. Clique nele ou acesse `/register`.
+3. Preencha:
+   - **Nome**
+   - **E-mail**
+   - **Senha** (mínimo 6 caracteres)
+   - **Tipo de usuário**: escolha **Administrador** para ter acesso total.
+4. Envie o formulário. O primeiro usuário será criado e você já entra logado.
+
+Use esse usuário para fazer login sempre que precisar e, depois, configure o restante (empresa, integrações, etc.) nas telas do sistema.
+
+### 8.2 Pela API (alternativa)
+
+Se preferir criar o usuário via linha de comando ou script:
+
+```bash
+curl -X POST "https://SEU-BACKEND.onrender.com/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Administrador","email":"admin@seudominio.com","password":"SuaSenhaSegura123","role":"admin"}'
+```
+
+Troque `SEU-BACKEND` pela URL real do backend (Render, Fly.io ou Railway) e ajuste nome, e-mail e senha. O `role` pode ser `user`, `attendant` ou `admin`.
+
+### 8.3 Script local (só se o banco for acessível)
+
+O projeto tem o script `scripts/create-user.ts`, que cria/atualiza um usuário no banco. Ele só funciona em ambiente onde o Node consegue conectar ao **mesmo** banco que o backend (por exemplo, rodando localmente com o mesmo `DB_PATH`). Em deploy na nuvem, o banco fica no servidor, então use a **tela de registro** ou a **API** acima.
+
+---
+
+## 9. Persistência de dados (Render / Fly.io / Railway)
 
 Sem disco/volume, SQLite e uploads são **efêmeros** (perdidos em redeploy). Para persistir, use a opção da sua plataforma abaixo.
 
-### 8.1 Render (Disk)
+### 9.1 Render (Disk)
 
 1. **Plano pago** (ex.: Starter) e **Settings** → **Disks** → **Add Disk**: Name `data`, Mount Path `/data`, tamanho ex.: 1 GB.
 2. Variáveis: `DB_PATH=/data/database/chamados.db`, `UPLOAD_PATH=/data/storage/uploads`, `IMAGES_PATH=/data/storage/images`, `UPLOADS_PATH=/data/storage/uploads`.
 3. **Start Command** (opcional): `mkdir -p /data/database /data/storage/uploads /data/storage/images && node dist/src/server.js`.
 
-### 8.2 Fly.io (Volume)
+### 9.2 Fly.io (Volume)
 
 1. Crie o volume na **mesma região** do app (ex.: `gru`): `fly volumes create data --region gru --size 1`
 2. No `fly.toml`, descomente o bloco `[mounts]` com `source = "data"` e `destination = "/data"`.
 3. Defina os secrets: `fly secrets set DB_PATH=/data/database/chamados.db UPLOAD_PATH=/data/storage/uploads IMAGES_PATH=/data/storage/images UPLOADS_PATH=/data/storage/uploads`
 4. Redeploy: `fly deploy`. O código já cria os subdiretórios em `/data` se necessário.
 
-### 8.3 Railway (Volume)
+### 9.3 Railway (Volume)
 
 Para persistir o banco SQLite e os uploads no Railway, crie um **Volume** e monte em `/data`. Limites por plano: Free 0,5 GB, Hobby 5 GB, Pro 50 GB.
 
@@ -440,9 +478,9 @@ Após adicionar o volume e as variáveis, use **Redeploy** no último deployment
 
 ---
 
-## 9. Variáveis de ambiente – referência completa
+## 10. Variáveis de ambiente – referência completa
 
-### 9.1 Backend (Render / Fly.io / Railway)
+### 10.1 Backend (Render / Fly.io / Railway)
 
 Todas as variáveis que o backend pode usar, com indicação de uso em produção.
 
@@ -497,7 +535,7 @@ Todas as variáveis que o backend pode usar, com indicação de uso em produçã
 
  Em produção com disco, use os paths em `/data/...`; sem disco, o app sobe mas dados não persistem.
 
-### 9.2 Frontend (Vercel)
+### 10.2 Frontend (Vercel)
 
 
 | Variável       | Obrigatório (produção)                 | Descrição                                                                               |
@@ -515,16 +553,16 @@ Opcional (desenvolvimento local):
 
 ---
 
-## 10. Domínios customizados
+## 11. Domínios customizados
 
-### 10.1 Backend (Render / Fly.io / Railway)
+### 11.1 Backend (Render / Fly.io / Railway)
 
 1. No Web Service: **Settings** → **Custom Domains** → **Add Custom Domain**.
 2. Informe o domínio (ex.: `api.seudominio.com.br`).
 3. Siga as instruções do Render para criar o registro CNAME (ou A) no seu DNS.
 4. Depois de ativo, use essa URL em `VITE_API_URL` no front e inclua em `ALLOWED_ORIGINS` e `CLIENT_URL` se for o mesmo domínio do front.
 
-### 10.2 Frontend (Vercel)
+### 11.2 Frontend (Vercel)
 
 1. No projeto: **Settings** → **Domains** → **Add**.
 2. Digite o domínio (ex.: `app.seudominio.com.br`).
@@ -533,7 +571,7 @@ Opcional (desenvolvimento local):
 
 ---
 
-## 11. Testes e validação
+## 12. Testes e validação
 
 Após o deploy:
 
@@ -554,7 +592,7 @@ Após o deploy:
 
 ---
 
-## 12. Problemas comuns e solução
+## 13. Problemas comuns e solução
 
 
 | Problema                                                                                       | Causa provável                                                                                       | Solução                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -573,7 +611,7 @@ Após o deploy:
 
 ---
 
-## 13. Checklist final
+## 14. Checklist final
 
 - Backend (Render, Fly.io ou Railway): serviço no ar, URL anotada.
 - Variáveis do backend: `NODE_ENV`, `JWT_SECRET`, `ALLOWED_ORIGINS`, `CLIENT_URL` (e as que você usa: SMTP, DB_PATH, etc.).

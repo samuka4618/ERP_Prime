@@ -43,6 +43,12 @@ const changePasswordSchema = Joi.object({
 });
 
 export class AuthController {
+  /** Rota pública: informa se o registro de novos usuários está aberto (nenhum usuário no sistema). */
+  static registrationOpen = asyncHandler(async (_req: Request, res: Response) => {
+    const total = await UserModel.countAll();
+    res.json({ canRegister: total === 0 });
+  });
+
   static login = asyncHandler(async (req: Request, res: Response) => {
     const requestId = (req as any).requestId || Math.random().toString(36).substring(7);
     const startTime = Date.now();

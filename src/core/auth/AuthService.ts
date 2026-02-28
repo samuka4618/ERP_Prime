@@ -83,6 +83,13 @@ export class AuthService {
         role: userData.role
       }, 'AUTH');
 
+      // Registro só permitido quando não existe nenhum usuário no sistema
+      const totalUsers = await UserModel.countAll();
+      if (totalUsers > 0) {
+        logger.warn('Tentativa de registro com sistema já populado', { totalUsers }, 'AUTH');
+        throw authError('Registro desativado. O sistema já possui usuários cadastrados.', 403);
+      }
+
       // Verificar se email já existe (apenas usuários ativos)
       // Permite reutilizar email de usuários que foram excluídos (soft delete)
       logger.debug('Verificando se email já existe', { email: userData.email }, 'AUTH');

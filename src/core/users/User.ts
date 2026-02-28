@@ -130,7 +130,7 @@ export class UserModel {
   }
 
   /**
-   * Contar total de usuários
+   * Contar total de usuários (apenas ativos)
    */
   static async count(): Promise<number> {
     const result = await dbGet(
@@ -138,6 +138,14 @@ export class UserModel {
     ) as any;
 
     return result?.total || 0;
+  }
+
+  /**
+   * Contar todos os usuários (ativos e inativos). Usado para saber se o registro está aberto.
+   */
+  static async countAll(): Promise<number> {
+    const result = await dbGet('SELECT COUNT(*) as total FROM users') as any;
+    return result?.total ?? 0;
   }
 
   /**

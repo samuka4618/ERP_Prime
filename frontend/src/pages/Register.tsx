@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
+import { getApiBaseUrl } from '../utils/apiUrl';
+import { toast } from 'react-hot-toast';
 
 interface RegisterFormData {
   name: string;
@@ -23,10 +25,39 @@ const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingRegistration, setCheckingRegistration] = useState(true);
+  const [registrationOpen, setRegistrationOpen] = useState(false);
   const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const base = getApiBaseUrl();
+        const res = await fetch(`${base}/auth/registration-open`);
+        if (res.ok) {
+          const data = await res.json();
+          setRegistrationOpen(data.canRegister === true);
+        } else {
+          setRegistrationOpen(false);
+        }
+      } catch {
+        setRegistrationOpen(false);
+      } finally {
+        setCheckingRegistration(false);
+      }
+    };
+    check();
+  }, []);
+
+  useEffect(() => {
+    if (!checkingRegistration && !registrationOpen) {
+      toast.error('Registro desativado. O sistema já possui usuários cadastrados.');
+      navigate('/login', { replace: true });
+    }
+  }, [checkingRegistration, registrationOpen, navigate]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<RegisterFormData> = {};
@@ -68,11 +99,8 @@ const Register: React.FC = () => {
     logger.info('Iniciando processo de registro', { email: formData.email }, 'AUTH');
 
     try {
-      // Usar proxy do Vite (sempre /api)
-      console.log('Tentando registrar via proxy do Vite...');
-      
-      // Fazer registro via API usando proxy
-      const response = await fetch('/api/auth/register', {
+      const apiBase = getApiBaseUrl();
+      const response = await fetch(`${apiBase}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,8 +114,9 @@ const Register: React.FC = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erro ao criar conta');
+        const errorData = await response.json().catch(() => ({}));
+        const msg = errorData.error || errorData.message || 'Erro ao criar conta';
+        throw new Error(msg);
       }
 
       const result = await response.json();
@@ -109,7 +138,11 @@ const Register: React.FC = () => {
         email: formData.email,
         error: error.message
       }, 'AUTH');
-      
+      if (error.message?.includes('Registro desativado') || error.message?.includes('já possui usuários')) {
+        toast.error(error.message);
+        navigate('/login', { replace: true });
+        return;
+      }
       setErrors({ 
         email: error.message.includes('email') ? error.message : undefined,
         password: error.message.includes('senha') ? error.message : undefined
@@ -128,6 +161,18 @@ const Register: React.FC = () => {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
+
+  if (checkingRegistration) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <p className="text-gray-500 dark:text-gray-400">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (!registrationOpen) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">

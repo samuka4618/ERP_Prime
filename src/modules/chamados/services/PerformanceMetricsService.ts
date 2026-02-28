@@ -1,4 +1,11 @@
 import { dbAll } from '../../../core/database/connection';
+import {
+  sqlColumnEqualsDateToday,
+  sqlColumnGteDatetimeMinus,
+  sqlDateColumn,
+  sqlDatetimeMinus,
+  sqlHoursDiff
+} from '../../../core/database/sql-dialect';
 import { logger } from '../../../shared/utils/logger';
 
 export interface PerformanceMetrics {
@@ -117,11 +124,11 @@ export class PerformanceMetricsService {
     // Primeiro, tentar com tickets
     let result = await dbAll(`
       SELECT 
-        DATE(created_at) as date,
+        ${sqlDateColumn('created_at')} as date,
         COUNT(DISTINCT user_id) as user_count
       FROM tickets 
-      WHERE created_at >= DATE('now', '-30 days')
-      GROUP BY DATE(created_at)
+      WHERE ${sqlColumnGteDatetimeMinus('created_at', '30 days')}
+      GROUP BY ${sqlDateColumn('created_at')}
       ORDER BY user_count DESC
       LIMIT 1
     `) as any[];
@@ -136,12 +143,12 @@ export class PerformanceMetricsService {
     // Se não houver tickets, usar atividade de login
     result = await dbAll(`
       SELECT 
-        DATE(timestamp) as date,
+        ${sqlDateColumn('timestamp')} as date,
         COUNT(DISTINCT user_id) as user_count
       FROM user_activity_tracking 
       WHERE activity = 'login' 
-        AND timestamp >= DATE('now', '-30 days')
-      GROUP BY DATE(timestamp)
+        AND ${sqlColumnGteDatetimeMinus('timestamp', '30 days')}
+      GROUP BY ${sqlDateColumn('timestamp')}
       ORDER BY user_count DESC
       LIMIT 1
     `) as any[];
@@ -160,15 +167,15 @@ export class PerformanceMetricsService {
     // Contar atendentes únicos que enviaram mensagens por dia
     const result = await dbAll(`
       SELECT 
-        DATE(th.created_at) as date,
+        ${sqlDateColumn('th.created_at')} as date,
         COUNT(DISTINCT th.author_id) as attendant_count
       FROM ticket_history th
       JOIN users u ON th.author_id = u.id
       WHERE u.role IN ('admin', 'attendant') 
-        AND th.created_at >= DATE('now', '-30 days')
+        AND ${sqlColumnGteDatetimeMinus('th.created_at', '30 days')}
         AND th.message IS NOT NULL
         AND th.message != ''
-      GROUP BY DATE(th.created_at)
+      GROUP BY ${sqlDateColumn('th.created_at')}
       ORDER BY attendant_count DESC
       LIMIT 1
     `) as any[];
@@ -199,11 +206,9 @@ export class PerformanceMetricsService {
     const closedResult = await dbAll("SELECT COUNT(*) as closed FROM tickets WHERE status = 'closed'") as any[];
     
     // Calcular tempo médio de resolução (em horas)
+    const avgExpr = sqlHoursDiff('created_at', 'updated_at');
     const resolutionResult = await dbAll(`
-      SELECT 
-        AVG(
-          (julianday(updated_at) - julianday(created_at)) * 24
-        ) as avg_hours
+      SELECT AVG(${avgExpr}) as avg_hours
       FROM tickets 
       WHERE status = 'closed' 
         AND updated_at IS NOT NULL
@@ -224,7 +229,7 @@ export class PerformanceMetricsService {
     const todayResult = await dbAll(`
       SELECT COUNT(*) as today 
       FROM ticket_history 
-      WHERE DATE(created_at) = DATE('now')
+      WHERE ${sqlColumnEqualsDateToday('created_at')}
     `) as any[];
     
     const ticketCountResult = await dbAll('SELECT COUNT(*) as count FROM tickets') as any[];
@@ -258,7 +263,7 @@ export class PerformanceMetricsService {
       SELECT COUNT(DISTINCT user_id) as count 
       FROM user_activity_tracking 
       WHERE activity = 'login' 
-        AND timestamp >= datetime('now', '-24 hours')
+        AND timestamp >= ${sqlDatetimeMinus('24 hours')}
     `) as any[];
     
     return {

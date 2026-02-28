@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue } from '../../../core/database/sql-dialect';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 
 export interface Aprovador {
@@ -116,7 +117,7 @@ export class AprovadorModel {
       `SELECT a.*, u.name as usuario_name, u.email as usuario_email
        FROM aprovadores a
        LEFT JOIN users u ON a.user_id = u.id
-       WHERE a.user_id = ? AND a.is_active = 1
+       WHERE a.user_id = ? AND a.is_active = ${sqlBooleanTrue()}
        ORDER BY a.nivel_aprovacao DESC LIMIT 1`,
       [userId]
     ) as any;
@@ -145,7 +146,7 @@ export class AprovadorModel {
       `SELECT a.*, u.name as usuario_name, u.email as usuario_email
        FROM aprovadores a
        LEFT JOIN users u ON a.user_id = u.id
-       WHERE a.is_active = 1 
+       WHERE a.is_active = ${sqlBooleanTrue()}
          AND a.valor_minimo <= ? 
          AND a.valor_maximo >= ?
        ORDER BY a.nivel_aprovacao ASC`,

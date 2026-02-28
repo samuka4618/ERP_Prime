@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanFalse, sqlBooleanTrue, sqlNowMinusDaysParam } from '../../../core/database/sql-dialect';
 import { Notification } from '../../../shared/types';
 
 export class NotificationModel {
@@ -36,7 +37,7 @@ export class NotificationModel {
       type: lastNotification.type,
       title: lastNotification.title,
       message: lastNotification.message,
-      is_read: lastNotification.is_read === 1,
+      is_read: Boolean(lastNotification.is_read),
       created_at: new Date(lastNotification.created_at),
       user: lastNotification.user_name ? {
         id: lastNotification.user_id,
@@ -152,21 +153,21 @@ export class NotificationModel {
 
   static async markAsRead(id: number, userId: number): Promise<void> {
     await dbRun(
-      'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?',
+      `UPDATE notifications SET is_read = ${sqlBooleanTrue()} WHERE id = ? AND user_id = ?`,
       [id, userId]
     );
   }
 
   static async markAllAsRead(userId: number): Promise<void> {
     await dbRun(
-      'UPDATE notifications SET is_read = 1 WHERE user_id = ?',
+      `UPDATE notifications SET is_read = ${sqlBooleanTrue()} WHERE user_id = ?`,
       [userId]
     );
   }
 
   static async getUnreadCount(userId: number): Promise<number> {
     const result = await dbGet(
-      'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
+      `SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = ${sqlBooleanFalse()}`,
       [userId]
     ) as { count: number };
 
@@ -175,7 +176,7 @@ export class NotificationModel {
 
   static async countUnread(): Promise<number> {
     const result = await dbGet(
-      'SELECT COUNT(*) as count FROM notifications WHERE is_read = 0',
+      `SELECT COUNT(*) as count FROM notifications WHERE is_read = ${sqlBooleanFalse()}`,
       []
     ) as { count: number };
 
@@ -201,7 +202,7 @@ export class NotificationModel {
 
   static async deleteOld(olderThanDays: number = 30): Promise<void> {
     await dbRun(
-      'DELETE FROM notifications WHERE created_at < datetime("now", "-" || ? || " days")',
+      `DELETE FROM notifications WHERE created_at < ${sqlNowMinusDaysParam()}`,
       [olderThanDays]
     );
   }

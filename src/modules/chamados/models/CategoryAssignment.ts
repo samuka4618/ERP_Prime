@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue, sqlBooleanFalse } from '../../../core/database/sql-dialect';
 
 export interface CategoryAssignment {
   id: number;
@@ -16,14 +17,14 @@ export class CategoryAssignmentModel {
     const existing = await dbGet(
       'SELECT id, is_active FROM category_assignments WHERE category_id = ? AND attendant_id = ?',
       [categoryId, attendantId]
-    ) as { id: number; is_active: number } | undefined;
+    ) as { id: number; is_active: number | boolean } | undefined;
 
     if (existing) {
-      if (existing.is_active === 1) {
+      if (existing.is_active === 1 || existing.is_active === true) {
         throw new Error('Esta atribuição já existe');
       }
       await dbRun(
-        'UPDATE category_assignments SET is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        `UPDATE category_assignments SET is_active = ${sqlBooleanTrue()}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         [existing.id]
       );
       const assignment = await this.findById(existing.id);
@@ -77,7 +78,7 @@ export class CategoryAssignmentModel {
        FROM category_assignments ca
        LEFT JOIN ticket_categories c ON ca.category_id = c.id
        LEFT JOIN users u ON ca.attendant_id = u.id
-       WHERE ca.is_active = 1
+       WHERE ca.is_active = ${sqlBooleanTrue()}
        ORDER BY c.name, u.name`,
       []
     ) as any[];
@@ -102,7 +103,7 @@ export class CategoryAssignmentModel {
        FROM category_assignments ca
        LEFT JOIN ticket_categories c ON ca.category_id = c.id
        LEFT JOIN users u ON ca.attendant_id = u.id
-       WHERE ca.category_id = ? AND ca.is_active = 1
+       WHERE ca.category_id = ? AND ca.is_active = ${sqlBooleanTrue()}
        ORDER BY u.name`,
       [categoryId]
     ) as any[];
@@ -127,7 +128,7 @@ export class CategoryAssignmentModel {
        FROM category_assignments ca
        LEFT JOIN ticket_categories c ON ca.category_id = c.id
        LEFT JOIN users u ON ca.attendant_id = u.id
-       WHERE ca.attendant_id = ? AND ca.is_active = 1
+       WHERE ca.attendant_id = ? AND ca.is_active = ${sqlBooleanTrue()}
        ORDER BY c.name`,
       [attendantId]
     ) as any[];
@@ -146,21 +147,21 @@ export class CategoryAssignmentModel {
 
   static async delete(id: number): Promise<void> {
     await dbRun(
-      'UPDATE category_assignments SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      `UPDATE category_assignments SET is_active = ${sqlBooleanFalse()}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [id]
     );
   }
 
   static async deleteByCategoryAndAttendant(categoryId: number, attendantId: number): Promise<void> {
     await dbRun(
-      'UPDATE category_assignments SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE category_id = ? AND attendant_id = ?',
+      `UPDATE category_assignments SET is_active = ${sqlBooleanFalse()}, updated_at = CURRENT_TIMESTAMP WHERE category_id = ? AND attendant_id = ?`,
       [categoryId, attendantId]
     );
   }
 
   static async exists(categoryId: number, attendantId: number): Promise<boolean> {
     const result = await dbGet(
-      'SELECT id FROM category_assignments WHERE category_id = ? AND attendant_id = ? AND is_active = 1',
+      `SELECT id FROM category_assignments WHERE category_id = ? AND attendant_id = ? AND is_active = ${sqlBooleanTrue()}`,
       [categoryId, attendantId]
     ) as { id: number } | null;
 
@@ -172,11 +173,11 @@ export class CategoryAssignmentModel {
       `SELECT u.id, u.name, u.email
        FROM users u
        WHERE u.role = 'attendant' 
-       AND u.is_active = 1
+       AND u.is_active = ${sqlBooleanTrue()}
        AND u.id NOT IN (
          SELECT attendant_id 
          FROM category_assignments 
-         WHERE category_id = ? AND is_active = 1
+         WHERE category_id = ? AND is_active = ${sqlBooleanTrue()}
        )
        ORDER BY u.name`,
       [categoryId]
@@ -194,7 +195,7 @@ export class CategoryAssignmentModel {
       `SELECT u.id, u.name, u.email
        FROM users u
        INNER JOIN category_assignments ca ON u.id = ca.attendant_id
-       WHERE ca.category_id = ? AND ca.is_active = 1 AND u.is_active = 1
+       WHERE ca.category_id = ? AND ca.is_active = ${sqlBooleanTrue()} AND u.is_active = ${sqlBooleanTrue()}
        ORDER BY u.name`,
       [categoryId]
     ) as any[];

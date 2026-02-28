@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue } from '../../../core/database/sql-dialect';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 
 export interface DocaConfig {
@@ -68,7 +69,7 @@ export class DocaConfigModel {
     const params: any[] = [];
 
     if (activeOnly) {
-      query += ' WHERE is_active = 1';
+      query += ` WHERE is_active = ${sqlBooleanTrue()}`;
     }
 
     query += ' ORDER BY CAST(numero AS INTEGER), numero';

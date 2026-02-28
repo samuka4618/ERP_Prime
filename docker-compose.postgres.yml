@@ -1,0 +1,29 @@
+# Postgres local para testes (USE_POSTGRES=true).
+# Uso: docker compose -f docker-compose.postgres.yml up -d
+# Parar: docker compose -f docker-compose.postgres.yml down
+#
+# No .env use:
+#   USE_POSTGRES=true
+#   DATABASE_URL=postgresql://erp:erp_local@localhost:5432/erp_prime
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: erp-prime-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: erp_local
+      POSTGRES_DB: erp_prime
+    ports:
+      - "5432:5432"
+    volumes:
+      - erp_prime_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d erp_prime"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  erp_prime_pgdata:

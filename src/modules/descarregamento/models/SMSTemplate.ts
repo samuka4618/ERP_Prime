@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue, sqlBooleanFalse, bindBoolean } from '../../../core/database/sql-dialect';
 
 export type SMSTemplateType = 'arrival' | 'release';
 
@@ -32,21 +33,21 @@ export class SMSTemplateModel {
     if (data.is_default) {
       await dbRun(
         `UPDATE sms_templates_descarga 
-         SET is_default = 0 
+         SET is_default = ${sqlBooleanFalse()} 
          WHERE template_type = ?`,
         [data.template_type]
       );
     }
 
-    await dbRun(
+    const { lastID } = await dbRun(
       `INSERT INTO sms_templates_descarga (name, message, template_type, is_default)
        VALUES (?, ?, ?, ?)`,
-      [data.name, data.message, data.template_type, data.is_default ? 1 : 0]
+      [data.name, data.message, data.template_type, bindBoolean(!!data.is_default)]
     );
 
     const template = await dbGet(
-      `SELECT * FROM sms_templates_descarga 
-       WHERE id = (SELECT last_insert_rowid())`
+      `SELECT * FROM sms_templates_descarga WHERE id = ?`,
+      [lastID]
     ) as any;
 
     if (!template) {
@@ -112,7 +113,7 @@ export class SMSTemplateModel {
   static async findDefault(templateType: SMSTemplateType): Promise<SMSTemplate | null> {
     const template = await dbGet(
       `SELECT * FROM sms_templates_descarga 
-       WHERE template_type = ? AND is_default = 1
+       WHERE template_type = ? AND is_default = ${sqlBooleanTrue()}
        LIMIT 1`,
       [templateType]
     ) as any;
@@ -142,7 +143,7 @@ export class SMSTemplateModel {
     if (data.is_default) {
       await dbRun(
         `UPDATE sms_templates_descarga 
-         SET is_default = 0 
+         SET is_default = ${sqlBooleanFalse()} 
          WHERE template_type = ? AND id != ?`,
         [data.template_type || current.template_type, id]
       );
@@ -165,7 +166,7 @@ export class SMSTemplateModel {
     }
     if (data.is_default !== undefined) {
       fields.push('is_default = ?');
-      values.push(data.is_default ? 1 : 0);
+      values.push(bindBoolean(!!data.is_default));
     }
 
     fields.push('updated_at = CURRENT_TIMESTAMP');

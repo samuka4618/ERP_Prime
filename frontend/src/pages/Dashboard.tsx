@@ -149,7 +149,7 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -223,9 +223,9 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {loadError && (
+      {(loadError || !stats) && (
         <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex flex-wrap items-center justify-between gap-3">
-          <span>{loadError}</span>
+          <span>{loadError || 'Não foi possível carregar as estatísticas do dashboard.'}</span>
           <button
             type="button"
             onClick={() => fetchData()}
@@ -641,7 +641,7 @@ const Dashboard: React.FC = () => {
                     <div 
                       className="bg-blue-500 h-2 rounded-full" 
                       style={{ 
-                        width: `${(category.count / stats.total_tickets) * 100}%` 
+                        width: `${(stats && stats.total_tickets > 0 ? (category.count / stats.total_tickets) * 100 : 0)}%` 
                       }}
                     ></div>
                   </div>
@@ -669,7 +669,7 @@ const Dashboard: React.FC = () => {
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total de Solicitações</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{comprasStats.total || 0}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Valor Total: R$ {(comprasStats.total_value || 0).toFixed(2).replace('.', ',')}
+                    Valor Total: R$ {Number(comprasStats.total_value ?? 0).toFixed(2).replace('.', ',')}
                   </p>
                 </div>
                 <div className="bg-blue-500 p-3 rounded-lg">

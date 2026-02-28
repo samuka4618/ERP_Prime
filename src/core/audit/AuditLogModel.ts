@@ -1,4 +1,5 @@
 import { dbGet, dbAll } from '../database/connection';
+import { sqlDatetimeGeParam, sqlDatetimeLeParam } from '../database/sql-dialect';
 
 export interface AuditLogRow {
   id: number;
@@ -39,11 +40,11 @@ export async function findAll(filters: AuditLogFilters = {}): Promise<AuditLogLi
   const params: (string | number)[] = [];
 
   if (filters.dateFrom) {
-    conditions.push("datetime(created_at) >= datetime(?)");
+    conditions.push(sqlDatetimeGeParam('created_at'));
     params.push(filters.dateFrom);
   }
   if (filters.dateTo) {
-    conditions.push("datetime(created_at) <= datetime(?)");
+    conditions.push(sqlDatetimeLeParam('created_at'));
     params.push(filters.dateTo);
   }
   if (filters.userId != null) {

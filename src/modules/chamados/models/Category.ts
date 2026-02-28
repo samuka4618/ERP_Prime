@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue } from '../../../core/database/sql-dialect';
 import { Category, CreateCategoryRequest, UpdateCategoryRequest, PaginationParams, PaginatedResponse } from '../../../shared/types';
 
 export class CategoryModel {
@@ -162,7 +163,7 @@ export class CategoryModel {
 
   static async findActive(): Promise<Category[]> {
     const categories = await dbAll(
-      'SELECT * FROM ticket_categories WHERE is_active = 1 ORDER BY name ASC'
+      `SELECT * FROM ticket_categories WHERE is_active = ${sqlBooleanTrue()} ORDER BY name ASC`
     ) as Category[];
 
     return categories.map((category: any) => {
@@ -270,7 +271,7 @@ export class CategoryModel {
   }
 
   static async countActive(): Promise<number> {
-    const result = await dbGet('SELECT COUNT(*) as count FROM ticket_categories WHERE is_active = 1') as { count: number };
+    const result = await dbGet(`SELECT COUNT(*) as count FROM ticket_categories WHERE is_active = ${sqlBooleanTrue()}`) as { count: number };
     return result.count;
   }
 }

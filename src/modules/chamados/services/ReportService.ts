@@ -1,4 +1,12 @@
 import { dbAll, dbGet } from '../../../core/database/connection';
+import {
+  sqlNow,
+  sqlDateColumn,
+  sqlStrftimeHour,
+  sqlStrftimeYMD,
+  sqlHoursDiff,
+  sqlColumnGteDatetimeMinus
+} from '../../../core/database/sql-dialect';
 import { 
   ReportParameters, 
   SlaPerformanceData, 
@@ -32,17 +40,13 @@ export class ReportService {
     const slaStats = await dbGet(
       `SELECT 
         COUNT(*) as total_tickets,
-        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < datetime('now') THEN 1 ELSE 0 END) as sla_first_response_violations,
-        SUM(CASE WHEN t.status IN ('in_progress', 'pending_user', 'pending_third_party', 'pending_approval') AND t.sla_resolution < datetime('now') THEN 1 ELSE 0 END) as sla_resolution_violations,
+        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < ${sqlNow()} THEN 1 ELSE 0 END) as sla_first_response_violations,
+        SUM(CASE WHEN t.status IN ('in_progress', 'pending_user', 'pending_third_party', 'pending_approval') AND t.sla_resolution < ${sqlNow()} THEN 1 ELSE 0 END) as sla_resolution_violations,
         AVG(CASE WHEN t.status != 'open' THEN 
-          (julianday(COALESCE(
-            (SELECT MIN(th.created_at) FROM ticket_history th 
-             WHERE th.ticket_id = t.id AND th.author_id != t.user_id), 
-            t.updated_at
-          )) - julianday(t.created_at)) * 24 
+          ${sqlHoursDiff('t.created_at', 'COALESCE((SELECT MIN(th.created_at) FROM ticket_history th WHERE th.ticket_id = t.id AND th.author_id != t.user_id), t.updated_at)')} 
         END) as avg_first_response_time,
         AVG(CASE WHEN t.status = 'closed' AND t.closed_at IS NOT NULL THEN 
-          (julianday(t.closed_at) - julianday(t.created_at)) * 24 
+          ${sqlHoursDiff('t.created_at', 't.closed_at')} 
         END) as avg_resolution_time
        FROM tickets t
        ${whereClause}`,
@@ -64,16 +68,12 @@ export class ReportService {
         t.category_id,
         c.name as category_name,
         COUNT(*) as total_tickets,
-        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < datetime('now') THEN 1 ELSE 0 END) as sla_violations,
+        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < ${sqlNow()} THEN 1 ELSE 0 END) as sla_violations,
         AVG(CASE WHEN t.status != 'open' THEN 
-          (julianday(COALESCE(
-            (SELECT MIN(th.created_at) FROM ticket_history th 
-             WHERE th.ticket_id = t.id AND th.author_id != t.user_id), 
-            t.updated_at
-          )) - julianday(t.created_at)) * 24 
+          ${sqlHoursDiff('t.created_at', 'COALESCE((SELECT MIN(th.created_at) FROM ticket_history th WHERE th.ticket_id = t.id AND th.author_id != t.user_id), t.updated_at)')} 
         END) as avg_response_time,
         AVG(CASE WHEN t.status = 'closed' AND t.closed_at IS NOT NULL THEN 
-          (julianday(t.closed_at) - julianday(t.created_at)) * 24 
+          ${sqlHoursDiff('t.created_at', 't.closed_at')} 
         END) as avg_resolution_time
        FROM tickets t
        LEFT JOIN ticket_categories c ON t.category_id = c.id
@@ -99,16 +99,12 @@ export class ReportService {
         t.attendant_id,
         u.name as attendant_name,
         COUNT(*) as total_tickets,
-        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < datetime('now') THEN 1 ELSE 0 END) as sla_violations,
+        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < ${sqlNow()} THEN 1 ELSE 0 END) as sla_violations,
         AVG(CASE WHEN t.status != 'open' THEN 
-          (julianday(COALESCE(
-            (SELECT MIN(th.created_at) FROM ticket_history th 
-             WHERE th.ticket_id = t.id AND th.author_id != t.user_id), 
-            t.updated_at
-          )) - julianday(t.created_at)) * 24 
+          ${sqlHoursDiff('t.created_at', 'COALESCE((SELECT MIN(th.created_at) FROM ticket_history th WHERE th.ticket_id = t.id AND th.author_id != t.user_id), t.updated_at)')} 
         END) as avg_response_time,
         AVG(CASE WHEN t.status = 'closed' AND t.closed_at IS NOT NULL THEN 
-          (julianday(t.closed_at) - julianday(t.created_at)) * 24 
+          ${sqlHoursDiff('t.created_at', 't.closed_at')} 
         END) as avg_resolution_time
        FROM tickets t
        LEFT JOIN users u ON t.attendant_id = u.id
@@ -132,12 +128,12 @@ export class ReportService {
     // Tendência de SLA (últimos 30 dias)
     const slaTrend = await dbAll(
       `SELECT 
-        DATE(t.created_at) as date,
+        ${sqlDateColumn('t.created_at')} as date,
         COUNT(*) as total_tickets,
-        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < datetime('now') THEN 1 ELSE 0 END) as violations
+        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < ${sqlNow()} THEN 1 ELSE 0 END) as violations
        FROM tickets t
        ${whereClause}
-       GROUP BY DATE(t.created_at)
+       GROUP BY ${sqlDateColumn('t.created_at')}
        ORDER BY date DESC
        LIMIT 30`,
       queryParams
@@ -255,13 +251,13 @@ export class ReportService {
     // Tendência de volume (últimos 30 dias)
     const volumeTrend = await dbAll(
       `SELECT 
-        DATE(t.created_at) as date,
+        ${sqlDateColumn('t.created_at')} as date,
         COUNT(*) as total_tickets,
         SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END) as resolved_tickets,
         SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END) as closed_tickets
        FROM tickets t
        ${whereClause}
-       GROUP BY DATE(t.created_at)
+       GROUP BY ${sqlDateColumn('t.created_at')}
        ORDER BY date DESC
        LIMIT 30`,
       queryParams
@@ -278,11 +274,11 @@ export class ReportService {
     // Horários de pico
     const peakHours = await dbAll(
       `SELECT 
-        strftime('%H', t.created_at) as hour,
+        ${sqlStrftimeHour('t.created_at')} as hour,
         COUNT(*) as ticket_count
        FROM tickets t
        ${whereClause}
-       GROUP BY strftime('%H', t.created_at)
+       GROUP BY ${sqlStrftimeHour('t.created_at')}
        ORDER BY ticket_count DESC
        LIMIT 10`,
       queryParams
@@ -323,10 +319,10 @@ export class ReportService {
            attendant_id,
            COUNT(*) as ticket_count,
            AVG(CASE WHEN status = 'closed' AND closed_at IS NOT NULL THEN 
-             (julianday(closed_at) - julianday(created_at)) * 24 
+             ${sqlHoursDiff('created_at', 'closed_at')} 
            END) as avg_resolution_time,
            CASE WHEN COUNT(*) > 0 THEN 
-             ((COUNT(*) - SUM(CASE WHEN status = 'open' AND sla_first_response < datetime('now') THEN 1 ELSE 0 END)) / COUNT(*)) * 100 
+             ((COUNT(*) - SUM(CASE WHEN status = 'open' AND sla_first_response < ${sqlNow()} THEN 1 ELSE 0 END)) / COUNT(*)) * 100 
            ELSE 0 END as sla_rate
          FROM tickets 
          WHERE created_at BETWEEN ? AND ? AND attendant_id IS NOT NULL
@@ -346,9 +342,9 @@ export class ReportService {
         SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END) as resolved_tickets,
         SUM(CASE WHEN t.status IN ('open', 'in_progress', 'pending_user', 'pending_third_party', 'pending_approval') THEN 1 ELSE 0 END) as pending_tickets,
         AVG(CASE WHEN t.status = 'closed' AND t.closed_at IS NOT NULL THEN 
-          (julianday(t.closed_at) - julianday(t.created_at)) * 24 
+          ${sqlHoursDiff('t.created_at', 't.closed_at')} 
         END) as avg_resolution_time,
-        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < datetime('now') THEN 1 ELSE 0 END) as sla_violations
+        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < ${sqlNow()} THEN 1 ELSE 0 END) as sla_violations
        FROM tickets t
        LEFT JOIN users u ON t.attendant_id = u.id
        ${whereClause}
@@ -377,18 +373,18 @@ export class ReportService {
       // Tendência de performance (últimos 30 dias)
       const performanceTrend = await dbAll(
         `SELECT 
-          DATE(t.created_at) as date,
+          ${sqlDateColumn('t.created_at')} as date,
           SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END) as tickets_resolved,
           AVG(CASE WHEN t.status = 'closed' AND t.closed_at IS NOT NULL THEN 
-            (julianday(t.closed_at) - julianday(t.created_at)) * 24 
+            ${sqlHoursDiff('t.created_at', 't.closed_at')} 
           END) as avg_resolution_time,
           CASE WHEN COUNT(*) > 0 THEN 
-            ((COUNT(*) - SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < datetime('now') THEN 1 ELSE 0 END)) / COUNT(*)) * 100 
+            ((COUNT(*) - SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < ${sqlNow()} THEN 1 ELSE 0 END)) / COUNT(*)) * 100 
           ELSE 0 END as sla_rate
          FROM tickets t
          ${whereClause}
          AND t.attendant_id = ?
-         GROUP BY DATE(t.created_at)
+         GROUP BY ${sqlDateColumn('t.created_at')}
          ORDER BY date DESC
          LIMIT 30`,
         [...queryParams, att.attendant_id]
@@ -437,9 +433,9 @@ export class ReportService {
         c.name as category_name,
         COUNT(*) as total_tickets,
         AVG(CASE WHEN t.status = 'closed' AND t.closed_at IS NOT NULL THEN 
-          (julianday(t.closed_at) - julianday(t.created_at)) * 24 
+          ${sqlHoursDiff('t.created_at', 't.closed_at')} 
         END) as avg_resolution_time,
-        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < datetime('now') THEN 1 ELSE 0 END) as sla_violations
+        SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < ${sqlNow()} THEN 1 ELSE 0 END) as sla_violations
        FROM tickets t
        LEFT JOIN ticket_categories c ON t.category_id = c.id
        ${whereClause}
@@ -498,15 +494,15 @@ export class ReportService {
       // Dados de tendência para esta categoria
       const trendData = await dbAll(
         `SELECT 
-          DATE(t.created_at) as date,
+          ${sqlDateColumn('t.created_at')} as date,
           COUNT(*) as ticket_count,
           CASE WHEN COUNT(*) > 0 THEN 
-            ((COUNT(*) - SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < datetime('now') THEN 1 ELSE 0 END)) / COUNT(*)) * 100 
+            ((COUNT(*) - SUM(CASE WHEN t.status = 'open' AND t.sla_first_response < ${sqlNow()} THEN 1 ELSE 0 END)) / COUNT(*)) * 100 
           ELSE 0 END as sla_rate
          FROM tickets t
          ${whereClause}
          AND t.category_id = ?
-         GROUP BY DATE(t.created_at)
+         GROUP BY ${sqlDateColumn('t.created_at')}
          ORDER BY date DESC
          LIMIT 30`,
         [...queryParams, cat.category_id]
@@ -562,7 +558,7 @@ export class ReportService {
         SELECT 
           COUNT(*) as total_tickets,
           AVG(CASE WHEN t.status = 'resolved' OR t.status = 'closed' 
-            THEN (julianday(t.updated_at) - julianday(t.created_at)) * 24 
+            THEN ${sqlHoursDiff('t.created_at', 't.updated_at')} 
             ELSE NULL END) as avg_resolution_time,
           SUM(CASE WHEN t.status = 'overdue_first_response' OR t.status = 'overdue_resolution' 
             THEN 1 ELSE 0 END) as sla_violations,
@@ -617,15 +613,15 @@ export class ReportService {
       // Tendência de performance (últimos 30 dias)
       const trendData = await dbAll(`
         SELECT 
-          DATE(t.created_at) as date,
+          ${sqlDateColumn('t.created_at')} as date,
           COUNT(*) as tickets_created,
           SUM(CASE WHEN t.status = 'resolved' OR t.status = 'closed' THEN 1 ELSE 0 END) as tickets_resolved,
           AVG(CASE WHEN t.status = 'resolved' OR t.status = 'closed' 
-            THEN (julianday(t.updated_at) - julianday(t.created_at)) * 24 
+            THEN ${sqlHoursDiff('t.created_at', 't.updated_at')} 
             ELSE NULL END) as avg_resolution_time
         FROM tickets t
-        WHERE t.attendant_id = ? AND t.created_at >= date('now', '-30 days')
-        GROUP BY DATE(t.created_at)
+        WHERE t.attendant_id = ? AND ${sqlColumnGteDatetimeMinus('t.created_at', '30 days')}
+        GROUP BY ${sqlDateColumn('t.created_at')}
         ORDER BY date
       `, [attendant.id]) as Array<{ date: string; tickets_created: number; tickets_resolved: number; avg_resolution_time: number }>;
 
@@ -703,10 +699,10 @@ export class ReportService {
       SELECT 
         COUNT(*) as total_tickets,
         AVG(CASE WHEN t.status = 'resolved' OR t.status = 'closed' 
-          THEN (julianday(t.updated_at) - julianday(t.created_at)) * 24 
+          THEN ${sqlHoursDiff('t.created_at', 't.updated_at')} 
           ELSE NULL END) as avg_resolution_time,
         AVG(CASE WHEN t.status != 'open' 
-          THEN (julianday(t.updated_at) - julianday(t.created_at)) * 24 
+          THEN ${sqlHoursDiff('t.created_at', 't.updated_at')} 
           ELSE NULL END) as avg_first_response_time,
         SUM(CASE WHEN t.status = 'overdue_first_response' OR t.status = 'overdue_resolution' 
           THEN 1 ELSE 0 END) as sla_violations
@@ -747,7 +743,7 @@ export class ReportService {
         c.name, 
         COUNT(*) as total_tickets,
         AVG(CASE WHEN t.status = 'resolved' OR t.status = 'closed' 
-          THEN (julianday(t.updated_at) - julianday(t.created_at)) * 24 
+          THEN ${sqlHoursDiff('t.created_at', 't.updated_at')} 
           ELSE NULL END) as avg_resolution_time
       FROM tickets t
       LEFT JOIN ticket_categories c ON t.category_id = c.id
@@ -773,7 +769,7 @@ export class ReportService {
         SUM(CASE WHEN t.status = 'resolved' OR t.status = 'closed' THEN 1 ELSE 0 END) as resolved_tickets,
         SUM(CASE WHEN t.status IN ('open', 'in_progress', 'pending_user', 'pending_third_party', 'pending_approval') THEN 1 ELSE 0 END) as pending_tickets,
         AVG(CASE WHEN t.status = 'resolved' OR t.status = 'closed' 
-          THEN (julianday(t.updated_at) - julianday(t.created_at)) * 24 
+          THEN ${sqlHoursDiff('t.created_at', 't.updated_at')} 
           ELSE NULL END) as avg_resolution_time
       FROM tickets t
       LEFT JOIN users u ON t.attendant_id = u.id
@@ -819,25 +815,25 @@ export class ReportService {
     // Tendência diária
     const dailyTrend = await dbAll(`
       SELECT 
-        DATE(t.created_at) as date,
+        ${sqlDateColumn('t.created_at')} as date,
         COUNT(*) as tickets_created,
         SUM(CASE WHEN t.status = 'resolved' THEN 1 ELSE 0 END) as tickets_resolved,
         SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END) as tickets_closed,
         SUM(CASE WHEN t.status IN ('open', 'in_progress', 'pending_user', 'pending_third_party') THEN 1 ELSE 0 END) as open_tickets
       FROM tickets t
       ${whereClause}
-      GROUP BY DATE(t.created_at)
+      GROUP BY ${sqlDateColumn('t.created_at')}
       ORDER BY date
     `, queryParams) as Array<{ date: string; tickets_created: number; tickets_resolved: number; tickets_closed: number; open_tickets: number }>;
 
     // Distribuição horária
     const hourlyData = await dbAll(`
       SELECT 
-        CAST(strftime('%H', t.created_at) AS INTEGER) as hour,
+        CAST(${sqlStrftimeHour('t.created_at')} AS INTEGER) as hour,
         COUNT(*) as ticket_count
       FROM tickets t
       ${whereClause}
-      GROUP BY strftime('%H', t.created_at)
+      GROUP BY ${sqlStrftimeHour('t.created_at')}
       ORDER BY hour
     `, queryParams) as Array<{ hour: number; ticket_count: number }>;
 
@@ -852,15 +848,15 @@ export class ReportService {
     // Resumo mensal
     const monthlyData = await dbAll(`
       SELECT 
-        strftime('%Y-%m', t.created_at) as month,
+        ${sqlStrftimeYMD('t.created_at')} as month,
         COUNT(*) as total_tickets,
         SUM(CASE WHEN t.status = 'resolved' OR t.status = 'closed' THEN 1 ELSE 0 END) as resolved_tickets,
         AVG(CASE WHEN t.status = 'resolved' OR t.status = 'closed' 
-          THEN (julianday(t.updated_at) - julianday(t.created_at)) * 24 
+          THEN ${sqlHoursDiff('t.created_at', 't.updated_at')} 
           ELSE NULL END) as avg_resolution_time
       FROM tickets t
       ${whereClause}
-      GROUP BY strftime('%Y-%m', t.created_at)
+      GROUP BY ${sqlStrftimeYMD('t.created_at')}
       ORDER BY month
     `, queryParams) as Array<{ month: string; total_tickets: number; resolved_tickets: number; avg_resolution_time: number }>;
 
@@ -1020,14 +1016,14 @@ export class ReportService {
     // Tendência diária
     const dailyTrend = await dbAll(
       `SELECT 
-        DATE(s.created_at) as date,
+        ${sqlDateColumn('s.created_at')} as date,
         COUNT(*) as solicitacoes_criadas,
         SUM(CASE WHEN s.status = 'aprovada' THEN 1 ELSE 0 END) as solicitacoes_aprovadas,
         SUM(CASE WHEN s.status = 'rejeitada' THEN 1 ELSE 0 END) as solicitacoes_rejeitadas,
         SUM(s.valor_total) as valor_total
        FROM solicitacoes_compra s
        ${whereClause}
-       GROUP BY DATE(s.created_at)
+       GROUP BY ${sqlDateColumn('s.created_at')}
        ORDER BY date`,
       queryParams
     ) as any[];
@@ -1035,14 +1031,14 @@ export class ReportService {
     // Resumo mensal
     const monthlyData = await dbAll(
       `SELECT 
-        strftime('%Y-%m', s.created_at) as month,
+        ${sqlStrftimeYMD('s.created_at')} as month,
         COUNT(*) as total_solicitacoes,
         SUM(s.valor_total) as valor_total,
         SUM(CASE WHEN s.status = 'aprovada' THEN 1 ELSE 0 END) as aprovadas,
         SUM(CASE WHEN s.status = 'rejeitada' THEN 1 ELSE 0 END) as rejeitadas
        FROM solicitacoes_compra s
        ${whereClause}
-       GROUP BY strftime('%Y-%m', s.created_at)
+       GROUP BY ${sqlStrftimeYMD('s.created_at')}
        ORDER BY month`,
       queryParams
     ) as any[];
@@ -1196,14 +1192,14 @@ export class ReportService {
     // Tendência diária
     const dailyTrend = await dbAll(
       `SELECT 
-        DATE(o.created_at) as date,
+        ${sqlDateColumn('o.created_at')} as date,
         COUNT(*) as orcamentos_recebidos,
         SUM(CASE WHEN o.status = 'aprovado' THEN 1 ELSE 0 END) as orcamentos_aprovados,
         SUM(CASE WHEN o.status = 'rejeitado' THEN 1 ELSE 0 END) as orcamentos_rejeitados,
         SUM(o.valor_total) as valor_total
        FROM orcamentos o
        ${whereClause}
-       GROUP BY DATE(o.created_at)
+       GROUP BY ${sqlDateColumn('o.created_at')}
        ORDER BY date`,
       queryParams
     ) as any[];
@@ -1281,13 +1277,13 @@ export class ReportService {
         SUM(CASE WHEN a.status = 'rejeitado' THEN 1 ELSE 0 END) as rejeitadas,
         SUM(CASE WHEN a.status = 'pendente' THEN 1 ELSE 0 END) as pendentes,
         AVG(CASE WHEN a.aprovado_em IS NOT NULL THEN 
-          (julianday(a.aprovado_em) - julianday(a.created_at)) * 24 
+          ${sqlHoursDiff('a.created_at', 'a.aprovado_em')} 
         END) as tempo_medio_aprovacao,
         MIN(CASE WHEN a.aprovado_em IS NOT NULL THEN 
-          (julianday(a.aprovado_em) - julianday(a.created_at)) * 24 
+          ${sqlHoursDiff('a.created_at', 'a.aprovado_em')} 
         END) as tempo_minimo,
         MAX(CASE WHEN a.aprovado_em IS NOT NULL THEN 
-          (julianday(a.aprovado_em) - julianday(a.created_at)) * 24 
+          ${sqlHoursDiff('a.created_at', 'a.aprovado_em')} 
         END) as tempo_maximo
        FROM aprovacoes_solicitacao a
        ${whereClause}`,
@@ -1318,7 +1314,7 @@ export class ReportService {
         SUM(CASE WHEN a.status = 'aprovado' THEN 1 ELSE 0 END) as aprovadas,
         SUM(CASE WHEN a.status = 'rejeitado' THEN 1 ELSE 0 END) as rejeitadas,
         AVG(CASE WHEN a.aprovado_em IS NOT NULL THEN 
-          (julianday(a.aprovado_em) - julianday(a.created_at)) * 24 
+          ${sqlHoursDiff('a.created_at', 'a.aprovado_em')} 
         END) as tempo_medio_aprovacao
        FROM aprovacoes_solicitacao a
        LEFT JOIN aprovadores ap ON a.aprovador_id = ap.id
@@ -1347,16 +1343,16 @@ export class ReportService {
     // Tendência diária
     const dailyTrend = await dbAll(
       `SELECT 
-        DATE(a.created_at) as date,
+        ${sqlDateColumn('a.created_at')} as date,
         COUNT(*) as aprovacoes_realizadas,
         SUM(CASE WHEN a.status = 'aprovado' THEN 1 ELSE 0 END) as aprovadas,
         SUM(CASE WHEN a.status = 'rejeitado' THEN 1 ELSE 0 END) as rejeitadas,
         AVG(CASE WHEN a.aprovado_em IS NOT NULL THEN 
-          (julianday(a.aprovado_em) - julianday(a.created_at)) * 24 
+          ${sqlHoursDiff('a.created_at', 'a.aprovado_em')} 
         END) as tempo_medio
        FROM aprovacoes_solicitacao a
        ${whereClause}
-       GROUP BY DATE(a.created_at)
+       GROUP BY ${sqlDateColumn('a.created_at')}
        ORDER BY date`,
       queryParams
     ) as any[];
@@ -1370,7 +1366,7 @@ export class ReportService {
         SUM(CASE WHEN a.status = 'aprovado' THEN 1 ELSE 0 END) as aprovadas,
         (SUM(CASE WHEN a.status = 'aprovado' THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as taxa_aprovacao,
         AVG(CASE WHEN a.aprovado_em IS NOT NULL THEN 
-          (julianday(a.aprovado_em) - julianday(a.created_at)) * 24 
+          ${sqlHoursDiff('a.created_at', 'a.aprovado_em')} 
         END) as tempo_medio,
         SUM((SELECT s.valor_total FROM solicitacoes_compra s WHERE s.id = a.solicitacao_id AND a.status = 'aprovado')) as valor_total_aprovado
        FROM aprovacoes_solicitacao a
@@ -1507,7 +1503,7 @@ export class ReportService {
         SUM(CASE WHEN status = 'rejeitada' THEN 1 ELSE 0 END) as rejeitadas,
         SUM(CASE WHEN status = 'pendente_aprovacao' THEN 1 ELSE 0 END) as pendentes,
         AVG(CASE WHEN aprovada_em IS NOT NULL THEN 
-          (julianday(aprovada_em) - julianday(created_at)) * 24 
+          ${sqlHoursDiff('created_at', 'aprovada_em')} 
         END) as tempo_medio
        FROM solicitacoes_compra
        WHERE created_at BETWEEN ? AND ?
@@ -1519,7 +1515,7 @@ export class ReportService {
          SUM(CASE WHEN status = 'rejeitado' THEN 1 ELSE 0 END) as rejeitadas,
          SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) as pendentes,
          AVG(CASE WHEN aprovado_em IS NOT NULL THEN 
-           (julianday(aprovado_em) - julianday(created_at)) * 24 
+           ${sqlHoursDiff('created_at', 'aprovado_em')} 
          END) as tempo_medio
        FROM orcamentos
        WHERE created_at BETWEEN ? AND ?`,
@@ -1562,16 +1558,16 @@ export class ReportService {
     // Tendência diária
     const dailyTrend = await dbAll(
       `SELECT 
-        DATE(s.created_at) as date,
+        ${sqlDateColumn('s.created_at')} as date,
         COUNT(DISTINCT s.id) as solicitacoes_criadas,
         COUNT(DISTINCT o.id) as orcamentos_recebidos,
         COUNT(DISTINCT a.id) as aprovacoes_realizadas,
         SUM(s.valor_total) as valor_total
        FROM solicitacoes_compra s
-       LEFT JOIN orcamentos o ON o.solicitacao_id = s.id AND DATE(o.created_at) = DATE(s.created_at)
-       LEFT JOIN aprovacoes_solicitacao a ON a.solicitacao_id = s.id AND DATE(a.created_at) = DATE(s.created_at)
+       LEFT JOIN orcamentos o ON o.solicitacao_id = s.id AND ${sqlDateColumn('o.created_at')} = ${sqlDateColumn('s.created_at')}
+       LEFT JOIN aprovacoes_solicitacao a ON a.solicitacao_id = s.id AND ${sqlDateColumn('a.created_at')} = ${sqlDateColumn('s.created_at')}
        WHERE s.created_at BETWEEN ? AND ?
-       GROUP BY DATE(s.created_at)
+       GROUP BY ${sqlDateColumn('s.created_at')}
        ORDER BY date`,
       queryParams
     ) as any[];
@@ -1579,16 +1575,16 @@ export class ReportService {
     // Resumo mensal
     const monthlyData = await dbAll(
       `SELECT 
-        strftime('%Y-%m', s.created_at) as month,
+        ${sqlStrftimeYMD('s.created_at')} as month,
         COUNT(DISTINCT s.id) as solicitacoes,
         COUNT(DISTINCT o.id) as orcamentos,
         COUNT(DISTINCT a.id) as aprovacoes,
         SUM(s.valor_total) as valor_total
        FROM solicitacoes_compra s
-       LEFT JOIN orcamentos o ON o.solicitacao_id = s.id AND strftime('%Y-%m', o.created_at) = strftime('%Y-%m', s.created_at)
-       LEFT JOIN aprovacoes_solicitacao a ON a.solicitacao_id = s.id AND strftime('%Y-%m', a.created_at) = strftime('%Y-%m', s.created_at)
+       LEFT JOIN orcamentos o ON o.solicitacao_id = s.id AND ${sqlStrftimeYMD('o.created_at')} = ${sqlStrftimeYMD('s.created_at')}
+       LEFT JOIN aprovacoes_solicitacao a ON a.solicitacao_id = s.id AND ${sqlStrftimeYMD('a.created_at')} = ${sqlStrftimeYMD('s.created_at')}
        WHERE s.created_at BETWEEN ? AND ?
-       GROUP BY strftime('%Y-%m', s.created_at)
+       GROUP BY ${sqlStrftimeYMD('s.created_at')}
        ORDER BY month`,
       queryParams
     ) as any[];

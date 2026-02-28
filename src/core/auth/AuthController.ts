@@ -26,8 +26,8 @@ function getCookieOptions() {
 
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
-  password: Joi.string().min(6).required()
+  email: Joi.string().email().required().trim(),
+  password: Joi.string().min(6).required().trim()
 });
 
 const registerSchema = Joi.object({

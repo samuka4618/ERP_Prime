@@ -1,5 +1,6 @@
 /**
  * Remove ou renomeia o arquivo do banco SQLite para permitir recriação (ex.: após SQLITE_CORRUPT).
+ * Apenas para SQLite: quando USE_POSTGRES=true, o banco é PostgreSQL e este script não se aplica.
  * Uso: npm run db:reset
  */
 const path = require('path');

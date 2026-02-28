@@ -10,7 +10,7 @@ Guia passo a passo para publicar o **frontend** na **Vercel** e o **backend** no
 2. [Ordem do deploy](#2-ordem-do-deploy)
 3. [Parte A: Deploy do backend (Render)](#3-parte-a-deploy-do-backend-render)
 4. [Parte A2: Deploy do backend (Fly.io)](#4-parte-a2-deploy-do-backend-flyio)
-5. [Parte A3: Deploy do backend (Railway)](#5-parte-a3-deploy-do-backend-railway)
+5. [Parte A3: Deploy do backend (Railway)](#5-parte-a3-deploy-do-backend-railway) — **PostgreSQL:** [Guia completo passo a passo](docs/RAILWAY_POSTGRES_PASSO_A_PASSO.md)
 6. [Parte B: Deploy do frontend (Vercel)](#6-parte-b-deploy-do-frontend-vercel)
 7. [Parte C: Ligar front e back](#7-parte-c-ligar-front-e-back)
 8. [Primeiro acesso (criar usuário administrador)](#8-primeiro-acesso-criar-usuário-administrador)
@@ -273,6 +273,8 @@ O Railway define **PORT** automaticamente; o backend já usa `process.env.PORT`.
 
 **Importante:** Sem volume, **não** use `DB_PATH=/data/...`. Use relativos (`./data/database/chamados.db`) ou deixe o padrão; dados serão efêmeros. Para persistência, crie um [Volume](#8-persistência-de-dados-render--flyio--railway).
 
+**PostgreSQL no Railway:** O Railway oferece PostgreSQL como add-on. Para um **passo a passo extremamente completo** (criar o Postgres, vincular ao backend, variáveis, build, primeiro usuário e troubleshooting), consulte **[docs/RAILWAY_POSTGRES_PASSO_A_PASSO.md](docs/RAILWAY_POSTGRES_PASSO_A_PASSO.md)**. Resumo: 1) Adicione o serviço PostgreSQL ao projeto no Railway; 2) No serviço da API, defina `USE_POSTGRES=true` e vincule ou cole a variável `DATABASE_URL` do Postgres; 3) Build: `npm ci --include=dev && npm run build`; Start: `node dist/src/server.js`; 4) Não é necessário volume para o banco (os dados ficam no Postgres). O backup do banco deve ser feito via `pg_dump`.
+
 ### 5.5 Domínio e URL
 
 1. Aba **Settings** → **Networking** → **Generate Domain** (ou **Public Networking**).
@@ -496,7 +498,9 @@ Todas as variáveis que o backend pode usar, com indicação de uso em produçã
 | `JWT_EXPIRES_IN`                                        | Não                           | Ex.: `24h`.                                                                                               |
 | `**ALLOWED_ORIGINS`**                                   | **Sim (com front na Vercel)** | URL(s) do front, separadas por vírgula. Ex.: `https://erp-prime.vercel.app`.                              |
 | `**CLIENT_URL`** ou `**FRONTEND_URL**`                  | **Recomendado**               | URL do front (links em e-mails). Ex.: `https://erp-prime.vercel.app`.                                     |
-| `DB_PATH`                                               | Sim*                          | Caminho do SQLite. Sem disco: ex. `./data/database/chamados.db`. Com disco: `/data/database/chamados.db`. |
+| `USE_POSTGRES`                                          | Não                           | `true` para usar PostgreSQL (ex.: Railway). Se não definido ou `false`, usa SQLite.                        |
+| `DATABASE_URL`                                          | Se `USE_POSTGRES=true`        | URL de conexão PostgreSQL (ex.: `postgresql://user:pass@host:5432/dbname?sslmode=require`). Obrigatório quando USE_POSTGRES=true. |
+| `DB_PATH`                                               | Sim* (SQLite)                 | Caminho do SQLite. Sem disco: ex. `./data/database/chamados.db`. Com disco: `/data/database/chamados.db`. Ignorado se USE_POSTGRES=true. |
 | `UPLOAD_PATH`                                           | Sim*                          | Ex.: `./storage/uploads` ou `/data/storage/uploads`.                                                      |
 | `IMAGES_PATH`                                           | Sim*                          | Ex.: `./storage/images` ou `/data/storage/images`.                                                        |
 | `UPLOADS_PATH`                                          | Sim*                          | Ex.: `./storage/uploads` ou `/data/storage/uploads`.                                                      |

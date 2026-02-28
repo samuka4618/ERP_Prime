@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue, sqlOrderByDateProximity, sqlOrderByTodayFirstThenPastThenFuture, sqlMinutesDiffFromNow } from '../../../core/database/sql-dialect';
 
 export interface FormResponse {
   id: number;
@@ -44,7 +45,7 @@ export class FormResponseModel {
     let formId = data.form_id;
     if (!formId) {
       const defaultForm = await dbGet(
-        'SELECT id FROM formularios_descarga WHERE is_default = 1 AND is_published = 1 LIMIT 1'
+        `SELECT id FROM formularios_descarga WHERE is_default = ${sqlBooleanTrue()} AND is_published = ${sqlBooleanTrue()} LIMIT 1`
       ) as any;
       if (defaultForm) {
         formId = defaultForm.id;
@@ -81,16 +82,11 @@ export class FormResponseModel {
          status = 'pendente' 
          OR (status = 'motorista_pronto' AND id NOT IN (
            SELECT agendamento_id FROM form_responses_descarga 
-           WHERE agendamento_id IS NOT NULL AND is_in_yard = 1
+           WHERE agendamento_id IS NOT NULL AND is_in_yard = ${sqlBooleanTrue()}
          ))
        )
        ORDER BY 
-         CASE 
-           WHEN scheduled_date = DATE('now') THEN 1
-           WHEN scheduled_date < DATE('now') THEN 2
-           ELSE 3
-         END,
-         ABS(julianday(scheduled_date) - julianday('now')) ASC,
+         ${sqlOrderByTodayFirstThenPastThenFuture('scheduled_date')}, ${sqlOrderByDateProximity('scheduled_date')},
          scheduled_time ASC
        LIMIT 1`,
       [data.fornecedor_id]
@@ -103,7 +99,7 @@ export class FormResponseModel {
     await dbRun(
       `INSERT INTO form_responses_descarga 
        (form_id, responses, driver_name, phone_number, fornecedor_id, agendamento_id, is_in_yard, tracking_code)
-       VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ${sqlBooleanTrue()}, ?)`,
       [
         formId || null,
         JSON.stringify(data.responses),
@@ -202,7 +198,7 @@ export class FormResponseModel {
       `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category
        FROM form_responses_descarga r
        LEFT JOIN fornecedores_descarga f ON r.fornecedor_id = f.id
-       WHERE r.is_in_yard = 1
+       WHERE r.is_in_yard = ${sqlBooleanTrue()}
        ORDER BY r.submitted_at ASC`
     ) as any[];
 
@@ -236,10 +232,10 @@ export class FormResponseModel {
       'SELECT id, is_in_yard, discharge_started_at FROM form_responses_descarga WHERE id = ?',
       [id]
     ) as any;
-    if (!row || !row.is_in_yard) return null;
+    if (!row || !(row.is_in_yard === 1 || row.is_in_yard === true)) return null;
     if (row.discharge_started_at) return this.findById(id); // já em descarga
     await dbRun(
-      'UPDATE form_responses_descarga SET discharge_started_at = CURRENT_TIMESTAMP WHERE id = ? AND is_in_yard = 1',
+      `UPDATE form_responses_descarga SET discharge_started_at = CURRENT_TIMESTAMP WHERE id = ? AND is_in_yard = ${sqlBooleanTrue()}`,
       [id]
     );
     // Enviar SMS "chamado para doca" e atualizar tela do motorista (liberado para descarregamento)
@@ -274,7 +270,7 @@ export class FormResponseModel {
            checked_out_at = CURRENT_TIMESTAMP,
            discharge_duration_minutes = CASE 
              WHEN discharge_started_at IS NOT NULL THEN 
-               CAST((julianday(CURRENT_TIMESTAMP) - julianday(discharge_started_at)) * 24 * 60 AS INTEGER)
+               CAST(${sqlMinutesDiffFromNow('discharge_started_at')} AS INTEGER)
              ELSE NULL 
            END
        WHERE id = ?`,

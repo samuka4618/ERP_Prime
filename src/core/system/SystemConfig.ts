@@ -1,4 +1,6 @@
 import { dbGet, dbRun, dbAll } from '../database/connection';
+import { config } from '../../config/database';
+import { sqlBooleanTrue } from '../database/sql-dialect';
 import { SystemConfig } from '../../shared/types';
 
 export class SystemConfigModel {
@@ -102,11 +104,11 @@ export class SystemConfigModel {
     }
 
     // Atualizar cada configuração
+    const insertSql = config.database.usePostgres
+      ? 'INSERT INTO system_config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP'
+      : 'INSERT OR REPLACE INTO system_config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)';
     for (const [key, value] of Object.entries(updateMap)) {
-      await dbRun(
-        'INSERT OR REPLACE INTO system_config (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
-        [key, value]
-      );
+      await dbRun(insertSql, [key, value]);
     }
 
     return this.getSystemConfig();
@@ -115,10 +117,10 @@ export class SystemConfigModel {
   static async getSystemStats(): Promise<any> {
     const stats = await dbAll(`
       SELECT 
-        (SELECT COUNT(*) FROM users WHERE is_active = 1) as total_users,
+        (SELECT COUNT(*) FROM users WHERE is_active = ${sqlBooleanTrue()}) as total_users,
         (SELECT COUNT(*) FROM tickets) as total_tickets,
         (SELECT COUNT(*) FROM tickets WHERE status = 'open') as open_tickets,
-        (SELECT COUNT(*) FROM ticket_categories WHERE is_active = 1) as total_categories
+        (SELECT COUNT(*) FROM ticket_categories WHERE is_active = ${sqlBooleanTrue()}) as total_categories
     `) as Array<{
       total_users: number;
       total_tickets: number;

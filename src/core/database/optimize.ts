@@ -1,4 +1,4 @@
-import { dbRun, db } from './connection';
+import { dbRun } from './connection';
 import fs from 'fs';
 import path from 'path';
 

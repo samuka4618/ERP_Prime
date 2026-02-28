@@ -1,4 +1,5 @@
 import { dbGet, dbAll, dbRun } from '../database/connection';
+import { bindBoolean } from '../database/sql-dialect';
 import type { NotificationEmailTemplate, NotificationTemplateKey } from '../../shared/types';
 import {
   NOTIFICATION_TEMPLATE_DEFINITIONS,
@@ -45,7 +46,7 @@ export class NotificationTemplateModel {
     }>;
     return rows.map((r) => ({
       notification_key: r.notification_key as NotificationTemplateKey,
-      enabled: r.enabled === 1,
+      enabled: Boolean(r.enabled),
       subject_template: r.subject_template,
       body_html: r.body_html,
       updated_at: r.updated_at ?? undefined,
@@ -70,7 +71,7 @@ export class NotificationTemplateModel {
     if (!row) return undefined;
     return {
       notification_key: row.notification_key as NotificationTemplateKey,
-      enabled: row.enabled === 1,
+      enabled: Boolean(row.enabled),
       subject_template: row.subject_template,
       body_html: row.body_html,
       updated_at: row.updated_at ?? undefined,
@@ -89,7 +90,7 @@ export class NotificationTemplateModel {
     const current = await this.getByKey(key);
     const subject = data.subject_template ?? current?.subject_template ?? def?.default_subject ?? '';
     const body = data.body_html ?? current?.body_html ?? def?.default_body_html ?? '';
-    const enabled = data.enabled !== undefined ? (data.enabled ? 1 : 0) : (current?.enabled ? 1 : 0);
+    const enabled = data.enabled !== undefined ? bindBoolean(data.enabled) : (current?.enabled ? bindBoolean(true) : bindBoolean(false));
 
     await dbRun(
       `INSERT INTO ${TABLE} (notification_key, enabled, subject_template, body_html, updated_at)

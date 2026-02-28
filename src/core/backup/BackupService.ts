@@ -5,6 +5,8 @@ import AdmZip from 'adm-zip';
 import { Readable } from 'stream';
 import { config } from '../../config/database';
 import { db } from '../database/connection';
+/** Quando true, backup/restore de banco é via pg_dump/pg_restore; não incluir arquivo .db no ZIP. */
+const usePostgres = config.database.usePostgres;
 
 export const BACKUP_VERSION = 1;
 
@@ -58,7 +60,7 @@ export function createBackupStream(): { stream: Readable; filename: string } {
     ? config.storage.images
     : path.join(cwd, config.storage.images);
 
-  const contents: string[] = ['database/chamados.db'];
+  const contents: string[] = usePostgres ? [] : ['database/chamados.db'];
   if (fs.existsSync(uploadsPath)) contents.push('storage/uploads');
   if (fs.existsSync(imagesPath)) contents.push('storage/images');
 
@@ -173,7 +175,7 @@ export async function restoreBackup(zipBuffer: Buffer): Promise<RestoreResult> {
     const extractedDb = path.join(tempDir, 'database', 'chamados.db');
     const dbRestoredPath = dbPath + '.restored';
 
-    if (fs.existsSync(extractedDb)) {
+    if (!usePostgres && fs.existsSync(extractedDb)) {
       if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
       fs.copyFileSync(extractedDb, dbRestoredPath);
     }

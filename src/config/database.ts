@@ -6,11 +6,17 @@ const envPath = path.resolve(__dirname, '..', '..', '.env');
 dotenv.config({ path: envPath });
 dotenv.config(); // fallback: .env no cwd atual
 
+/** true quando USE_POSTGRES=true e DATABASE_URL está definido; usa PostgreSQL (ex.: Railway). */
+const usePostgres = process.env.USE_POSTGRES === 'true' && !!process.env.DATABASE_URL?.trim();
+const databaseUrl = (process.env.DATABASE_URL || '').trim();
+
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   database: {
-    path: process.env.DB_PATH || './data/database/chamados.db'
+    path: process.env.DB_PATH || './data/database/chamados.db',
+    usePostgres,
+    databaseUrl
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'sua_chave_secreta_jwt_aqui',

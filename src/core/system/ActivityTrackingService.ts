@@ -1,4 +1,14 @@
 import { dbAll, dbGet, dbRun } from '../database/connection';
+import { config } from '../../config/database';
+import {
+  sqlBooleanTrue,
+  sqlColumnEqualsDateToday,
+  sqlColumnGteDatetimeMinus,
+  sqlDateColumn,
+  sqlDatetimeMinus,
+  sqlMinutesDiff,
+  sqlStrftimeHour
+} from '../database/sql-dialect';
 import { logger } from '../../shared/utils/logger';
 
 export interface UserActivity {
@@ -61,13 +71,10 @@ export class ActivityTrackingService {
   static async trackUserActivity(userId: number, activity: string): Promise<void> {
     try {
       const now = new Date();
-      
-      // Inserir ou atualizar atividade
-      await dbRun(`
-        INSERT OR REPLACE INTO user_activity_tracking 
-        (user_id, activity, timestamp, session_id) 
-        VALUES (?, ?, ?, ?)
-      `, [userId, activity, now.toISOString(), `session_${userId}_${Date.now()}`]);
+      const insertCmd = config.database.usePostgres
+        ? 'INSERT INTO user_activity_tracking (user_id, activity, timestamp, session_id) VALUES (?, ?, ?, ?)'
+        : 'INSERT OR REPLACE INTO user_activity_tracking (user_id, activity, timestamp, session_id) VALUES (?, ?, ?, ?)';
+      await dbRun(insertCmd, [userId, activity, now.toISOString(), `session_${userId}_${Date.now()}`]);
       
       // Atualizar última atividade do usuário
       await dbRun(`
@@ -93,10 +100,10 @@ export class ActivityTrackingService {
           u.role as user_role,
           u.last_activity,
           CASE 
-            WHEN u.last_activity > datetime('now', '-5 minutes') THEN 1 
+            WHEN u.last_activity > ${sqlDatetimeMinus('5 minutes')} THEN 1 
             ELSE 0 
           END as is_online,
-          0 as session_duration, // Coluna session_duration não existe no banco
+          0 as session_duration,
           COALESCE(session_stats.total_sessions_today, 0) as total_sessions_today,
           COALESCE(session_stats.total_sessions_this_week, 0) as total_sessions_this_week,
           COALESCE(session_stats.total_sessions_this_month, 0) as total_sessions_this_month
@@ -104,15 +111,15 @@ export class ActivityTrackingService {
         LEFT JOIN (
           SELECT 
             user_id,
-            0 as session_duration, // Coluna session_duration não existe no banco
-            COUNT(CASE WHEN DATE(timestamp) = DATE('now') THEN 1 END) as total_sessions_today,
-            COUNT(CASE WHEN timestamp >= datetime('now', '-7 days') THEN 1 END) as total_sessions_this_week,
-            COUNT(CASE WHEN timestamp >= datetime('now', '-30 days') THEN 1 END) as total_sessions_this_month
+            0 as session_duration,
+            COUNT(CASE WHEN ${sqlColumnEqualsDateToday('timestamp')} THEN 1 END) as total_sessions_today,
+            COUNT(CASE WHEN ${sqlColumnGteDatetimeMinus('timestamp', '7 days')} THEN 1 END) as total_sessions_this_week,
+            COUNT(CASE WHEN ${sqlColumnGteDatetimeMinus('timestamp', '30 days')} THEN 1 END) as total_sessions_this_month
           FROM user_activity_tracking 
           WHERE activity = 'login'
           GROUP BY user_id
         ) session_stats ON u.id = session_stats.user_id
-        WHERE u.is_active = 1
+        WHERE u.is_active = ${sqlBooleanTrue()}
         ORDER BY u.last_activity DESC
       `;
       
@@ -144,7 +151,7 @@ export class ActivityTrackingService {
           u.name as attendant_name,
           u.email as attendant_email,
           CASE 
-            WHEN u.last_activity > datetime('now', '-5 minutes') THEN 1 
+            WHEN u.last_activity > ${sqlDatetimeMinus('5 minutes')} THEN 1 
             ELSE 0 
           END as is_online,
           u.last_activity,
@@ -163,36 +170,36 @@ export class ActivityTrackingService {
           SELECT 
             t.attendant_id,
             COUNT(CASE WHEN t.status IN ('open', 'in_progress') THEN 1 END) as active_tickets,
-            COUNT(CASE WHEN DATE(t.created_at) = DATE('now') THEN 1 END) as total_tickets_today,
-            COUNT(CASE WHEN t.created_at >= datetime('now', '-7 days') THEN 1 END) as total_tickets_this_week,
-            COUNT(CASE WHEN t.created_at >= datetime('now', '-30 days') THEN 1 END) as total_tickets_this_month,
+            COUNT(CASE WHEN ${sqlColumnEqualsDateToday('t.created_at')} THEN 1 END) as total_tickets_today,
+            COUNT(CASE WHEN ${sqlColumnGteDatetimeMinus('t.created_at', '7 days')} THEN 1 END) as total_tickets_this_week,
+            COUNT(CASE WHEN ${sqlColumnGteDatetimeMinus('t.created_at', '30 days')} THEN 1 END) as total_tickets_this_month,
             AVG(CASE 
               WHEN t.status = 'resolved' AND t.closed_at IS NOT NULL 
-              THEN (julianday(t.closed_at) - julianday(t.created_at)) * 24 * 60 
+              THEN ${sqlMinutesDiff('t.created_at', 't.closed_at')} 
               ELSE NULL 
             END) as avg_resolution_time,
-            COUNT(CASE WHEN t.status = 'resolved' AND DATE(t.closed_at) = DATE('now') THEN 1 END) as tickets_resolved_today,
-            COUNT(CASE WHEN t.status = 'resolved' AND t.closed_at >= datetime('now', '-7 days') THEN 1 END) as tickets_resolved_this_week,
-            COUNT(CASE WHEN t.status = 'resolved' AND t.closed_at >= datetime('now', '-30 days') THEN 1 END) as tickets_resolved_this_month,
+            COUNT(CASE WHEN t.status = 'resolved' AND ${sqlColumnEqualsDateToday('t.closed_at')} THEN 1 END) as tickets_resolved_today,
+            COUNT(CASE WHEN t.status = 'resolved' AND ${sqlColumnGteDatetimeMinus('t.closed_at', '7 days')} THEN 1 END) as tickets_resolved_this_week,
+            COUNT(CASE WHEN t.status = 'resolved' AND ${sqlColumnGteDatetimeMinus('t.closed_at', '30 days')} THEN 1 END) as tickets_resolved_this_month,
             AVG(CASE 
               WHEN tm.created_at IS NOT NULL 
-              THEN (julianday(tm.created_at) - julianday(t.created_at)) * 24 * 60 
+              THEN ${sqlMinutesDiff('t.created_at', 'tm.created_at')} 
               ELSE NULL 
             END) as response_time_avg,
             CASE 
               WHEN AVG(CASE 
                 WHEN t.status = 'resolved' AND t.closed_at IS NOT NULL 
-                THEN (julianday(t.closed_at) - julianday(t.created_at)) * 24 * 60 
+                THEN ${sqlMinutesDiff('t.created_at', 't.closed_at')} 
                 ELSE NULL 
               END) < 60 THEN 95
               WHEN AVG(CASE 
                 WHEN t.status = 'resolved' AND t.closed_at IS NOT NULL 
-                THEN (julianday(t.closed_at) - julianday(t.created_at)) * 24 * 60 
+                THEN ${sqlMinutesDiff('t.created_at', 't.closed_at')} 
                 ELSE NULL 
               END) < 240 THEN 85
               WHEN AVG(CASE 
                 WHEN t.status = 'resolved' AND t.closed_at IS NOT NULL 
-                THEN (julianday(t.closed_at) - julianday(t.created_at)) * 24 * 60 
+                THEN ${sqlMinutesDiff('t.created_at', 't.closed_at')} 
                 ELSE NULL 
               END) < 480 THEN 70
               ELSE 50
@@ -202,7 +209,7 @@ export class ActivityTrackingService {
           WHERE t.attendant_id IS NOT NULL
           GROUP BY t.attendant_id
         ) ticket_stats ON u.id = ticket_stats.attendant_id
-        WHERE u.role = 'attendant' AND u.is_active = 1
+        WHERE u.role = 'attendant' AND u.is_active = ${sqlBooleanTrue()}
         ORDER BY u.last_activity DESC
       `;
       
@@ -233,27 +240,30 @@ export class ActivityTrackingService {
   // Obter visão geral do sistema
   static async getSystemOverview(): Promise<SystemOverview> {
     try {
+      const fiveMin = sqlDatetimeMinus('5 minutes');
+      const oneDay = sqlDatetimeMinus('1 day');
+      const hourGroup = sqlStrftimeHour('timestamp');
       const queries = {
-        total_users: `SELECT COUNT(*) as count FROM users WHERE is_active = 1`,
-        online_users: `SELECT COUNT(*) as count FROM users WHERE is_active = 1 AND last_activity > datetime('now', '-5 minutes')`,
-        total_attendants: `SELECT COUNT(*) as count FROM users WHERE role = 'attendant' AND is_active = 1`,
-        online_attendants: `SELECT COUNT(*) as count FROM users WHERE role = 'attendant' AND is_active = 1 AND last_activity > datetime('now', '-5 minutes')`,
+        total_users: `SELECT COUNT(*) as count FROM users WHERE is_active = ${sqlBooleanTrue()}`,
+        online_users: `SELECT COUNT(*) as count FROM users WHERE is_active = ${sqlBooleanTrue()} AND last_activity > ${fiveMin}`,
+        total_attendants: `SELECT COUNT(*) as count FROM users WHERE role = 'attendant' AND is_active = ${sqlBooleanTrue()}`,
+        online_attendants: `SELECT COUNT(*) as count FROM users WHERE role = 'attendant' AND is_active = ${sqlBooleanTrue()} AND last_activity > ${fiveMin}`,
         active_tickets: `SELECT COUNT(*) as count FROM tickets WHERE status IN ('open', 'in_progress')`,
-        resolved_today: `SELECT COUNT(*) as count FROM tickets WHERE status = 'resolved' AND DATE(closed_at) = DATE('now')`,
-        created_today: `SELECT COUNT(*) as count FROM tickets WHERE DATE(created_at) = DATE('now')`,
+        resolved_today: `SELECT COUNT(*) as count FROM tickets WHERE status = 'resolved' AND ${sqlColumnEqualsDateToday('closed_at')}`,
+        created_today: `SELECT COUNT(*) as count FROM tickets WHERE ${sqlColumnEqualsDateToday('created_at')}`,
         avg_resolution_time: `
-          SELECT AVG((julianday(closed_at) - julianday(created_at)) * 24 * 60) as avg_time 
+          SELECT AVG(${sqlMinutesDiff('created_at', 'closed_at')}) as avg_time 
           FROM tickets 
           WHERE status = 'resolved' AND closed_at IS NOT NULL
         `,
-        peak_concurrent_users: `SELECT MAX(concurrent_count) as peak FROM (SELECT COUNT(*) as concurrent_count FROM user_activity_tracking WHERE timestamp >= datetime('now', '-1 day') GROUP BY strftime('%H', timestamp))`,
-        peak_concurrent_attendants: `SELECT MAX(concurrent_count) as peak FROM (SELECT COUNT(*) as concurrent_count FROM user_activity_tracking WHERE timestamp >= datetime('now', '-1 day') AND user_id IN (SELECT id FROM users WHERE role = 'attendant') GROUP BY strftime('%H', timestamp))`,
+        peak_concurrent_users: `SELECT MAX(concurrent_count) as peak FROM (SELECT COUNT(*) as concurrent_count FROM user_activity_tracking WHERE ${sqlColumnGteDatetimeMinus('timestamp', '1 day')} GROUP BY ${hourGroup})`,
+        peak_concurrent_attendants: `SELECT MAX(concurrent_count) as peak FROM (SELECT COUNT(*) as concurrent_count FROM user_activity_tracking WHERE ${sqlColumnGteDatetimeMinus('timestamp', '1 day')} AND user_id IN (SELECT id FROM users WHERE role = 'attendant') GROUP BY ${hourGroup})`,
         // Dados de compras
         total_solicitacoes: `SELECT COUNT(*) as count FROM solicitacoes_compra`,
         solicitacoes_pendentes: `SELECT COUNT(*) as count FROM solicitacoes_compra WHERE status = 'pendente_aprovacao'`,
         solicitacoes_em_cotacao: `SELECT COUNT(*) as count FROM solicitacoes_compra WHERE status = 'em_cotacao'`,
         solicitacoes_aprovadas: `SELECT COUNT(*) as count FROM solicitacoes_compra WHERE status = 'aprovada'`,
-        solicitacoes_criadas_hoje: `SELECT COUNT(*) as count FROM solicitacoes_compra WHERE DATE(created_at) = DATE('now')`,
+        solicitacoes_criadas_hoje: `SELECT COUNT(*) as count FROM solicitacoes_compra WHERE ${sqlColumnEqualsDateToday('created_at')}`,
         valor_total_solicitacoes: `SELECT COALESCE(SUM(valor_total), 0) as total FROM solicitacoes_compra`,
         total_orcamentos: `SELECT COUNT(*) as count FROM orcamentos`,
         orcamentos_pendentes: `SELECT COUNT(*) as count FROM orcamentos WHERE status = 'pendente'`,
@@ -324,10 +334,10 @@ export class ActivityTrackingService {
       const queries = {
         user_info: `SELECT * FROM users WHERE id = ?`,
         tickets_created: `SELECT COUNT(*) as count FROM tickets WHERE user_id = ?`,
-        tickets_created_today: `SELECT COUNT(*) as count FROM tickets WHERE user_id = ? AND DATE(created_at) = DATE('now')`,
-        tickets_created_this_week: `SELECT COUNT(*) as count FROM tickets WHERE user_id = ? AND created_at >= datetime('now', '-7 days')`,
-        tickets_created_this_month: `SELECT COUNT(*) as count FROM tickets WHERE user_id = ? AND created_at >= datetime('now', '-30 days')`,
-        avg_tickets_per_day: `SELECT AVG(daily_count) as avg FROM (SELECT COUNT(*) as daily_count FROM tickets WHERE user_id = ? GROUP BY DATE(created_at))`,
+        tickets_created_today: `SELECT COUNT(*) as count FROM tickets WHERE user_id = ? AND ${sqlColumnEqualsDateToday('created_at')}`,
+        tickets_created_this_week: `SELECT COUNT(*) as count FROM tickets WHERE user_id = ? AND ${sqlColumnGteDatetimeMinus('created_at', '7 days')}`,
+        tickets_created_this_month: `SELECT COUNT(*) as count FROM tickets WHERE user_id = ? AND ${sqlColumnGteDatetimeMinus('created_at', '30 days')}`,
+        avg_tickets_per_day: `SELECT AVG(daily_count) as avg FROM (SELECT COUNT(*) as daily_count FROM tickets WHERE user_id = ? GROUP BY ${sqlDateColumn('created_at')})`,
         total_messages: `SELECT COUNT(*) as count FROM ticket_messages WHERE user_id = ?`,
         total_attachments: `SELECT COUNT(*) as count FROM attachments WHERE user_id = ?`,
         session_duration_today: `SELECT 0 as total FROM users WHERE id = ?`, // Coluna session_duration não existe no banco

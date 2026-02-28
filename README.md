@@ -1,6 +1,6 @@
 # ERP PRIME
 
-Sistema completo de gestão empresarial (ERP) modular desenvolvido com Node.js, Express, TypeScript, React e SQLite.
+Sistema completo de gestão empresarial (ERP) modular desenvolvido com Node.js, Express, TypeScript, React e SQLite ou PostgreSQL (configurável via `USE_POSTGRES` e `DATABASE_URL`).
 
 ## 🏢 Sobre o ERP PRIME
 
@@ -11,6 +11,25 @@ O ERP PRIME é um sistema de gestão empresarial modular que oferece funcionalid
 - **Core**: Funcionalidades essenciais do ERP (autenticação, usuários e configurações do sistema)
 - **Módulo de Chamados**: Sistema completo de gerenciamento de chamados e tickets
 - **Módulo de Cadastros**: Sistema de cadastro de clientes, configurações e análise de crédito
+
+## 🗄️ Banco de dados: SQLite ou PostgreSQL
+O sistema suporta dois backends de banco:
+- **SQLite** (padrão): não defina `USE_POSTGRES`; use `DB_PATH` para o arquivo `.db`.
+- **PostgreSQL**: ideal para produção (ex.: Railway). Variáveis **obrigatórias** para usar Postgres:
+  - **`USE_POSTGRES=true`** — ativa o backend PostgreSQL
+  - **`DATABASE_URL`** — URL de conexão, ex.: `postgresql://user:senha@host:5432/banco?sslmode=require`
+
+Sem `USE_POSTGRES=true` ou sem `DATABASE_URL`, o sistema usa SQLite. Detalhes em [Configuração de Ambiente](#2-configuração-de-ambiente).
+
+**PostgreSQL local com Docker (testes):**
+```bash
+docker compose -f docker-compose.postgres.yml up -d
+```
+No `.env`: `USE_POSTGRES=true` e `DATABASE_URL=postgresql://erp:erp_local@localhost:5432/erp_prime`. Parar: `docker compose -f docker-compose.postgres.yml down`.
+
+**Schema único para Postgres:** o arquivo `src/core/database/schema-full.postgres.sql` contém todo o schema (tabelas, índices e dados iniciais) na ordem correta de dependências. Você pode rodá-lo manualmente em um banco vazio, por exemplo: `psql -U erp -d erp_prime -f src/core/database/schema-full.postgres.sql`. O backend também usa esse arquivo na inicialização quando `USE_POSTGRES=true`.
+
+**PostgreSQL no Railway (produção):** para um passo a passo completo de como criar e vincular o Postgres no Railway (criar banco, vincular à API, variáveis, build, primeiro usuário e troubleshooting), veja **[docs/RAILWAY_POSTGRES_PASSO_A_PASSO.md](docs/RAILWAY_POSTGRES_PASSO_A_PASSO.md)**.
 
 ## 🚀 Início Rápido
 
@@ -56,6 +75,7 @@ O sistema estará disponível em:
 
 ### Banco de Dados
 - `npm run migrate` - Executa migrações do banco de dados
+- `npm run db:reset` - Reseta o banco SQLite (renomeia o arquivo para permitir recriação). **Não se aplica quando `USE_POSTGRES=true`** (PostgreSQL).
 
 ### Produção
 - `npm start` - Inicia o Ngrok (túnel público), o Nginx (proxy porta 80) e o servidor Node (porta 3000)
@@ -175,13 +195,27 @@ npm run migrate
 ### 2. Configuração de Ambiente
 Use o arquivo `.env` existente e configure as variáveis necessárias:
 - `NODE_ENV=production` - Modo produção
-- `JWT_SECRET`: Chave secreta para JWT (obrigatório)
-- `SMTP_*`: Configurações de e-mail (opcional)
+- `JWT_SECRET` - Chave secreta para JWT (obrigatório)
+- `SMTP_*` - Configurações de e-mail (opcional)
 - `PORT=3000` - Porta do servidor
 - `HOST=0.0.0.0` - Acesso via rede
-- `DB_PATH=./data/database/chamados.db` - Caminho do banco de dados
 - `UPLOAD_PATH=./storage/uploads` - Caminho de uploads
 - `IMAGES_PATH=./storage/images` - Caminho de imagens
+
+#### Banco de dados: SQLite (padrão) ou PostgreSQL
+- **SQLite (padrão):** não defina `USE_POSTGRES` ou use `USE_POSTGRES=false`. Configure:
+  - `DB_PATH=./data/database/chamados.db` - Caminho do arquivo do banco
+- **PostgreSQL:** para usar Postgres (ex.: Railway, produção em nuvem), defina:
+  - `USE_POSTGRES=true` - Ativa o uso do PostgreSQL
+  - `DATABASE_URL` - URL de conexão (obrigatória quando `USE_POSTGRES=true`)
+
+Exemplo de `DATABASE_URL` para PostgreSQL:
+```env
+USE_POSTGRES=true
+DATABASE_URL=postgresql://usuario:senha@host:5432/nome_do_banco?sslmode=require
+```
+
+No **Railway**, ao adicionar o plugin PostgreSQL ao projeto, a variável `DATABASE_URL` é preenchida automaticamente; basta definir `USE_POSTGRES=true`.
 
 ### 3. Iniciar em Produção
 ```bash
@@ -286,14 +320,19 @@ Sistema de cadastro de clientes e análise de crédito com:
 - Consulta CNPJ automatizada
 - Integração com sistemas externos
 
-
+## 🔐 Primeiro usuário administrador
+Em ambiente de produção (ou quando o registro estiver desabilitado), crie o primeiro admin via script:
+```bash
+npm run build    # compilar antes, se ainda não fez
 npm run create-user
-
-Campo	Valor
-Email	admin@localhost.com
-Senha	Admin@123456
-Nome	Administrador
-Perfil	admin
+```
+Exemplo de dados para o primeiro acesso:
+| Campo   | Valor              |
+|---------|--------------------|
+| Email   | admin@localhost.com |
+| Senha   | Admin@123456        |
+| Nome    | Administrador       |
+| Perfil  | admin               |
 
 ## 📝 Licença
 

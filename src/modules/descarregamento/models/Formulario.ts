@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue, sqlBooleanFalse, bindBoolean } from '../../../core/database/sql-dialect';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 
 export interface FormField {
@@ -46,7 +47,7 @@ export class FormularioModel {
   static async create(userId: number, data: CreateFormularioRequest): Promise<Formulario> {
     // Se este formulário for marcado como padrão, desmarcar outros
     if (data.is_default) {
-      await dbRun('UPDATE formularios_descarga SET is_default = 0 WHERE is_default = 1');
+      await dbRun(`UPDATE formularios_descarga SET is_default = ${sqlBooleanFalse()} WHERE is_default = ${sqlBooleanTrue()}`);
     }
 
     await dbRun(
@@ -56,8 +57,8 @@ export class FormularioModel {
         data.title,
         data.description || null,
         JSON.stringify(data.fields),
-        data.is_published ? 1 : 0,
-        data.is_default ? 1 : 0,
+        bindBoolean(!!data.is_published),
+        bindBoolean(!!data.is_default),
         userId
       ]
     );
@@ -102,7 +103,7 @@ export class FormularioModel {
 
   static async findDefault(): Promise<Formulario | null> {
     const formulario = await dbGet(
-      'SELECT * FROM formularios_descarga WHERE is_default = 1 AND is_published = 1 LIMIT 1'
+      `SELECT * FROM formularios_descarga WHERE is_default = ${sqlBooleanTrue()} AND is_published = ${sqlBooleanTrue()} LIMIT 1`
     ) as any;
 
     if (!formulario) return null;
@@ -122,7 +123,7 @@ export class FormularioModel {
 
   static async findPublished(): Promise<Formulario[]> {
     const formularios = await dbAll(
-      'SELECT * FROM formularios_descarga WHERE is_published = 1 ORDER BY is_default DESC, created_at DESC'
+      `SELECT * FROM formularios_descarga WHERE is_published = ${sqlBooleanTrue()} ORDER BY is_default DESC, created_at DESC`
     ) as any[];
 
     return Promise.all(
@@ -163,7 +164,7 @@ export class FormularioModel {
   static async update(id: number, data: UpdateFormularioRequest): Promise<Formulario | null> {
     // Se este formulário for marcado como padrão, desmarcar outros
     if (data.is_default) {
-      await dbRun('UPDATE formularios_descarga SET is_default = 0 WHERE is_default = 1 AND id != ?', [id]);
+      await dbRun(`UPDATE formularios_descarga SET is_default = ${sqlBooleanFalse()} WHERE is_default = ${sqlBooleanTrue()} AND id != ?`, [id]);
     }
 
     const fields: string[] = [];
@@ -183,11 +184,11 @@ export class FormularioModel {
     }
     if (data.is_published !== undefined) {
       fields.push('is_published = ?');
-      values.push(data.is_published ? 1 : 0);
+      values.push(bindBoolean(!!data.is_published));
     }
     if (data.is_default !== undefined) {
       fields.push('is_default = ?');
-      values.push(data.is_default ? 1 : 0);
+      values.push(bindBoolean(!!data.is_default));
     }
 
     if (fields.length > 0) {

@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue, bindBoolean } from '../../../core/database/sql-dialect';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 
 export interface Comprador {
@@ -95,7 +96,7 @@ export class CompradorModel {
       `SELECT c.*, u.name as usuario_name, u.email as usuario_email
        FROM compradores c
        LEFT JOIN users u ON c.user_id = u.id
-       WHERE c.user_id = ? AND c.is_active = 1`,
+       WHERE c.user_id = ? AND c.is_active = ${sqlBooleanTrue()}`,
       [userId]
     ) as any;
 
@@ -121,7 +122,7 @@ export class CompradorModel {
 
     if (data.is_active !== undefined) {
       fields.push('is_active = ?');
-      values.push(data.is_active ? 1 : 0);
+      values.push(bindBoolean(!!data.is_active));
     }
 
     if (fields.length > 0) {

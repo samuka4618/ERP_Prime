@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll, db } from '../../../core/database/connection';
+import { sqlBooleanTrue } from '../../../core/database/sql-dialect';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 
 export interface SolicitacaoCompraItem {
@@ -148,7 +149,7 @@ export class SolicitacaoCompraModel {
       const aprovadoresIds = data.aprovadores_ids.map((id) => Number(id));
       const placeholders = aprovadoresIds.map(() => '?').join(',');
       const aprovadores = await dbAll(
-        `SELECT id, user_id, nivel_aprovacao FROM aprovadores WHERE user_id IN (${placeholders}) AND is_active = 1`,
+        `SELECT id, user_id, nivel_aprovacao FROM aprovadores WHERE user_id IN (${placeholders}) AND is_active = ${sqlBooleanTrue()}`,
         aprovadoresIds
       ) as any[];
 
@@ -668,7 +669,7 @@ export class SolicitacaoCompraModel {
 
     // Buscar comprador pelo user_id
     const comprador = await dbGet(
-      'SELECT id FROM compradores WHERE user_id = ? AND is_active = 1',
+      `SELECT id FROM compradores WHERE user_id = ? AND is_active = ${sqlBooleanTrue()}`,
       [compradorUserId]
     ) as any;
 
@@ -797,7 +798,7 @@ export class SolicitacaoCompraModel {
 
     // Buscar aprovador pelo user_id
     const aprovador = await dbGet(
-      'SELECT id FROM aprovadores WHERE user_id = ? AND is_active = 1',
+      `SELECT id FROM aprovadores WHERE user_id = ? AND is_active = ${sqlBooleanTrue()}`,
       [aprovadorUserId]
     ) as any;
 

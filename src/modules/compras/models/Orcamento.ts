@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue } from '../../../core/database/sql-dialect';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 
 export interface OrcamentoItem {
@@ -316,13 +317,13 @@ export class OrcamentoModel {
       queryParams.push(params.status);
     }
     if (params.user_id != null && !params.only_solicitante && !params.only_comprador) {
-      whereClause += ' AND (s.solicitante_id = ? OR s.comprador_id IN (SELECT id FROM compradores WHERE user_id = ? AND is_active = 1))';
+      whereClause += ` AND (s.solicitante_id = ? OR s.comprador_id IN (SELECT id FROM compradores WHERE user_id = ? AND is_active = ${sqlBooleanTrue()}))`;
       queryParams.push(params.user_id, params.user_id);
     } else if (params.user_id != null && params.only_solicitante) {
       whereClause += ' AND s.solicitante_id = ?';
       queryParams.push(params.user_id);
     } else if (params.user_id != null && params.only_comprador) {
-      whereClause += ' AND s.comprador_id IN (SELECT id FROM compradores WHERE user_id = ? AND is_active = 1)';
+      whereClause += ` AND s.comprador_id IN (SELECT id FROM compradores WHERE user_id = ? AND is_active = ${sqlBooleanTrue()})`;
       queryParams.push(params.user_id);
     }
 
@@ -393,7 +394,7 @@ export class OrcamentoModel {
     const orc = await this.findById(id);
     if (!orc || orc.status !== 'aprovado' || orc.solicitacao?.solicitante_id !== userId) return null;
     await dbRun(
-      `UPDATE orcamentos SET confirmado_entrega_solicitante = 1, data_confirmacao_solicitante = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      `UPDATE orcamentos SET confirmado_entrega_solicitante = ${sqlBooleanTrue()}, data_confirmacao_solicitante = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [id]
     );
     return this.findById(id);
@@ -408,7 +409,7 @@ export class OrcamentoModel {
     const sol = await dbGet('SELECT comprador_id FROM solicitacoes_compra WHERE id = ?', [orc.solicitacao_id]) as any;
     if (!sol || sol.comprador_id !== comprador.id) return null;
     await dbRun(
-      `UPDATE orcamentos SET confirmado_entrega_comprador = 1, data_confirmacao_comprador = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      `UPDATE orcamentos SET confirmado_entrega_comprador = ${sqlBooleanTrue()}, data_confirmacao_comprador = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [id]
     );
     return this.findById(id);

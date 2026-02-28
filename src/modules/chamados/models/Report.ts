@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { config } from '../../../config/database';
 import { 
   Report, 
   ReportExecution, 
@@ -467,11 +468,12 @@ export class ReportModel {
 
   static async findDueSchedules(): Promise<ReportSchedule[]> {
     const now = new Date().toISOString();
+    const isActiveCond = config.database.usePostgres ? 'rs.is_active IS TRUE' : 'rs.is_active = 1';
     const schedules = await dbAll(
       `SELECT rs.*, r.name as report_name, r.type as report_type, r.parameters as report_parameters, r.custom_fields as report_custom_fields, r.created_by as report_created_by
        FROM report_schedules rs
        LEFT JOIN reports r ON rs.report_id = r.id
-       WHERE rs.is_active = 1 AND rs.next_execution <= ?
+       WHERE ${isActiveCond} AND rs.next_execution <= ?
        ORDER BY rs.next_execution ASC`,
       [now]
     ) as any[];

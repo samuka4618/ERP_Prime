@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll, db } from '../../../core/database/connection';
+import { sqlBooleanTrue, sqlColumnGteDatetimeMinus, sqlHoursDiff } from '../../../core/database/sql-dialect';
 import { Ticket, TicketStatus, CreateTicketRequest, UpdateTicketRequest, PaginationParams, PaginatedResponse } from '../../../shared/types';
 import { config } from '../../../config/database';
 import { CategoryAssignmentModel } from './CategoryAssignment';
@@ -38,7 +39,7 @@ export class TicketModel {
     
     // Buscar a categoria para obter os SLAs específicos
     const category = await dbGet(
-      'SELECT * FROM ticket_categories WHERE id = ? AND is_active = 1',
+      `SELECT * FROM ticket_categories WHERE id = ? AND is_active = ${sqlBooleanTrue()}`,
       [ticketData.category_id]
     ) as any;
 
@@ -322,7 +323,7 @@ export class TicketModel {
     }
     
     // Adicionar categoria "Outros" (assumindo que tem ID específico ou nome)
-    whereClause += 't.category_id IN (SELECT id FROM ticket_categories WHERE name = "Outros" OR id NOT IN (SELECT DISTINCT category_id FROM category_assignments WHERE is_active = 1))';
+    whereClause += `t.category_id IN (SELECT id FROM ticket_categories WHERE name = 'Outros' OR id NOT IN (SELECT DISTINCT category_id FROM category_assignments WHERE is_active = ${sqlBooleanTrue()}))`;
     whereClause += ')))';
     
     const queryParams: any[] = [attendantId, ...assignedCategoryIds];
@@ -788,7 +789,8 @@ export class TicketModel {
   }
 
   static async getAverageResolutionTime(startDate?: string, endDate?: string): Promise<number> {
-    let query = `SELECT AVG(julianday(closed_at) - julianday(created_at)) * 24 as avg_hours
+    const avgExpr = sqlHoursDiff('created_at', 'closed_at');
+    let query = `SELECT AVG(${avgExpr}) as avg_hours
        FROM tickets 
        WHERE status = 'closed' AND closed_at IS NOT NULL`;
     const params: any[] = [];
@@ -900,7 +902,7 @@ export class TicketModel {
     
     // Verificar se é categoria "Outros" (sem atribuição específica) ou se o técnico está atribuído
     const isOthersCategory = await dbGet(
-      'SELECT id FROM ticket_categories WHERE id = ? AND (name = "Outros" OR id NOT IN (SELECT DISTINCT category_id FROM category_assignments WHERE is_active = 1))',
+      `SELECT id FROM ticket_categories WHERE id = ? AND (name = 'Outros' OR id NOT IN (SELECT DISTINCT category_id FROM category_assignments WHERE is_active = ${sqlBooleanTrue()}))`,
       [ticket.category_id]
     ) as any;
 
@@ -950,7 +952,7 @@ export class TicketModel {
         u.name as user_name
        FROM tickets t
        LEFT JOIN users u ON t.user_id = u.id
-       WHERE t.created_at >= datetime('now', '-7 days')
+       WHERE ${sqlColumnGteDatetimeMinus('t.created_at', '7 days')}
        ORDER BY t.created_at DESC
        LIMIT 10`,
       []

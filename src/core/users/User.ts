@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../database/connection';
+import { sqlBooleanTrue, sqlBooleanFalse } from '../database/sql-dialect';
 import { User, UserRole, CreateUserRequest, UpdateUserRequest } from '../../shared/types';
 import bcrypt from 'bcryptjs';
 
@@ -79,7 +80,7 @@ export class UserModel {
    */
   static async findByEmailActive(email: string): Promise<User | null> {
     const user = await dbGet(
-      'SELECT * FROM users WHERE email = ? AND is_active = 1',
+      `SELECT * FROM users WHERE email = ? AND is_active = ${sqlBooleanTrue()}`,
       [email]
     ) as any;
 
@@ -107,7 +108,7 @@ export class UserModel {
    */
   static async findByRole(role: UserRole, limit: number = 20, offset: number = 0): Promise<User[]> {
     const users = await dbAll(
-      'SELECT * FROM users WHERE role = ? AND is_active = 1 ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      `SELECT * FROM users WHERE role = ? AND is_active = ${sqlBooleanTrue()} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [role, limit, offset]
     ) as any[];
 
@@ -120,7 +121,7 @@ export class UserModel {
   static async search(searchTerm: string, limit: number = 20, offset: number = 0): Promise<User[]> {
     const users = await dbAll(
       `SELECT * FROM users 
-       WHERE (name LIKE ? OR email LIKE ?) AND is_active = 1 
+       WHERE (name LIKE ? OR email LIKE ?) AND is_active = ${sqlBooleanTrue()} 
        ORDER BY created_at DESC 
        LIMIT ? OFFSET ?`,
       [`%${searchTerm}%`, `%${searchTerm}%`, limit, offset]
@@ -134,7 +135,7 @@ export class UserModel {
    */
   static async count(): Promise<number> {
     const result = await dbGet(
-      'SELECT COUNT(*) as total FROM users WHERE is_active = 1'
+      `SELECT COUNT(*) as total FROM users WHERE is_active = ${sqlBooleanTrue()}`
     ) as any;
 
     return result?.total || 0;
@@ -314,7 +315,7 @@ export class UserModel {
    */
   static async delete(id: number): Promise<void> {
     await dbRun(
-      'UPDATE users SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      `UPDATE users SET is_active = ${sqlBooleanFalse()}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [id]
     );
   }

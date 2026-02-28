@@ -1,4 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
+import { sqlBooleanTrue } from '../../../core/database/sql-dialect';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 import { Fornecedor } from './Fornecedor';
 
@@ -64,7 +65,7 @@ export class AgendamentoModel {
   static async create(userId: number, data: CreateAgendamentoRequest): Promise<Agendamento> {
     // Validar se a doca existe e está ativa
     const doca = await dbGet(
-      'SELECT id FROM docas_config WHERE numero = ? AND is_active = 1',
+      `SELECT id FROM docas_config WHERE numero = ? AND is_active = ${sqlBooleanTrue()}`,
       [data.dock]
     ) as any;
 
@@ -115,7 +116,7 @@ export class AgendamentoModel {
        FROM agendamentos_descarga a
        LEFT JOIN users u ON a.created_by = u.id
        LEFT JOIN fornecedores_descarga f ON a.fornecedor_id = f.id
-       LEFT JOIN form_responses_descarga r ON r.agendamento_id = a.id AND r.is_in_yard = 1
+       LEFT JOIN form_responses_descarga r ON r.agendamento_id = a.id AND r.is_in_yard = ${sqlBooleanTrue()}
        WHERE a.id = ?`,
       [id]
     ) as any;
@@ -216,7 +217,7 @@ export class AgendamentoModel {
        FROM agendamentos_descarga a
        LEFT JOIN users u ON a.created_by = u.id
        LEFT JOIN fornecedores_descarga f ON a.fornecedor_id = f.id
-       LEFT JOIN form_responses_descarga r ON r.agendamento_id = a.id AND r.is_in_yard = 1
+       LEFT JOIN form_responses_descarga r ON r.agendamento_id = a.id AND r.is_in_yard = ${sqlBooleanTrue()}
        ${whereClause}
        ORDER BY a.scheduled_date ASC, a.scheduled_time ASC
        LIMIT ? OFFSET ?`,

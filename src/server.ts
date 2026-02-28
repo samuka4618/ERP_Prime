@@ -457,8 +457,9 @@ async function startServer() {
     // Inicializar WebSocket
     initializeWebSocket(server);
   } catch (error: any) {
-    const isCorrupt = error?.code === 'SQLITE_CORRUPT' || (error?.message && String(error.message).includes('malformed'));
-    if (isCorrupt) {
+    const usePostgres = config.database.usePostgres;
+    const isSqliteCorrupt = !usePostgres && (error?.code === 'SQLITE_CORRUPT' || (error?.message && String(error.message).includes('malformed')));
+    if (isSqliteCorrupt) {
       const dbPath = path.isAbsolute(config.database.path)
         ? config.database.path
         : path.resolve(process.cwd(), config.database.path);

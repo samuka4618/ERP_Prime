@@ -1,4 +1,5 @@
 import { dbGet, dbAll, dbRun } from '../database/connection';
+import { config } from '../../config/database';
 
 export interface SystemConfig {
   id: number;
@@ -48,11 +49,11 @@ export class SystemConfigService {
    */
   static async set(key: string, value: string, description?: string): Promise<boolean> {
     try {
-      await dbRun(
-        `INSERT OR REPLACE INTO system_config (key, value, description, updated_at) 
-         VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
-        [key, value, description || null]
-      );
+      const insertSql = config.database.usePostgres
+        ? `INSERT INTO system_config (key, value, description, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, description = EXCLUDED.description, updated_at = CURRENT_TIMESTAMP`
+        : `INSERT OR REPLACE INTO system_config (key, value, description, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)`;
+      await dbRun(insertSql, [key, value, description || null]);
 
       // Atualizar cache
       this.cache.set(key, value);

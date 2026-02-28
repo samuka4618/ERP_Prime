@@ -1,115 +1,46 @@
-import { dbRun, dbGet, dbAll, db } from '../../../core/database/connection';
+import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
 import { TicketHistory } from '../types';
+import { UserRole } from '../../../shared/types';
 import { formatSystemDate, formatSystemDateOnly } from '../../../shared/utils/dateUtils';
-import sqlite3 from 'sqlite3';
 
 export class TicketHistoryModel {
   static async create(ticketId: number, authorId: number, message: string, attachment?: string): Promise<TicketHistory> {
-    console.log('🔍 DEBUG - Inserindo mensagem no banco:', { ticketId, authorId, message, attachment });
-    
-    // Usar transação explícita
-    
-    return new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('BEGIN TRANSACTION', (err: Error | null) => {
-          if (err) {
-            console.error('🔍 DEBUG - Erro ao iniciar transação:', err);
-            reject(err);
-            return;
+    const now = new Date();
+    const utcTimeString = now.toISOString().replace('T', ' ').replace('Z', '');
+    const { lastID: messageId } = await dbRun(
+      'INSERT INTO ticket_history (ticket_id, author_id, message, attachment, created_at) VALUES (?, ?, ?, ?, ?)',
+      [ticketId, authorId, message, attachment ?? null, utcTimeString]
+    );
+    const row = await dbGet(
+      `SELECT th.*, u.name as author_name, u.email as author_email
+       FROM ticket_history th
+       LEFT JOIN users u ON th.author_id = u.id
+       WHERE th.id = ?`,
+      [messageId]
+    ) as any;
+    if (!row) {
+      throw new Error('Erro ao buscar histórico criado');
+    }
+    return {
+      id: row.id,
+      ticket_id: row.ticket_id,
+      author_id: row.author_id,
+      message: row.message,
+      attachment: row.attachment,
+      created_at: row.created_at,
+      author: row.author_name
+        ? {
+            id: row.author_id,
+            name: row.author_name,
+            email: row.author_email,
+            role: UserRole.USER,
+            password: '',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }
-        });
-        
-        // Salvar data atual usando UTC para evitar problemas de timezone
-        const now = new Date();
-        const utcTimeString = now.toISOString().replace('T', ' ').replace('Z', '');
-        
-        // Log removido - sistema funcionando corretamente
-        
-        const stmt = db.prepare('INSERT INTO ticket_history (ticket_id, author_id, message, attachment, created_at) VALUES (?, ?, ?, ?, ?)');
-        stmt.run([ticketId, authorId, message, attachment || null, utcTimeString], function(this: sqlite3.RunResult, err: Error | null) {
-          if (err) {
-            console.error('🔍 DEBUG - Erro na inserção:', err);
-            db.run('ROLLBACK', (rollbackErr: Error | null) => {
-              if (rollbackErr) {
-                console.error('🔍 DEBUG - Erro no rollback:', rollbackErr);
-              }
-            });
-            reject(err);
-            return;
-          }
-          
-          const messageId = this.lastID;
-          console.log('🔍 DEBUG - Mensagem inserida com ID:', messageId);
-          
-          // Buscar o histórico inserido
-          db.get(
-            `SELECT th.*, u.name as author_name, u.email as author_email
-             FROM ticket_history th
-             LEFT JOIN users u ON th.author_id = u.id
-             WHERE th.id = ?`,
-            [messageId],
-            (err: Error | null, row: any) => {
-              if (err) {
-                console.error('🔍 DEBUG - Erro ao buscar histórico:', err);
-                db.run('ROLLBACK', (rollbackErr: Error | null) => {
-                  if (rollbackErr) {
-                    console.error('🔍 DEBUG - Erro no rollback:', rollbackErr);
-                  }
-                });
-                reject(err);
-                return;
-              }
-              
-              if (!row) {
-                console.error('🔍 DEBUG - Histórico não encontrado');
-                db.run('ROLLBACK', (rollbackErr: Error | null) => {
-                  if (rollbackErr) {
-                    console.error('🔍 DEBUG - Erro no rollback:', rollbackErr);
-                  }
-                });
-                reject(new Error('Erro ao buscar histórico criado'));
-                return;
-              }
-              
-              console.log('🔍 DEBUG - Histórico encontrado:', row);
-              
-              db.run('COMMIT', (err: Error | null) => {
-                if (err) {
-                  console.error('🔍 DEBUG - Erro no commit:', err);
-                  reject(err);
-                  return;
-                }
-                
-                console.log('🔍 DEBUG - Transação commitada com sucesso');
-                
-                const ticketHistory: TicketHistory = {
-                  id: (row as any).id,
-                  ticket_id: (row as any).ticket_id,
-                  author_id: (row as any).author_id,
-                  message: (row as any).message,
-                  attachment: (row as any).attachment,
-                  created_at: (row as any).created_at,
-                  author: (row as any).author_name ? {
-                    id: (row as any).author_id,
-                    name: (row as any).author_name,
-                    email: (row as any).author_email,
-                    role: 'user' as any,
-                    password: '',
-                    is_active: true,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  } : undefined
-                };
-                
-                resolve(ticketHistory);
-              });
-            }
-          );
-        });
-        
-        stmt.finalize();
-      });
-    });
+        : undefined
+    };
   }
 
   static async findById(id: number): Promise<TicketHistory | null> {
@@ -135,7 +66,7 @@ export class TicketHistoryModel {
         name: history.author_name,
         email: history.author_email,
         password: '',
-        role: 'user' as any,
+        role: UserRole.USER,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -183,7 +114,7 @@ export class TicketHistoryModel {
           name: history.author_name,
           email: history.author_email,
           password: '',
-          role: 'user' as any,
+          role: UserRole.USER,
           is_active: true,
           created_at: await formatSystemDate(new Date()),
           updated_at: await formatSystemDate(new Date())
@@ -219,7 +150,7 @@ export class TicketHistoryModel {
         name: history.author_name,
         email: history.author_email,
         password: '',
-        role: 'user' as any,
+        role: UserRole.USER,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

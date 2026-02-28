@@ -92,55 +92,55 @@ class SqlServerConnection {
         console.error(`   Código: ${error.code}`);
       }
 
-      // Mensagens de erro mais específicas
+      // Dicas de diagnóstico em warn para não poluir erro em produção (Railway, etc.)
       const errorMsg = error.message?.toLowerCase() || '';
       
       if (errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-        console.error('\n💡 Possíveis causas:');
-        console.error('   1. O IP/hostname do servidor (DB_SERVER) está incorreto');
-        console.error('   2. O SQL Server não está acessível na rede');
-        console.error('   3. Firewall bloqueando a porta 1433');
-        console.error('   4. O SQL Server não está configurado para aceitar conexões TCP/IP');
-        console.error('\n   Verifique:');
-        console.error(`   - DB_SERVER=${sqlServerConfig.server || '(não configurado)'}`);
-        console.error('   - Se o IP está correto no arquivo .env');
-        console.error('   - Se consegue fazer ping no servidor SQL');
+        console.warn('\n💡 Possíveis causas:');
+        console.warn('   1. O IP/hostname do servidor (DB_SERVER) está incorreto');
+        console.warn('   2. O SQL Server não está acessível na rede');
+        console.warn('   3. Firewall bloqueando a porta 1433');
+        console.warn('   4. O SQL Server não está configurado para aceitar conexões TCP/IP');
+        console.warn('\n   Verifique:');
+        console.warn(`   - DB_SERVER=${sqlServerConfig.server || '(não configurado)'}`);
+        console.warn('   - Se o IP está correto no arquivo .env');
+        console.warn('   - Se consegue fazer ping no servidor SQL');
       } else if (errorMsg.includes('login failed') || errorMsg.includes('authentication')) {
-        console.error('\n💡 Possíveis causas:');
-        console.error('   1. Usuário ou senha incorretos');
-        console.error('   2. O usuário não tem permissão para acessar o banco');
-        console.error('   3. Autenticação SQL Server não está habilitada');
-        console.error('\n   Verifique:');
-        console.error(`   - DB_USER=${sqlServerConfig.user || '(não configurado)'}`);
-        console.error('   - DB_PASSWORD está correto');
+        console.warn('\n💡 Possíveis causas:');
+        console.warn('   1. Usuário ou senha incorretos');
+        console.warn('   2. O usuário não tem permissão para acessar o banco');
+        console.warn('   3. Autenticação SQL Server não está habilitada');
+        console.warn('\n   Verifique:');
+        console.warn(`   - DB_USER=${sqlServerConfig.user || '(não configurado)'}`);
+        console.warn('   - DB_PASSWORD está correto');
       } else if (errorMsg.includes('cannot find server') || errorMsg.includes('enotfound') || errorMsg.includes('getaddrinfo')) {
-        console.error('\n💡 Possíveis causas:');
-        console.error('   1. O IP/hostname do servidor está incorreto');
-        console.error('   2. O servidor não está acessível na rede');
-        console.error('   3. DNS não resolve o hostname');
-        console.error('\n   Verifique:');
-        console.error(`   - DB_SERVER=${sqlServerConfig.server || '(não configurado)'}`);
-        console.error('   - Se o IP está correto no arquivo .env');
-        console.error('   - Se consegue fazer ping no servidor SQL');
+        console.warn('\n💡 Possíveis causas:');
+        console.warn('   1. O IP/hostname do servidor está incorreto');
+        console.warn('   2. O servidor não está acessível na rede');
+        console.warn('   3. DNS não resolve o hostname');
+        console.warn('\n   Verifique:');
+        console.warn(`   - DB_SERVER=${sqlServerConfig.server || '(não configurado)'}`);
+        console.warn('   - Se o IP está correto no arquivo .env');
+        console.warn('   - Se consegue fazer ping no servidor SQL');
       } else if (errorMsg.includes('certificate') || errorMsg.includes('ssl')) {
-        console.error('\n💡 Solução:');
-        console.error('   Adicione DB_TRUST_CERT=true no arquivo .env');
+        console.warn('\n💡 Solução:');
+        console.warn('   Adicione DB_TRUST_CERT=true no arquivo .env');
       } else {
-        console.error('\n💡 Verifique:');
-        console.error('   1. O SQL Server está rodando');
-        console.error('   2. As credenciais estão corretas no arquivo .env');
-        console.error('   3. O SQL Server está configurado para aceitar conexões remotas');
-        console.error('   4. O firewall permite conexões na porta 1433');
-        console.error('   5. O SQL Server Browser está rodando (se usar instância nomeada)');
+        console.warn('\n💡 Verifique:');
+        console.warn('   1. O SQL Server está rodando');
+        console.warn('   2. As credenciais estão corretas no arquivo .env');
+        console.warn('   3. O SQL Server está configurado para aceitar conexões remotas');
+        console.warn('   4. O firewall permite conexões na porta 1433');
+        console.warn('   5. O SQL Server Browser está rodando (se usar instância nomeada)');
       }
       
-      console.error('\n📝 Variáveis de ambiente necessárias no arquivo .env:');
-      console.error('   DB_SERVER=<IP ou hostname do servidor>');
-      console.error('   DB_DATABASE=<nome do banco de dados>');
-      console.error('   DB_USER=<usuário>');
-      console.error('   DB_PASSWORD=<senha>');
-      console.error('   DB_PORT=1433 (opcional)');
-      console.error('   DB_TRUST_CERT=true (recomendado)');
+      console.warn('\n📝 Variáveis de ambiente necessárias no arquivo .env:');
+      console.warn('   DB_SERVER=<IP ou hostname do servidor>');
+      console.warn('   DB_DATABASE=<nome do banco de dados>');
+      console.warn('   DB_USER=<usuário>');
+      console.warn('   DB_PASSWORD=<senha>');
+      console.warn('   DB_PORT=1433 (opcional)');
+      console.warn('   DB_TRUST_CERT=true (recomendado)');
       
       throw error;
     }

@@ -495,7 +495,13 @@ async function runSchemaMigrations(): Promise<void> {
 // Função para executar queries de schema
 export const executeSchema = async (): Promise<void> => {
   try {
-    const schemaPath = path.join(process.cwd(), 'src', 'core', 'database', 'schema.sql');
+    // Em produção (Railway/Docker) só existe dist/; schema.sql é copiado para dist no build
+    const nextToDist = path.join(__dirname, 'schema.sql');
+    const nextToSrc = path.join(process.cwd(), 'src', 'core', 'database', 'schema.sql');
+    const schemaPath = fs.existsSync(nextToDist) ? nextToDist : nextToSrc;
+    if (!fs.existsSync(schemaPath)) {
+      throw new Error(`schema.sql não encontrado em ${nextToDist} nem em ${nextToSrc}`);
+    }
     const schema = fs.readFileSync(schemaPath, 'utf8');
     
     // Dividir o schema em statements individuais, tratando triggers

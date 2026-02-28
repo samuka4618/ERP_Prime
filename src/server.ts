@@ -71,8 +71,19 @@ app.use((req, res, next) => {
 });
 
 // Configuração de CORS: em produção usar ALLOWED_ORIGINS (ex: https://meudominio.com), em dev permitir todas
-const corsOrigin = config.nodeEnv === 'production' && process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim())
+const allowedOriginsList = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim()).filter(Boolean)
+  : [];
+const hasVercelOrigin = allowedOriginsList.some((o: string) => o.includes('vercel.app'));
+
+const corsOrigin = config.nodeEnv === 'production' && allowedOriginsList.length > 0
+  ? (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin) return callback(null, true);
+      if (allowedOriginsList.includes(origin)) return callback(null, true);
+      // Permite qualquer subdomínio/preview da Vercel quando há pelo menos uma URL vercel.app em ALLOWED_ORIGINS
+      if (hasVercelOrigin && origin.endsWith('.vercel.app')) return callback(null, true);
+      callback(null, false);
+    }
   : true;
 
 app.use(cors({

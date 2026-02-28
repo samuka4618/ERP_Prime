@@ -265,9 +265,11 @@ O Railway define **PORT** automaticamente; o backend já usa `process.env.PORT`.
 2. Clique em **Add Variable** ou **Raw Editor** e adicione as mesmas variáveis do [Render](#35-variáveis-de-ambiente), por exemplo:
   - `NODE_ENV` = `production`
   - `JWT_SECRET` = *(chave longa aleatória)*
-  - `ALLOWED_ORIGINS` = `https://erp-prime.vercel.app`
-  - `CLIENT_URL` = `https://erp-prime.vercel.app`
+  - `ALLOWED_ORIGINS` = `https://seu-projeto.vercel.app` (URL do front na Vercel; obrigatório para CORS).
+  - `CLIENT_URL` = `https://seu-projeto.vercel.app`
   - Demais (SMTP, DB_PATH, etc.) conforme a [Seção 9](#9-variáveis-de-ambiente--referência-completa).
+
+**CORS:** Se `ALLOWED_ORIGINS` não incluir a origem do front, o navegador bloqueia as requisições ("No 'Access-Control-Allow-Origin' header"). Coloque a URL exata do front (ex.: `https://erp-prime.vercel.app`). Se houver pelo menos uma URL `*.vercel.app` em `ALLOWED_ORIGINS`, o backend aceita também previews da Vercel (qualquer `*.vercel.app`).
 
 **Importante:** Sem volume, **não** use `DB_PATH=/data/...`. Use relativos (`./data/database/chamados.db`) ou deixe o padrão; dados serão efêmeros. Para persistência, crie um [Volume](#8-persistência-de-dados-render--flyio--railway).
 
@@ -366,7 +368,7 @@ O front (Vercel) precisa poder chamar o back (Render). Isso exige **CORS** e **U
 | `CLIENT_URL`      | `https://erp-prime.vercel.app` (mesma URL; usada em links de e-mail, por exemplo).         |
 
 
-Se você tiver mais de um domínio (ex.: preview da Vercel e domínio customizado), use vírgula em `ALLOWED_ORIGINS`:
+Se você tiver mais de um domínio (ex.: preview da Vercel e domínio customizado), use vírgula em `ALLOWED_ORIGINS`. Com uma URL `*.vercel.app` na lista, o backend já aceita qualquer deploy da Vercel (produção e previews).
 
 ```env
 ALLOWED_ORIGINS=https://erp-prime.vercel.app,https://app.seudominio.com.br

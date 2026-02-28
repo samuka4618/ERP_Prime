@@ -7,7 +7,11 @@
 function getApiOrigin(): string {
   const fromEnv = import.meta.env.VITE_API_URL as string | undefined;
   if (fromEnv && fromEnv.trim()) {
-    const url = fromEnv.trim().replace(/\/+$/, '');
+    let url = fromEnv.trim().replace(/\/+$/, '');
+    // Se não tiver protocolo, o axios trata como path relativo (ex.: request vai para a Vercel)
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
+    }
     try {
       return new URL(url).origin;
     } catch {

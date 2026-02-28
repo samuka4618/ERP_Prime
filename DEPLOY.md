@@ -329,7 +329,8 @@ Antes de dar Deploy, vá em **Environment Variables** e adicione:
 | `VITE_API_URL` | `https://SEU-SERVICO.onrender.com` | Marque **Production**, **Preview** e **Development** (para previews e dev). |
 
 
-- Troque `SEU-SERVICO` pelo nome real do seu Web Service no Render (ex.: `erp-prime-api`).
+- Troque `SEU-SERVICO` pelo nome real do seu Web Service no Render (ex.: `erp-prime-api`). No Railway, use a URL do domínio gerado (ex.: `https://erp-prime-api-production.up.railway.app`).
+- **Use sempre `https://`** no início da URL. Sem o protocolo, as requisições vão para o host do front (ex.: Vercel) e resultam em 405 Method Not Allowed.
 - **Não** coloque barra no final (use `https://erp-prime-api.onrender.com`, não `.../`).
 - O Vite só injeta variáveis que começam com `VITE_` no bundle; por isso o nome `VITE_API_URL`.
 - **Importante:** sempre que alterar `VITE_API_URL` (ou qualquer variável `VITE_`*), é necessário fazer um **novo deploy** do projeto na Vercel (Deployments → ⋮ no último deploy → Redeploy).

@@ -1,6 +1,40 @@
 import { Request, Response, NextFunction } from 'express';
 import { PermissionModel } from './PermissionModel';
 import { logger } from '../../shared/utils/logger';
+import { UserRole } from '../../shared/types';
+
+/**
+ * Middleware: libera se o usuário for admin OU tiver a permissão.
+ * Útil para rotas que devem ser acessíveis a administradores mesmo quando a permissão
+ * ainda não existir no banco (ex.: migração não executada).
+ */
+export const adminOrPermission = (permissionCode: string) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+    if (req.user.role === UserRole.ADMIN) {
+      next();
+      return;
+    }
+    try {
+      const hasPermission = await PermissionModel.hasPermission(
+        req.user.id,
+        req.user.role,
+        permissionCode
+      );
+      if (hasPermission) {
+        next();
+        return;
+      }
+      res.status(403).json({ error: 'Acesso negado', requiredPermission: permissionCode });
+    } catch (error: any) {
+      logger.error('Erro ao verificar permissão', { error: error.message, permissionCode }, 'PERMISSIONS');
+      res.status(500).json({ error: 'Erro ao verificar permissão' });
+    }
+  };
+};
 
 /**
  * Middleware para verificar se o usuário tem uma permissão específica

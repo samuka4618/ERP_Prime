@@ -61,6 +61,7 @@ async function migrateAddPermissions() {
       // Usuários - Permissões Adicionais
       { name: 'Fazer Login como Outro Usuário', code: 'users.impersonate', module: 'administration', description: 'Permite fazer login como outro usuário (para suporte)' },
       { name: 'Exportar Usuários', code: 'users.export', module: 'administration', description: 'Permite exportar lista de usuários' },
+      { name: 'Importar Usuários', code: 'users.import', module: 'administration', description: 'Permite importar usuários a partir de arquivo CSV ou JSON' },
       { name: 'Visualizar Atividade de Usuários', code: 'users.activity.view', module: 'administration', description: 'Permite visualizar atividade de usuários' },
       { name: 'Redefinir Senhas', code: 'users.password.reset', module: 'administration', description: 'Permite redefinir senhas de usuários' },
       

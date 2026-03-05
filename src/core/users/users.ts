@@ -4,7 +4,8 @@ import { authenticate, authorize } from '../auth/middleware';
 import { validate, validateQuery, validateParams } from '../../shared/middleware/validation';
 import { createUserSchema, updateUserSchema, changePasswordSchema, userQuerySchema } from './schemas';
 import { UserRole } from '../../shared/types';
-import { uploadSingle } from '../../shared/middleware/upload';
+import { uploadSingle, uploadUserImport } from '../../shared/middleware/upload';
+import { adminOrPermission } from '../permissions/middleware';
 import Joi from 'joi';
 
 const router = Router();
@@ -15,6 +16,11 @@ router.use(authenticate);
 const paramsSchema = Joi.object({
   id: Joi.string().pattern(/^\d+$/).required()
 });
+
+// Exportar/Importar usuários: admin ou permissão específica (admin sempre liberado)
+router.get('/export', adminOrPermission('users.export'), UserController.exportUsers);
+router.post('/import/preview', adminOrPermission('users.import'), uploadUserImport, UserController.importPreview);
+router.post('/import', adminOrPermission('users.import'), uploadUserImport, UserController.importUsers);
 
 // Rotas que requerem permissão de admin
 router.post('/', authorize(UserRole.ADMIN), validate(createUserSchema), UserController.create);

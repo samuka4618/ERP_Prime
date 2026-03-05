@@ -8,8 +8,22 @@ import path from 'path';
 import fs from 'fs';
 import { createUserSchema, updateUserSchema } from './schemas';
 import Joi from 'joi';
+import {
+  IMPORT_EXPORT,
+  parseCsv,
+  parseJson,
+  validateImportRow,
+  toCsv,
+  toExportRow,
+  InvalidImportRow,
+  ValidatedImportRow
+} from './userImportExport';
+import { dbRun } from '../database/connection';
+import { config } from '../../config/database';
 
 const getIp = (req: Request) => req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
+
+const useTransaction = !config.database.usePostgres;
 
 
 const querySchema = Joi.object({
@@ -511,6 +525,199 @@ export class UserController {
         user: userWithoutPassword,
         avatar_url: `/${relativePath}`,
         avatar_path: relativePath
+      }
+    });
+  });
+
+  /** Exportar usuários em CSV ou JSON (somente admin ou users.export). Senha nunca exportada. */
+  static exportUsers = asyncHandler(async (req: Request, res: Response) => {
+    const format = (req.query.format as string)?.toLowerCase() === 'json' ? 'json' : 'csv';
+    const users = await UserModel.findAllForExport(IMPORT_EXPORT.MAX_ROWS);
+    const withoutPassword = users.map((u) => {
+      const { password: _, ...rest } = u;
+      return rest;
+    });
+    const exportRows = withoutPassword.map((u) => toExportRow(u as any));
+
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'users.export',
+      resource: 'users',
+      details: `Exportação de ${exportRows.length} usuário(s), formato: ${format}`,
+      ip: getIp(req)
+    });
+
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="usuarios-${new Date().toISOString().slice(0, 10)}.json"`);
+      res.json(exportRows);
+      return;
+    }
+
+    const csv = toCsv(exportRows);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="usuarios-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send('\uFEFF' + csv);
+  });
+
+  /** Pré-visualizar importação: valida o arquivo e retorna linhas válidas e inválidas (não altera o banco). */
+  static importPreview = asyncHandler(async (req: Request, res: Response) => {
+    const file = (req as any).file;
+    if (!file || !file.buffer) {
+      res.status(400).json({ error: 'Envie um arquivo CSV ou JSON (campo: file)' });
+      return;
+    }
+    if (file.size > IMPORT_EXPORT.MAX_FILE_BYTES) {
+      res.status(400).json({
+        error: `Arquivo excede o limite de ${IMPORT_EXPORT.MAX_FILE_BYTES / 1024 / 1024} MB`
+      });
+      return;
+    }
+
+    const content = file.buffer.toString('utf-8');
+    const isJson = file.mimetype === 'application/json' || file.originalname?.toLowerCase().endsWith('.json');
+    const rawRows: Record<string, unknown>[] = isJson ? parseJson(content) : parseCsv(content) as any;
+
+    if (rawRows.length > IMPORT_EXPORT.MAX_ROWS) {
+      res.status(400).json({
+        error: `Arquivo tem ${rawRows.length} linhas. Máximo permitido: ${IMPORT_EXPORT.MAX_ROWS}`
+      });
+      return;
+    }
+
+    const valid: ValidatedImportRow[] = [];
+    const invalid: InvalidImportRow[] = [];
+
+    for (let i = 0; i < rawRows.length; i++) {
+      const result = validateImportRow(rawRows[i], i + 1);
+      if ('valid' in result) valid.push(result.valid);
+      else invalid.push(result.invalid);
+    }
+
+    res.json({
+      message: 'Pré-visualização concluída',
+      data: {
+        total: rawRows.length,
+        valid: valid.length,
+        invalid: invalid.length,
+        validRows: valid,
+        invalidRows: invalid
+      }
+    });
+  });
+
+  /** Importar usuários. Senha nunca alterada; novos usuários usam senha padrão definida pelo admin. */
+  static importUsers = asyncHandler(async (req: Request, res: Response) => {
+    const file = (req as any).file;
+    const defaultPassword = (req.body as any).defaultPassword;
+    const updateExisting = String((req.body as any).updateExisting).toLowerCase() === 'true' || (req.body as any).updateExisting === true;
+
+    if (!file || !file.buffer) {
+      res.status(400).json({ error: 'Envie um arquivo CSV ou JSON (campo: file)' });
+      return;
+    }
+    if (!defaultPassword || typeof defaultPassword !== 'string' || defaultPassword.length < 6) {
+      res.status(400).json({ error: 'Senha padrão é obrigatória e deve ter no mínimo 6 caracteres' });
+      return;
+    }
+
+    const pv = AuthService.validatePassword(defaultPassword);
+    if (!pv.isValid) {
+      res.status(400).json({ error: 'Senha padrão inválida', details: pv.errors });
+      return;
+    }
+
+    if (file.size > IMPORT_EXPORT.MAX_FILE_BYTES) {
+      res.status(400).json({
+        error: `Arquivo excede o limite de ${IMPORT_EXPORT.MAX_FILE_BYTES / 1024 / 1024} MB`
+      });
+      return;
+    }
+
+    const content = file.buffer.toString('utf-8');
+    const isJson = file.mimetype === 'application/json' || file.originalname?.toLowerCase().endsWith('.json');
+    const rawRows: Record<string, unknown>[] = isJson ? parseJson(content) : parseCsv(content) as any;
+
+    if (rawRows.length > IMPORT_EXPORT.MAX_ROWS) {
+      res.status(400).json({
+        error: `Arquivo tem ${rawRows.length} linhas. Máximo permitido: ${IMPORT_EXPORT.MAX_ROWS}`
+      });
+      return;
+    }
+
+    const valid: ValidatedImportRow[] = [];
+    const invalid: InvalidImportRow[] = [];
+
+    for (let i = 0; i < rawRows.length; i++) {
+      const result = validateImportRow(rawRows[i], i + 1);
+      if ('valid' in result) valid.push(result.valid);
+      else invalid.push(result.invalid);
+    }
+
+    let created = 0;
+    let updated = 0;
+
+    if (useTransaction) {
+      await dbRun('BEGIN');
+    }
+
+    try {
+      for (const row of valid) {
+        const existing = await UserModel.findByEmail(row.data.email);
+        if (existing) {
+          if (updateExisting) {
+            await UserModel.update(existing.id, {
+              name: row.data.name,
+              role: row.data.role as UserRole,
+              is_active: row.data.is_active,
+              phone: row.data.phone,
+              department: row.data.department,
+              position: row.data.position
+            });
+            updated++;
+          }
+        } else {
+          await UserModel.create({
+            name: row.data.name,
+            email: row.data.email,
+            password: defaultPassword,
+            role: row.data.role as UserRole,
+            is_active: row.data.is_active,
+            phone: row.data.phone,
+            department: row.data.department,
+            position: row.data.position
+          } as CreateUserRequest);
+          created++;
+        }
+      }
+
+      if (useTransaction) {
+        await dbRun('COMMIT');
+      }
+    } catch (err: any) {
+      if (useTransaction) {
+        await dbRun('ROLLBACK').catch(() => {});
+      }
+      throw err;
+    }
+
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'users.import',
+      resource: 'users',
+      details: `Importação: ${created} criado(s), ${updated} atualizado(s), ${invalid.length} linha(s) inválida(s). updateExisting=${updateExisting}`,
+      ip: getIp(req)
+    });
+
+    res.status(201).json({
+      message: 'Importação concluída',
+      data: {
+        created,
+        updated,
+        invalidCount: invalid.length,
+        invalidRows: invalid
       }
     });
   });

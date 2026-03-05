@@ -231,6 +231,72 @@ class ApiService {
     await this.api.delete(`/users/${id}`);
   }
 
+  /** Exportar usuários (CSV ou JSON). Retorna a URL do blob para download. */
+  async exportUsers(format: 'csv' | 'json'): Promise<void> {
+    const response = await this.api.get(`/users/export?format=${format}`, {
+      responseType: format === 'json' ? 'json' : 'blob'
+    });
+    const blob = format === 'json'
+      ? new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
+      : response.data as Blob;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `usuarios-${new Date().toISOString().slice(0, 10)}.${format === 'json' ? 'json' : 'csv'}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Pré-visualizar importação de usuários. Retorna linhas válidas e inválidas. */
+  async importUsersPreview(file: File): Promise<{
+    total: number;
+    valid: number;
+    invalid: number;
+    validRows: Array<{ rowIndex: number; data: Record<string, unknown> }>;
+    invalidRows: Array<{ rowIndex: number; raw: Record<string, unknown>; errors: string[] }>;
+  }> {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await this.api.post<ApiResponse<{
+      total: number;
+      valid: number;
+      invalid: number;
+      validRows: unknown[];
+      invalidRows: Array<{ rowIndex: number; raw: Record<string, unknown>; errors: string[] }>;
+    }>>('/users/import/preview', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    const d = response.data.data!;
+    return {
+      total: d.total,
+      valid: d.valid,
+      invalid: d.invalid,
+      validRows: d.validRows as Array<{ rowIndex: number; data: Record<string, unknown> }>,
+      invalidRows: d.invalidRows
+    };
+  }
+
+  /** Importar usuários. Senha padrão para novos; existentes só atualizam se updateExisting=true (senha nunca alterada). */
+  async importUsers(
+    file: File,
+    defaultPassword: string,
+    updateExisting: boolean
+  ): Promise<{ created: number; updated: number; invalidCount: number; invalidRows: Array<{ rowIndex: number; errors: string[] }> }> {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('defaultPassword', defaultPassword);
+    form.append('updateExisting', String(updateExisting));
+    const response = await this.api.post<ApiResponse<{
+      created: number;
+      updated: number;
+      invalidCount: number;
+      invalidRows: Array<{ rowIndex: number; errors: string[] }>;
+    }>>('/users/import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data.data!;
+  }
+
   // System Configuration
   async getSystemConfig(): Promise<any> {
     const response = await this.api.get<ApiResponse<any>>('/system/config');

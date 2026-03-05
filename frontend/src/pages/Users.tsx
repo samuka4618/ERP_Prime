@@ -8,7 +8,11 @@ import {
   User as UserIcon,
   Shield,
   UserCheck,
-  Settings
+  Settings,
+  Download,
+  Upload,
+  FileCheck,
+  AlertCircle
 } from 'lucide-react';
 import { User } from '../types';
 import { apiService } from '../services/api';
@@ -42,6 +46,26 @@ const Users: React.FC = () => {
     role: 'user' as 'user' | 'attendant' | 'admin',
     is_active: true
   });
+
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importDefaultPassword, setImportDefaultPassword] = useState('');
+  const [importUpdateExisting, setImportUpdateExisting] = useState(false);
+  const [importPreview, setImportPreview] = useState<{
+    total: number;
+    valid: number;
+    invalid: number;
+    validRows: Array<{ rowIndex: number; data: Record<string, unknown> }>;
+    invalidRows: Array<{ rowIndex: number; raw: Record<string, unknown>; errors: string[] }>;
+  } | null>(null);
+  const [importResult, setImportResult] = useState<{
+    created: number;
+    updated: number;
+    invalidCount: number;
+    invalidRows: Array<{ rowIndex: number; errors: string[] }>;
+  } | null>(null);
+  const [loadingExport, setLoadingExport] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingImport, setLoadingImport] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -113,6 +137,60 @@ const Users: React.FC = () => {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }));
+  };
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    setLoadingExport(true);
+    try {
+      await apiService.exportUsers(format);
+      toast.success(`Exportação ${format.toUpperCase()} concluída`);
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Sem permissão ou erro ao exportar');
+    } finally {
+      setLoadingExport(false);
+    }
+  };
+
+  const handleImportPreview = async () => {
+    if (!importFile) {
+      toast.error('Selecione um arquivo CSV ou JSON');
+      return;
+    }
+    setLoadingPreview(true);
+    setImportResult(null);
+    try {
+      const data = await apiService.importUsersPreview(importFile);
+      setImportPreview(data);
+      toast.success(`Pré-visualização: ${data.valid} válida(s), ${data.invalid} inválida(s)`);
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Erro ao analisar arquivo');
+      setImportPreview(null);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) {
+      toast.error('Selecione um arquivo');
+      return;
+    }
+    if (!importDefaultPassword.trim() || importDefaultPassword.length < 6) {
+      toast.error('Senha padrão obrigatória (mín. 6 caracteres) para novos usuários');
+      return;
+    }
+    setLoadingImport(true);
+    try {
+      const data = await apiService.importUsers(importFile, importDefaultPassword, importUpdateExisting);
+      setImportResult(data);
+      toast.success(`Importação concluída: ${data.created} criado(s), ${data.updated} atualizado(s)`);
+      fetchUsers();
+    } catch (e: any) {
+      const msg = e.response?.data?.error || e.response?.data?.details?.join?.(' ') || 'Erro ao importar';
+      toast.error(msg);
+    } finally {
+      setLoadingImport(false);
+    }
   };
 
   const handleEditUser = (user: User) => {
@@ -249,6 +327,143 @@ const Users: React.FC = () => {
             Buscar
           </button>
         </form>
+      </div>
+
+      {/* Exportar / Importar usuários */}
+      <div className="card mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+          <Download className="w-5 h-5 mr-2" />
+          Exportar / Importar usuários
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Exporte em CSV ou JSON. Na importação, use o mesmo formato; senha nunca é alterada — defina uma senha padrão para novos usuários.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Exportar</h4>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleExport('csv')}
+                disabled={loadingExport}
+                className="btn btn-outline btn-sm"
+              >
+                {loadingExport ? '...' : 'CSV'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExport('json')}
+                disabled={loadingExport}
+                className="btn btn-outline btn-sm"
+              >
+                {loadingExport ? '...' : 'JSON'}
+              </button>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Importar</h4>
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept=".csv,.json,text/csv,application/json"
+                onChange={(e) => {
+                  setImportFile(e.target.files?.[0] || null);
+                  setImportPreview(null);
+                  setImportResult(null);
+                }}
+                className="block w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-primary-50 file:text-primary-700 dark:file:bg-primary-900/30 dark:file:text-primary-300"
+              />
+              <input
+                type="password"
+                placeholder="Senha padrão (novos usuários)"
+                value={importDefaultPassword}
+                onChange={(e) => setImportDefaultPassword(e.target.value)}
+                className="input w-full text-sm"
+                minLength={6}
+              />
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={importUpdateExisting}
+                  onChange={(e) => setImportUpdateExisting(e.target.checked)}
+                />
+                Atualizar usuários existentes (por email)
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleImportPreview}
+                  disabled={!importFile || loadingPreview}
+                  className="btn btn-outline btn-sm flex items-center"
+                >
+                  <FileCheck className="w-4 h-4 mr-1" />
+                  {loadingPreview ? 'Analisando...' : 'Pré-visualizar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImport}
+                  disabled={!importFile || !importDefaultPassword || loadingImport}
+                  className="btn btn-primary btn-sm flex items-center"
+                >
+                  <Upload className="w-4 h-4 mr-1" />
+                  {loadingImport ? 'Importando...' : 'Importar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {importPreview && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pré-visualização</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              Total: {importPreview.total} — Válidas: {importPreview.valid} — Inválidas: {importPreview.invalid}
+            </p>
+            {importPreview.invalidRows.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-600">
+                      <th className="text-left py-1 pr-2">Linha</th>
+                      <th className="text-left py-1 pr-2">Dados</th>
+                      <th className="text-left py-1">Erros</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importPreview.invalidRows.map((inv, i) => (
+                      <tr key={i} className="border-b border-gray-100 dark:border-gray-700">
+                        <td className="py-1 pr-2 text-red-600 dark:text-red-400">{inv.rowIndex}</td>
+                        <td className="py-1 pr-2 text-gray-600 dark:text-gray-400 font-mono text-xs">
+                          {JSON.stringify(inv.raw).slice(0, 80)}…
+                        </td>
+                        <td className="py-1 text-red-600 dark:text-red-400">{inv.errors.join('; ')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {importResult && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              Resultado da importação
+            </h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              Criados: {importResult.created} — Atualizados: {importResult.updated} — Linhas inválidas: {importResult.invalidCount}
+            </p>
+            {importResult.invalidRows.length > 0 && (
+              <ul className="text-sm text-red-600 dark:text-red-400 list-disc list-inside">
+                {importResult.invalidRows.map((inv, i) => (
+                  <li key={i}>Linha {inv.rowIndex}: {inv.errors.join('; ')}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Users List */}

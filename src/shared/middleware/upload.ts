@@ -46,3 +46,10 @@ export const uploadMultiple = upload.array('attachments', 5);
 
 // Middleware para upload de um único arquivo
 export const uploadSingle = upload.single('attachment');
+
+// Upload em memória para importação de usuários (CSV/JSON, máx 10 MB)
+const memoryStorage = multer.memoryStorage();
+export const uploadUserImport = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 }
+}).single('file');

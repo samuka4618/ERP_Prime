@@ -107,6 +107,18 @@ export class UserModel {
   }
 
   /**
+   * Buscar todos os usuários para exportação (até o limite informado, sem paginação)
+   */
+  static async findAllForExport(maxRows: number): Promise<User[]> {
+    const users = await dbAll(
+      'SELECT * FROM users ORDER BY id ASC LIMIT ?',
+      [maxRows]
+    ) as any[];
+
+    return users.map(user => this.mapRowToUser(user));
+  }
+
+  /**
    * Buscar usuários por role
    */
   static async findByRole(role: UserRole, limit: number = 20, offset: number = 0): Promise<User[]> {

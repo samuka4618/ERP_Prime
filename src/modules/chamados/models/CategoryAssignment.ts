@@ -172,7 +172,7 @@ export class CategoryAssignmentModel {
     const attendants = await dbAll(
       `SELECT u.id, u.name, u.email
        FROM users u
-       WHERE u.role = 'attendant' 
+       WHERE u.role IN ('attendant', 'admin')
        AND u.is_active = ${sqlBooleanTrue()}
        AND u.id NOT IN (
          SELECT attendant_id 

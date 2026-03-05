@@ -50,10 +50,10 @@ export class CategoryAssignmentController {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
 
-    // Verificar se o técnico existe e é um attendant
+    // Verificar se o usuário existe e é attendant ou admin (admins também podem ser atribuídos)
     const attendant = await UserModel.findById(attendant_id);
-    if (!attendant || attendant.role !== 'attendant') {
-      return res.status(404).json({ error: 'Técnico não encontrado ou não é um attendant' });
+    if (!attendant || (attendant.role !== 'attendant' && attendant.role !== 'admin')) {
+      return res.status(404).json({ error: 'Usuário não encontrado ou não é atendente/administrador' });
     }
 
     // Verificar se a atribuição já existe
@@ -191,8 +191,12 @@ export class CategoryAssignmentController {
     const categoriesResponse = await CategoryModel.findAll({ page: 1, limit: 100, search: '' });
     const categories = categoriesResponse.data;
     
-    // Buscar todos os técnicos
-    const attendants = await UserModel.findByRole(UserRole.ATTENDANT, 100, 0);
+    // Buscar técnicos e administradores (admins também podem ser listados como atendentes para atribuições)
+    const [attendantsList, adminsList] = await Promise.all([
+      UserModel.findByRole(UserRole.ATTENDANT, 100, 0),
+      UserModel.findByRole(UserRole.ADMIN, 100, 0)
+    ]);
+    const attendants = [...attendantsList, ...adminsList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     
     // Buscar todas as atribuições
     const assignments = await CategoryAssignmentModel.findAll();
@@ -282,8 +286,8 @@ export class CategoryAssignmentController {
     }
 
     const attendant = await UserModel.findById(value.attendant_id);
-    if (!attendant || attendant.role !== 'attendant') {
-      return res.status(400).json({ error: 'Técnico não encontrado ou não é atendente' });
+    if (!attendant || (attendant.role !== 'attendant' && attendant.role !== 'admin')) {
+      return res.status(400).json({ error: 'Usuário não encontrado ou não é atendente/administrador' });
     }
 
     const rule = await CategoryAssignmentRuleModel.create(categoryId, value);
@@ -310,6 +314,13 @@ export class CategoryAssignmentController {
     const { error, value } = updateRuleSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
+    }
+
+    if (value.attendant_id != null) {
+      const attendant = await UserModel.findById(value.attendant_id);
+      if (!attendant || (attendant.role !== 'attendant' && attendant.role !== 'admin')) {
+        return res.status(400).json({ error: 'Usuário não encontrado ou não é atendente/administrador' });
+      }
     }
 
     const rule = await CategoryAssignmentRuleModel.update(ruleId, value);

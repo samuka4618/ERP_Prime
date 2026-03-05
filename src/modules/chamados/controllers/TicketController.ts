@@ -104,10 +104,14 @@ export class TicketController {
   static assign = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const ticketId = parseInt(id);
-    const { attendantId } = req.body;
+    const attendantId = req.body.attendantId ?? req.body.attendant_id;
 
-    if (isNaN(ticketId) || !attendantId) {
-      res.status(400).json({ error: 'ID inválido' });
+    if (isNaN(ticketId)) {
+      res.status(400).json({ error: 'ID do chamado inválido' });
+      return;
+    }
+    if (!attendantId || typeof attendantId !== 'number') {
+      res.status(400).json({ error: 'Informe o ID do técnico a ser atribuído (attendantId ou attendant_id)' });
       return;
     }
 
@@ -357,7 +361,12 @@ export class TicketController {
       return;
     }
 
-    const updateData = req.body as UpdateTicketRequest;
+    const body = req.body as UpdateTicketRequest & { attendant_id?: number };
+    const updateData: UpdateTicketRequest = {
+      ...body,
+      attendantId: body.attendantId ?? body.attendant_id
+    };
+    if (updateData.attendantId === undefined) delete updateData.attendantId;
     const updatedTicket = await TicketModel.update(ticketId, updateData);
 
     if (!updatedTicket) {

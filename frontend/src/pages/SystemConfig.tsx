@@ -39,6 +39,19 @@ interface NewCategory {
   custom_fields?: CategoryField[];
 }
 
+/** Gera nome interno (slug) a partir do label: minúsculas, sem acentos, espaços → underscore. */
+function toSlug(label: string): string {
+  return label
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '') || '';
+}
+
 const SystemConfig: React.FC = () => {
   // Hook para atualizar o contexto global de configurações
   const { refreshConfig } = useSystemConfig();
@@ -312,15 +325,85 @@ const SystemConfig: React.FC = () => {
     }
   };
 
+  const addSelectOption = (fieldId: string, isNew: boolean) => {
+    const getOptions = (f: CategoryField) => (f.options || []);
+    if (isNew) {
+      setNewCategory(prev => ({
+        ...prev,
+        custom_fields: (prev.custom_fields || []).map(f =>
+          f.id === fieldId ? { ...f, options: [...getOptions(f), ''] } : f
+        )
+      }));
+    } else {
+      setEditingCategory(prev => prev ? {
+        ...prev,
+        custom_fields: (prev.custom_fields || []).map(f =>
+          f.id === fieldId ? { ...f, options: [...getOptions(f), ''] } : f
+        )
+      } : null);
+    }
+  };
+
+  const removeSelectOption = (fieldId: string, index: number, isNew: boolean) => {
+    if (isNew) {
+      setNewCategory(prev => ({
+        ...prev,
+        custom_fields: (prev.custom_fields || []).map(f => {
+          if (f.id !== fieldId || !f.options?.length) return f;
+          return { ...f, options: f.options!.filter((_, i) => i !== index) };
+        })
+      }));
+    } else {
+      setEditingCategory(prev => prev ? {
+        ...prev,
+        custom_fields: (prev.custom_fields || []).map(f => {
+          if (f.id !== fieldId || !f.options?.length) return f;
+          return { ...f, options: f.options!.filter((_, i) => i !== index) };
+        })
+      } : null);
+    }
+  };
+
+  const updateSelectOption = (fieldId: string, index: number, value: string, isNew: boolean) => {
+    if (isNew) {
+      setNewCategory(prev => ({
+        ...prev,
+        custom_fields: (prev.custom_fields || []).map(f => {
+          if (f.id !== fieldId) return f;
+          const opts = [...(f.options || [])];
+          if (index >= opts.length) opts.length = index + 1;
+          opts[index] = value;
+          return { ...f, options: opts };
+        })
+      }));
+    } else {
+      setEditingCategory(prev => prev ? {
+        ...prev,
+        custom_fields: (prev.custom_fields || []).map(f => {
+          if (f.id !== fieldId) return f;
+          const opts = [...(f.options || [])];
+          if (index >= opts.length) opts.length = index + 1;
+          opts[index] = value;
+          return { ...f, options: opts };
+        })
+      } : null);
+    }
+  };
+
   const handleCreateCategory = async () => {
     if (!validateCategory(newCategory)) {
       return;
     }
 
     try {
+      const cleanCustomFields = (newCategory.custom_fields || [])
+        .filter(f => f.name && f.label)
+        .map(f => f.type === 'select' && f.options?.length
+          ? { ...f, options: f.options.map(o => String(o).trim()).filter(Boolean) }
+          : f);
       const categoryData = {
         ...newCategory,
-        custom_fields: newCategory.custom_fields?.filter(f => f.name && f.label) || []
+        custom_fields: cleanCustomFields
       };
       await apiService.post('/categories', categoryData);
       toast.success('Categoria criada com sucesso');
@@ -362,7 +445,11 @@ const SystemConfig: React.FC = () => {
         description: editingCategory.description,
         sla_first_response_hours: editingCategory.sla_first_response_hours,
         sla_resolution_hours: editingCategory.sla_resolution_hours,
-        custom_fields: editingCategory.custom_fields?.filter(f => f.name && f.label) || []
+        custom_fields: (editingCategory.custom_fields || [])
+          .filter(f => f.name && f.label)
+          .map(f => f.type === 'select' && f.options?.length
+            ? { ...f, options: f.options!.map(o => String(o).trim()).filter(Boolean) }
+            : f)
       };
       await apiService.put(`/categories/${editingCategory.id}`, categoryData);
       
@@ -878,27 +965,33 @@ const SystemConfig: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Nome Interno *
-                        </label>
-                        <input
-                          type="text"
-                          value={field.name}
-                          onChange={(e) => updateCustomField(field.id, { name: e.target.value }, true)}
-                          placeholder="ex: payment_data"
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Label (Exibido) *
                         </label>
                         <input
                           type="text"
                           value={field.label}
-                          onChange={(e) => updateCustomField(field.id, { label: e.target.value }, true)}
+                          onChange={(e) => {
+                            const label = e.target.value;
+                            updateCustomField(field.id, { label, name: toSlug(label) }, true);
+                          }}
                           placeholder="ex: Dados de Pagamento"
                           className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                         />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Nome interno (automático)
+                        </label>
+                        <input
+                          type="text"
+                          readOnly
+                          value={field.name}
+                          placeholder="Preencha o label acima"
+                          className="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 dark:text-gray-400 text-gray-600 cursor-not-allowed"
+                        />
+                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                          Gerado pelo sistema a partir do label. Usado internamente em regras e integrações.
+                        </p>
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -932,17 +1025,40 @@ const SystemConfig: React.FC = () => {
                       {field.type === 'select' && (
                         <div className="md:col-span-2">
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Opções (separadas por vírgula)
+                            Opções de escolha
                           </label>
-                          <input
-                            type="text"
-                            value={field.options?.join(', ') || ''}
-                            onChange={(e) => updateCustomField(field.id, { 
-                              options: e.target.value.split(',').map(o => o.trim()).filter(o => o) 
-                            }, true)}
-                            placeholder="ex: Opção 1, Opção 2, Opção 3"
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            Adicione cada opção que aparecerá no campo. O usuário verá essas opções ao abrir um chamado.
+                          </p>
+                          <div className="space-y-2">
+                            {(field.options || []).map((opt, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={opt}
+                                  onChange={(e) => updateSelectOption(field.id, idx, e.target.value, true)}
+                                  placeholder={`Opção ${idx + 1}`}
+                                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeSelectOption(field.id, idx, true)}
+                                  className="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  title="Remover opção"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => addSelectOption(field.id, true)}
+                              className="flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Adicionar opção
+                            </button>
+                          </div>
                         </div>
                       )}
                       <div className="md:col-span-2">
@@ -1151,27 +1267,33 @@ const SystemConfig: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Nome Interno *
-                        </label>
-                        <input
-                          type="text"
-                          value={field.name}
-                          onChange={(e) => updateCustomField(field.id, { name: e.target.value }, false)}
-                          placeholder="ex: payment_data"
-                          className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Label (Exibido) *
                         </label>
                         <input
                           type="text"
                           value={field.label}
-                          onChange={(e) => updateCustomField(field.id, { label: e.target.value }, false)}
+                          onChange={(e) => {
+                            const label = e.target.value;
+                            updateCustomField(field.id, { label, name: toSlug(label) }, false);
+                          }}
                           placeholder="ex: Dados de Pagamento"
                           className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                         />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Nome interno (automático)
+                        </label>
+                        <input
+                          type="text"
+                          readOnly
+                          value={field.name}
+                          placeholder="Preencha o label acima"
+                          className="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 dark:text-gray-400 text-gray-600 cursor-not-allowed"
+                        />
+                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                          Gerado pelo sistema a partir do label. Usado internamente em regras e integrações.
+                        </p>
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1205,17 +1327,40 @@ const SystemConfig: React.FC = () => {
                       {field.type === 'select' && (
                         <div className="md:col-span-2">
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Opções (separadas por vírgula)
+                            Opções de escolha
                           </label>
-                          <input
-                            type="text"
-                            value={field.options?.join(', ') || ''}
-                            onChange={(e) => updateCustomField(field.id, { 
-                              options: e.target.value.split(',').map(o => o.trim()).filter(o => o) 
-                            }, false)}
-                            placeholder="ex: Opção 1, Opção 2, Opção 3"
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            Adicione cada opção que aparecerá no campo. O usuário verá essas opções ao abrir um chamado.
+                          </p>
+                          <div className="space-y-2">
+                            {(field.options || []).map((opt, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={opt}
+                                  onChange={(e) => updateSelectOption(field.id, idx, e.target.value, false)}
+                                  placeholder={`Opção ${idx + 1}`}
+                                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeSelectOption(field.id, idx, false)}
+                                  className="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  title="Remover opção"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => addSelectOption(field.id, false)}
+                              className="flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Adicionar opção
+                            </button>
+                          </div>
                         </div>
                       )}
                       <div className="md:col-span-2">

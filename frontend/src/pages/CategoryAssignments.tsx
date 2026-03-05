@@ -348,39 +348,74 @@ const CategoryAssignments: React.FC = () => {
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Campo</label>
                       <select
                         value={newRuleByCategory[assignment.category.id]?.field_name || ''}
-                        onChange={(e) => setNewRuleField(assignment.category.id, 'field_name', e.target.value)}
+                        onChange={(e) => {
+                          setNewRuleField(assignment.category.id, 'field_name', e.target.value);
+                          setNewRuleField(assignment.category.id, 'value', '');
+                        }}
                         className="input py-1.5 text-sm min-w-[140px]"
                         disabled={assignment.assigned_attendants.length === 0}
                       >
-                        <option value="">Selecione</option>
+                        <option value="">Selecione o campo</option>
                         {assignment.category.custom_fields.map((f) => (
                           <option key={f.id || f.name} value={f.name}>{f.label}</option>
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Condição</label>
-                      <select
-                        value={newRuleByCategory[assignment.category.id]?.operator || 'equals'}
-                        onChange={(e) => setNewRuleField(assignment.category.id, 'operator', e.target.value as AssignmentRuleOperator)}
-                        className="input py-1.5 text-sm min-w-[160px]"
-                        disabled={assignment.assigned_attendants.length === 0}
-                      >
-                        {(Object.entries(OPERATOR_LABELS) as [AssignmentRuleOperator, string][]).map(([op, label]) => (
-                          <option key={op} value={op}>{label}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {(() => {
+                      const selectedFieldName = newRuleByCategory[assignment.category.id]?.field_name;
+                      const selectedField = assignment.category.custom_fields?.find((f) => f.name === selectedFieldName);
+                      const isSelectField = selectedField?.type === 'select' && (selectedField?.options?.length ?? 0) > 0;
+                      const operatorsForSelect: AssignmentRuleOperator[] = ['equals', 'not_equals'];
+                      const operators = isSelectField ? operatorsForSelect : (Object.keys(OPERATOR_LABELS) as AssignmentRuleOperator[]);
+                      return (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Condição</label>
+                          <select
+                            value={newRuleByCategory[assignment.category.id]?.operator || (isSelectField ? 'equals' : 'equals')}
+                            onChange={(e) => setNewRuleField(assignment.category.id, 'operator', e.target.value as AssignmentRuleOperator)}
+                            className="input py-1.5 text-sm min-w-[160px]"
+                            disabled={assignment.assigned_attendants.length === 0}
+                          >
+                            {operators.map((op) => (
+                              <option key={op} value={op}>{OPERATOR_LABELS[op]}</option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })()}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Valor</label>
-                      <input
-                        type="text"
-                        value={newRuleByCategory[assignment.category.id]?.value || ''}
-                        onChange={(e) => setNewRuleField(assignment.category.id, 'value', e.target.value)}
-                        placeholder="Ex: Urgente ou 10"
-                        className="input py-1.5 text-sm w-32"
-                        disabled={assignment.assigned_attendants.length === 0}
-                      />
+                      {(() => {
+                        const selectedFieldName = newRuleByCategory[assignment.category.id]?.field_name;
+                        const selectedField = assignment.category.custom_fields?.find((f) => f.name === selectedFieldName);
+                        const isSelectField = selectedField?.type === 'select' && (selectedField?.options?.length ?? 0) > 0;
+                        const currentValue = newRuleByCategory[assignment.category.id]?.value ?? '';
+                        if (isSelectField && selectedField?.options) {
+                          return (
+                            <select
+                              value={currentValue}
+                              onChange={(e) => setNewRuleField(assignment.category.id, 'value', e.target.value)}
+                              className="input py-1.5 text-sm min-w-[160px]"
+                              disabled={assignment.assigned_attendants.length === 0}
+                            >
+                              <option value="">Selecione a opção</option>
+                              {selectedField.options.map((opt, idx) => (
+                                <option key={idx} value={opt}>{opt || `Opção ${idx + 1}`}</option>
+                              ))}
+                            </select>
+                          );
+                        }
+                        return (
+                          <input
+                            type="text"
+                            value={currentValue}
+                            onChange={(e) => setNewRuleField(assignment.category.id, 'value', e.target.value)}
+                            placeholder={selectedField?.type === 'number' ? 'Ex: 10' : 'Ex: texto ou valor'}
+                            className="input py-1.5 text-sm min-w-[140px]"
+                            disabled={assignment.assigned_attendants.length === 0}
+                          />
+                        );
+                      })()}
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Técnico</label>

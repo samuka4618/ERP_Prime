@@ -11,14 +11,18 @@ export const createTicketSchema = Joi.object({
 export const updateTicketSchema = Joi.object({
   status: Joi.string().valid('open', 'in_progress', 'pending_user', 'pending_third_party', 'resolved', 'closed', 'overdue_first_response', 'overdue_resolution').optional(),
   priority: Joi.string().valid('low', 'medium', 'high', 'urgent').optional(),
-  attendantId: Joi.number().integer().positive().optional()
+  attendantId: Joi.number().integer().positive().optional(),
+  attendant_id: Joi.number().integer().positive().optional()
 }).min(1).unknown(false).messages({
   'object.min': 'Pelo menos um campo deve ser fornecido para atualização',
   'object.unknown': 'Campo não permitido: {{#label}}'
 });
 
 export const assignTicketSchema = Joi.object({
-  attendantId: Joi.number().integer().positive().required()
+  attendantId: Joi.number().integer().positive(),
+  attendant_id: Joi.number().integer().positive()
+}).or('attendantId', 'attendant_id').messages({
+  'object.missing': 'Informe o técnico (attendantId ou attendant_id)'
 });
 
 export const addMessageSchema = Joi.object({

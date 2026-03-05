@@ -21,21 +21,7 @@ const querySchema = Joi.object({
 
 export class UserController {
   static create = asyncHandler(async (req: Request, res: Response) => {
-    console.log('🔍 DEBUG CREATE USER - Body recebido:', req.body);
-    console.log('🔍 DEBUG CREATE USER - Headers:', req.headers);
-    
-    // A validação já foi feita pelo middleware, então usamos req.body diretamente
     const userData = req.body as CreateUserRequest;
-    
-    // Validar senha
-    const passwordValidation = AuthService.validatePassword(userData.password);
-    if (!passwordValidation.isValid) {
-      res.status(400).json({ 
-        error: 'Senha inválida', 
-        details: passwordValidation.errors 
-      });
-      return;
-    }
 
     // Verificar se email já existe (apenas usuários ativos)
     // Permite reutilizar email de usuários que foram excluídos (soft delete)

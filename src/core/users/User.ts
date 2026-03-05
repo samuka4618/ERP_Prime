@@ -327,27 +327,17 @@ export class UserModel {
    * Mapear linha do banco para objeto User
    */
   private static mapRowToUser(row: any): User {
-    // Log para debug - verificar o que está sendo mapeado
-    console.log('📸 mapRowToUser - Mapeando:', {
-      id: row.id,
-      avatar: row.avatar,
-      avatarType: typeof row.avatar,
-      hasAvatar: 'avatar' in row,
-      allRowKeys: Object.keys(row)
-    });
-
-    const mapped = {
+    return {
       id: row.id,
       name: row.name,
       email: row.email,
       password: row.password,
       role: row.role as UserRole,
       is_active: row.is_active === 1 || row.is_active === true,
-      // Campos corporativos - usar nullish coalescing para preservar strings vazias
       phone: row.phone ?? undefined,
       department: row.department ?? undefined,
       position: row.position ?? undefined,
-      avatar: row.avatar ?? undefined, // Usar ?? ao invés de || para preservar strings vazias
+      avatar: row.avatar ?? undefined,
       extension: row.extension ?? undefined,
       bio: row.bio ?? undefined,
       linkedin: row.linkedin ?? undefined,
@@ -356,15 +346,6 @@ export class UserModel {
       created_at: row.created_at,
       updated_at: row.updated_at
     };
-
-    console.log('📸 mapRowToUser - Resultado mapeado:', {
-      id: mapped.id,
-      avatar: mapped.avatar,
-      hasAvatar: !!mapped.avatar,
-      allMappedKeys: Object.keys(mapped)
-    });
-
-    return mapped;
   }
 }
 

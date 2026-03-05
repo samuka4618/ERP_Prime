@@ -1,10 +1,29 @@
 import Joi from 'joi';
+import { AuthService } from '../auth/AuthService';
 
 export const createUserSchema = Joi.object({
-  name: Joi.string().min(2).max(255).required(),
-  email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
-  role: Joi.string().valid('user', 'attendant', 'admin').required(),
+  name: Joi.string().min(2).max(255).required().messages({
+    'string.min': 'Nome deve ter pelo menos 2 caracteres',
+    'any.required': 'Nome é obrigatório'
+  }),
+  email: Joi.string().email().required().messages({
+    'string.email': 'Email inválido',
+    'any.required': 'Email é obrigatório'
+  }),
+  password: Joi.string().min(6).required().custom((value: string) => {
+    const result = AuthService.validatePassword(value);
+    if (!result.isValid) {
+      throw new Error(result.errors.join(' '));
+    }
+    return value;
+  }).messages({
+    'string.min': 'Senha deve ter pelo menos 6 caracteres',
+    'any.required': 'Senha é obrigatória'
+  }),
+  role: Joi.string().valid('user', 'attendant', 'admin').required().messages({
+    'any.only': 'Perfil deve ser: user, attendant ou admin',
+    'any.required': 'Perfil é obrigatório'
+  }),
   is_active: Joi.alternatives().try(
     Joi.boolean(),
     Joi.number().integer().valid(0, 1)

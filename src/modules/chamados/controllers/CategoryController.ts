@@ -4,6 +4,20 @@ import { CreateCategoryRequest, UpdateCategoryRequest } from '../types';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
 import { createCategorySchema, updateCategorySchema } from '../schemas/category';
 import Joi from 'joi';
+import {
+  CATEGORY_IMPORT_EXPORT,
+  toExportRow,
+  validateCategoryRow,
+  parseCategoriesJson,
+  ValidatedCategoryRow,
+  InvalidCategoryRow
+} from '../categoryImportExport';
+import { log as auditLog } from '../../../core/audit/AuditService';
+import { dbRun } from '../../../core/database/connection';
+import { config } from '../../../config/database';
+
+const getIp = (req: Request) => req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
+const useTransaction = !config.database.usePostgres;
 
 const querySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
@@ -136,6 +150,154 @@ export class CategoryController {
       data: {
         totalCategories,
         activeCategories
+      }
+    });
+  });
+
+  /** Exportar categorias (JSON com SLA, perguntas personalizadas e configurações). */
+  static exportCategories = asyncHandler(async (req: Request, res: Response) => {
+    const categories = await CategoryModel.findAllForExport(CATEGORY_IMPORT_EXPORT.MAX_CATEGORIES);
+    const rows = categories.map((c) => toExportRow(c));
+
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'categories.export',
+      resource: 'categories',
+      details: `Exportação de ${rows.length} categoria(s)`,
+      ip: getIp(req)
+    });
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="categorias-${new Date().toISOString().slice(0, 10)}.json"`);
+    res.json(rows);
+  });
+
+  /** Pré-visualizar importação de categorias (não altera o banco). */
+  static importPreview = asyncHandler(async (req: Request, res: Response) => {
+    const file = (req as any).file;
+    if (!file || !file.buffer) {
+      res.status(400).json({ error: 'Envie um arquivo JSON (campo: file)' });
+      return;
+    }
+    if (file.size > CATEGORY_IMPORT_EXPORT.MAX_FILE_BYTES) {
+      res.status(400).json({
+        error: `Arquivo excede o limite de ${CATEGORY_IMPORT_EXPORT.MAX_FILE_BYTES / 1024 / 1024} MB`
+      });
+      return;
+    }
+
+    const content = file.buffer.toString('utf-8');
+    let rawRows: Record<string, unknown>[];
+    try {
+      rawRows = parseCategoriesJson(content);
+    } catch (_) {
+      res.status(400).json({ error: 'Arquivo JSON inválido. Esperado: array de categorias ou objeto com propriedade "categories".' });
+      return;
+    }
+
+    if (rawRows.length > CATEGORY_IMPORT_EXPORT.MAX_CATEGORIES) {
+      res.status(400).json({
+        error: `Arquivo tem ${rawRows.length} categorias. Máximo permitido: ${CATEGORY_IMPORT_EXPORT.MAX_CATEGORIES}`
+      });
+      return;
+    }
+
+    const valid: ValidatedCategoryRow[] = [];
+    const invalid: InvalidCategoryRow[] = [];
+    rawRows.forEach((row, i) => {
+      const result = validateCategoryRow(row, i + 1);
+      if ('valid' in result) valid.push(result.valid);
+      else invalid.push(result.invalid);
+    });
+
+    res.json({
+      message: 'Pré-visualização concluída',
+      data: {
+        total: rawRows.length,
+        valid: valid.length,
+        invalid: invalid.length,
+        validRows: valid,
+        invalidRows: invalid
+      }
+    });
+  });
+
+  /** Importar categorias. Atribuições ficam a cargo do usuário após a importação. */
+  static importCategories = asyncHandler(async (req: Request, res: Response) => {
+    const file = (req as any).file;
+    if (!file || !file.buffer) {
+      res.status(400).json({ error: 'Envie um arquivo JSON (campo: file)' });
+      return;
+    }
+    if (file.size > CATEGORY_IMPORT_EXPORT.MAX_FILE_BYTES) {
+      res.status(400).json({
+        error: `Arquivo excede o limite de ${CATEGORY_IMPORT_EXPORT.MAX_FILE_BYTES / 1024 / 1024} MB`
+      });
+      return;
+    }
+
+    const content = file.buffer.toString('utf-8');
+    let rawRows: Record<string, unknown>[];
+    try {
+      rawRows = parseCategoriesJson(content);
+    } catch (_) {
+      res.status(400).json({ error: 'Arquivo JSON inválido.' });
+      return;
+    }
+
+    if (rawRows.length > CATEGORY_IMPORT_EXPORT.MAX_CATEGORIES) {
+      res.status(400).json({
+        error: `Arquivo tem ${rawRows.length} categorias. Máximo: ${CATEGORY_IMPORT_EXPORT.MAX_CATEGORIES}`
+      });
+      return;
+    }
+
+    const valid: ValidatedCategoryRow[] = [];
+    const invalid: InvalidCategoryRow[] = [];
+    rawRows.forEach((row, i) => {
+      const result = validateCategoryRow(row, i + 1);
+      if ('valid' in result) valid.push(result.valid);
+      else invalid.push(result.invalid);
+    });
+
+    let created = 0;
+
+    if (useTransaction) await dbRun('BEGIN');
+    try {
+      for (const row of valid) {
+        const createData: CreateCategoryRequest = {
+          name: row.data.name,
+          description: row.data.description,
+          sla_first_response_hours: row.data.sla_first_response_hours,
+          sla_resolution_hours: row.data.sla_resolution_hours,
+          is_active: row.data.is_active,
+          custom_fields: row.data.custom_fields
+        };
+        await CategoryModel.create(createData);
+        created++;
+      }
+      if (useTransaction) await dbRun('COMMIT');
+    } catch (err: any) {
+      if (useTransaction) await dbRun('ROLLBACK').catch(() => {});
+      throw err;
+    }
+
+    auditLog({
+      userId: req.user?.id,
+      userName: req.user?.name,
+      action: 'categories.import',
+      resource: 'categories',
+      details: `Importação: ${created} categoria(s) criada(s), ${invalid.length} linha(s) inválida(s)`,
+      ip: getIp(req)
+    });
+
+    res.status(201).json({
+      message: 'Importação concluída',
+      data: {
+        created,
+        invalidCount: invalid.length,
+        invalidRows: invalid
       }
     });
   });

@@ -297,6 +297,66 @@ class ApiService {
     return response.data.data!;
   }
 
+  /** Exportar categorias (JSON com SLA, perguntas personalizadas e configurações). */
+  async exportCategories(): Promise<void> {
+    const response = await this.api.get('/categories/export', { responseType: 'json' });
+    const data = Array.isArray(response.data) ? response.data : (response.data as any)?.data ?? response.data;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `categorias-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Pré-visualizar importação de categorias. */
+  async importCategoriesPreview(file: File): Promise<{
+    total: number;
+    valid: number;
+    invalid: number;
+    validRows: Array<{ rowIndex: number; data: Record<string, unknown> }>;
+    invalidRows: Array<{ rowIndex: number; raw: Record<string, unknown>; errors: string[] }>;
+  }> {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await this.api.post<ApiResponse<{
+      total: number;
+      valid: number;
+      invalid: number;
+      validRows: unknown[];
+      invalidRows: Array<{ rowIndex: number; raw: Record<string, unknown>; errors: string[] }>;
+    }>>('/categories/import/preview', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    const d = response.data.data!;
+    return {
+      total: d.total,
+      valid: d.valid,
+      invalid: d.invalid,
+      validRows: (d.validRows || []) as Array<{ rowIndex: number; data: Record<string, unknown> }>,
+      invalidRows: d.invalidRows || []
+    };
+  }
+
+  /** Importar categorias. Atribuições ficam a cargo do usuário após a importação. */
+  async importCategories(file: File): Promise<{
+    created: number;
+    invalidCount: number;
+    invalidRows: Array<{ rowIndex: number; errors: string[] }>;
+  }> {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await this.api.post<ApiResponse<{
+      created: number;
+      invalidCount: number;
+      invalidRows: Array<{ rowIndex: number; errors: string[] }>;
+    }>>('/categories/import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data.data!;
+  }
+
   // System Configuration
   async getSystemConfig(): Promise<any> {
     const response = await this.api.get<ApiResponse<any>>('/system/config');

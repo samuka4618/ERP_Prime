@@ -31,6 +31,8 @@ async function migrateAddPermissions() {
       { name: 'Gerenciar Prioridades', code: 'tickets.priority.manage', module: 'tickets', description: 'Permite gerenciar prioridades de chamados' },
       { name: 'Visualizar SLA', code: 'tickets.sla.view', module: 'tickets', description: 'Permite visualizar informações de SLA' },
       { name: 'Gerenciar SLA', code: 'tickets.sla.manage', module: 'tickets', description: 'Permite gerenciar configurações de SLA' },
+      { name: 'Exportar Categorias', code: 'categories.export', module: 'tickets', description: 'Permite exportar categorias (SLA, perguntas personalizadas, configurações)' },
+      { name: 'Importar Categorias', code: 'categories.import', module: 'tickets', description: 'Permite importar categorias a partir de arquivo JSON' },
       
       // Sistema de Cadastros - Ações Avançadas
       { name: 'Exportar Cadastros', code: 'registrations.export', module: 'registrations', description: 'Permite exportar cadastros (Excel, PDF, CSV)' },

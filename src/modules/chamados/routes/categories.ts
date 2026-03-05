@@ -4,7 +4,8 @@ import { authenticate, authorize } from '../middleware/auth';
 import { validate, validateQuery, validateParams } from '../middleware/validation';
 import { createCategorySchema, updateCategorySchema, categoryQuerySchema } from '../schemas/category';
 import { UserRole } from '../types';
-import { requirePermission } from '../../../core/permissions/middleware';
+import { requirePermission, adminOrPermission } from '../../../core/permissions/middleware';
+import { uploadCategoryImport } from '../../../shared/middleware/upload';
 import Joi from 'joi';
 
 const router = Router();
@@ -18,6 +19,11 @@ const paramsSchema = Joi.object({
 
 // Rotas públicas (todos os usuários autenticados)
 router.get('/active', CategoryController.findActive);
+
+// Exportar/Importar categorias: admin ou permissão específica
+router.get('/export', adminOrPermission('categories.export'), CategoryController.exportCategories);
+router.post('/import/preview', adminOrPermission('categories.import'), uploadCategoryImport, CategoryController.importPreview);
+router.post('/import', adminOrPermission('categories.import'), uploadCategoryImport, CategoryController.importCategories);
 
 // Apenas administradores podem gerenciar categorias
 router.use(authorize(UserRole.ADMIN));

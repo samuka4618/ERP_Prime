@@ -161,6 +161,39 @@ export class CategoryModel {
     };
   }
 
+  /**
+   * Buscar todas as categorias para exportação (até o limite informado)
+   */
+  static async findAllForExport(maxRows: number): Promise<Category[]> {
+    const rows = await dbAll(
+      'SELECT * FROM ticket_categories ORDER BY id ASC LIMIT ?',
+      [maxRows]
+    ) as any[];
+
+    return rows.map((row: any) => {
+      let customFields = undefined;
+      if (row.custom_fields && typeof row.custom_fields === 'string') {
+        try {
+          const parsed = JSON.parse(row.custom_fields);
+          if (Array.isArray(parsed)) customFields = parsed;
+        } catch (_) {}
+      } else if (Array.isArray(row.custom_fields)) {
+        customFields = row.custom_fields;
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        sla_first_response_hours: row.sla_first_response_hours,
+        sla_resolution_hours: row.sla_resolution_hours,
+        is_active: row.is_active === 1 || row.is_active === true,
+        custom_fields: customFields,
+        created_at: new Date(row.created_at),
+        updated_at: new Date(row.updated_at)
+      };
+    });
+  }
+
   static async findActive(): Promise<Category[]> {
     const categories = await dbAll(
       `SELECT * FROM ticket_categories WHERE is_active = ${sqlBooleanTrue()} ORDER BY name ASC`

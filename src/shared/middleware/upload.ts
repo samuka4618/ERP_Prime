@@ -53,3 +53,9 @@ export const uploadUserImport = multer({
   storage: memoryStorage,
   limits: { fileSize: 10 * 1024 * 1024, files: 1 }
 }).single('file');
+
+// Upload em memória para importação de categorias (JSON, máx 5 MB)
+export const uploadCategoryImport = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 }
+}).single('file');

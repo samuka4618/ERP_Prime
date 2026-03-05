@@ -232,6 +232,8 @@ Se você usar **Cloudflare Tunnel** em vez do Ngrok (ex.: frontend no Railway e 
 
 O sistema usará essa URL nos QR codes dos formulários e **não** redirecionará HTTPS para HTTP quando as requisições vierem desse host. Sem `PUBLIC_URL`, o comportamento permanece o atual (Ngrok automático ou hostname/rede local).
 
+Passo a passo completo (backend local + frontend no Railway + Cloudflare Tunnel): **[docs/CLOUDFLARE_TUNNEL_RAILWAY_FRONTEND.md](docs/CLOUDFLARE_TUNNEL_RAILWAY_FRONTEND.md)**.
+
 ---
 
 ## 🚀 Deploy em produção
@@ -262,7 +264,8 @@ npm start
 Ou apenas o servidor: `npm run start:server`.
 
 Guia completo de deploy (Vercel + Render / Fly.io / Railway): **[DEPLOY.md](DEPLOY.md)**.  
-PostgreSQL no Railway: **[docs/RAILWAY_POSTGRES_PASSO_A_PASSO.md](docs/RAILWAY_POSTGRES_PASSO_A_PASSO.md)**.
+PostgreSQL no Railway: **[docs/RAILWAY_POSTGRES_PASSO_A_PASSO.md](docs/RAILWAY_POSTGRES_PASSO_A_PASSO.md)**.  
+Backend local + frontend no Railway + Cloudflare Tunnel: **[docs/CLOUDFLARE_TUNNEL_RAILWAY_FRONTEND.md](docs/CLOUDFLARE_TUNNEL_RAILWAY_FRONTEND.md)**.
 
 ---
 

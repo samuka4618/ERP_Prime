@@ -339,16 +339,24 @@ class ApiService {
     };
   }
 
-  /** Importar categorias. Atribuições ficam a cargo do usuário após a importação. */
-  async importCategories(file: File): Promise<{
+  /** Importar categorias. updateExisting: atualizar categorias existentes (por nome); senão ignora duplicadas. */
+  async importCategories(
+    file: File,
+    updateExisting: boolean
+  ): Promise<{
     created: number;
+    updated: number;
+    skipped: number;
     invalidCount: number;
     invalidRows: Array<{ rowIndex: number; errors: string[] }>;
   }> {
     const form = new FormData();
     form.append('file', file);
+    form.append('updateExisting', String(updateExisting));
     const response = await this.api.post<ApiResponse<{
       created: number;
+      updated: number;
+      skipped: number;
       invalidCount: number;
       invalidRows: Array<{ rowIndex: number; errors: string[] }>;
     }>>('/categories/import', form, {

@@ -50,8 +50,11 @@ const Categories: React.FC = () => {
     validRows: Array<{ rowIndex: number; data: Record<string, unknown> }>;
     invalidRows: Array<{ rowIndex: number; raw: Record<string, unknown>; errors: string[] }>;
   } | null>(null);
+  const [importUpdateExisting, setImportUpdateExisting] = useState(false);
   const [importResult, setImportResult] = useState<{
     created: number;
+    updated: number;
+    skipped: number;
     invalidCount: number;
     invalidRows: Array<{ rowIndex: number; errors: string[] }>;
   } | null>(null);
@@ -366,9 +369,13 @@ const Categories: React.FC = () => {
     }
     setLoadingImport(true);
     try {
-      const data = await apiService.importCategories(importFile);
+      const data = await apiService.importCategories(importFile, importUpdateExisting);
       setImportResult(data);
-      toast.success(`Importação concluída: ${data.created} categoria(s) criada(s)`);
+      const parts = [];
+      if (data.created) parts.push(`${data.created} criada(s)`);
+      if (data.updated) parts.push(`${data.updated} atualizada(s)`);
+      if (data.skipped) parts.push(`${data.skipped} ignorada(s)`);
+      toast.success(`Importação concluída: ${parts.length ? parts.join(', ') : 'nenhuma alteração'}`);
       fetchData();
     } catch (e: any) {
       toast.error(e.response?.data?.error || 'Erro ao importar');
@@ -437,6 +444,14 @@ const Categories: React.FC = () => {
                 }}
                 className="block w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-primary-50 file:text-primary-700 dark:file:bg-primary-900/30 dark:file:text-primary-300 mb-2"
               />
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-2">
+                <input
+                  type="checkbox"
+                  checked={importUpdateExisting}
+                  onChange={(e) => setImportUpdateExisting(e.target.checked)}
+                />
+                Atualizar categorias existentes (por nome)
+              </label>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -498,7 +513,7 @@ const Categories: React.FC = () => {
                 Resultado da importação
               </h4>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                Criadas: {importResult.created} — Linhas inválidas: {importResult.invalidCount}
+                Criadas: {importResult.created} — Atualizadas: {importResult.updated} — Ignoradas (já existem): {importResult.skipped} — Linhas inválidas: {importResult.invalidCount}
               </p>
               {importResult.invalidRows.length > 0 && (
                 <ul className="text-sm text-red-600 dark:text-red-400 list-disc list-inside">

@@ -223,9 +223,11 @@ export class CategoryController {
     });
   });
 
-  /** Importar categorias. Atribuições ficam a cargo do usuário após a importação. */
+  /** Importar categorias. Atribuições ficam a cargo do usuário após a importação. Se updateExisting=true, atualiza categorias existentes (por nome). */
   static importCategories = asyncHandler(async (req: Request, res: Response) => {
     const file = (req as any).file;
+    const updateExisting = String((req.body as any).updateExisting || '').toLowerCase() === 'true' || (req.body as any).updateExisting === true;
+
     if (!file || !file.buffer) {
       res.status(400).json({ error: 'Envie um arquivo JSON (campo: file)' });
       return;
@@ -262,20 +264,38 @@ export class CategoryController {
     });
 
     let created = 0;
+    let updated = 0;
+    let skipped = 0;
 
     if (useTransaction) await dbRun('BEGIN');
     try {
       for (const row of valid) {
-        const createData: CreateCategoryRequest = {
-          name: row.data.name,
-          description: row.data.description,
-          sla_first_response_hours: row.data.sla_first_response_hours,
-          sla_resolution_hours: row.data.sla_resolution_hours,
-          is_active: row.data.is_active,
-          custom_fields: row.data.custom_fields
-        };
-        await CategoryModel.create(createData);
-        created++;
+        const existing = await CategoryModel.findByName(row.data.name);
+        if (existing) {
+          if (updateExisting) {
+            await CategoryModel.update(existing.id, {
+              description: row.data.description,
+              sla_first_response_hours: row.data.sla_first_response_hours,
+              sla_resolution_hours: row.data.sla_resolution_hours,
+              is_active: row.data.is_active,
+              custom_fields: row.data.custom_fields
+            });
+            updated++;
+          } else {
+            skipped++;
+          }
+        } else {
+          const createData: CreateCategoryRequest = {
+            name: row.data.name,
+            description: row.data.description,
+            sla_first_response_hours: row.data.sla_first_response_hours,
+            sla_resolution_hours: row.data.sla_resolution_hours,
+            is_active: row.data.is_active,
+            custom_fields: row.data.custom_fields
+          };
+          await CategoryModel.create(createData);
+          created++;
+        }
       }
       if (useTransaction) await dbRun('COMMIT');
     } catch (err: any) {
@@ -288,7 +308,7 @@ export class CategoryController {
       userName: req.user?.name,
       action: 'categories.import',
       resource: 'categories',
-      details: `Importação: ${created} categoria(s) criada(s), ${invalid.length} linha(s) inválida(s)`,
+      details: `Importação: ${created} criada(s), ${updated} atualizada(s), ${skipped} ignorada(s) (já existem), ${invalid.length} inválida(s). updateExisting=${updateExisting}`,
       ip: getIp(req)
     });
 
@@ -296,6 +316,8 @@ export class CategoryController {
       message: 'Importação concluída',
       data: {
         created,
+        updated,
+        skipped,
         invalidCount: invalid.length,
         invalidRows: invalid
       }

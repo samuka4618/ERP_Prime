@@ -100,6 +100,38 @@ export class CategoryModel {
     };
   }
 
+  /** Buscar categoria por nome (para importação: detectar duplicados). */
+  static async findByName(name: string): Promise<Category | null> {
+    const category = await dbGet(
+      'SELECT * FROM ticket_categories WHERE name = ?',
+      [name.trim()]
+    ) as any;
+
+    if (!category) return null;
+
+    let customFields = undefined;
+    if (category.custom_fields && typeof category.custom_fields === 'string') {
+      try {
+        const parsed = JSON.parse(category.custom_fields);
+        if (Array.isArray(parsed)) customFields = parsed;
+      } catch (_) {}
+    } else if (Array.isArray(category.custom_fields)) {
+      customFields = category.custom_fields;
+    }
+
+    return {
+      id: category.id,
+      name: category.name,
+      description: category.description,
+      sla_first_response_hours: category.sla_first_response_hours,
+      sla_resolution_hours: category.sla_resolution_hours,
+      is_active: category.is_active === 1 || category.is_active === true,
+      custom_fields: customFields,
+      created_at: new Date(category.created_at),
+      updated_at: new Date(category.updated_at)
+    };
+  }
+
   static async findAll(params: PaginationParams): Promise<PaginatedResponse<Category>> {
     const offset = (params.page - 1) * params.limit;
     let whereClause = 'WHERE 1=1';

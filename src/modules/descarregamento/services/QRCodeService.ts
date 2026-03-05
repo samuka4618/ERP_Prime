@@ -17,7 +17,16 @@ export class QRCodeService {
       return `${ngrokUrl}/descarregamento/formulario/${formularioId}`;
     }
 
-    // Se não houver ngrok, usar configuração padrão
+    // Se PUBLIC_URL estiver definida (ex.: Cloudflare Tunnel), usar como base completa (sem adicionar porta).
+    // Em túneis a URL pública já é a final (ex.: https://xxx.trycloudflare.com); em dev não concatenamos :port.
+    if (process.env.PUBLIC_URL && process.env.PUBLIC_URL.trim()) {
+      const base = process.env.PUBLIC_URL.trim().replace(/\/+$/, '');
+      if (/^https?:\/\//i.test(base)) {
+        return `${base}/descarregamento/formulario/${formularioId}`;
+      }
+    }
+
+    // Comportamento original: hostname + protocolo + porta (rede local ou produção sem túnel)
     const hostname = this.getPublicHostname();
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
     const port = process.env.NODE_ENV === 'production' ? '' : `:${config.port}`;

@@ -35,6 +35,20 @@ app.use((req, res, next) => {
     if (host.includes('ngrok')) {
       return next();
     }
+    // Não redirecionar quando a requisição vier do host definido em PUBLIC_URL (ex.: Cloudflare Tunnel).
+    // Assim, quem usa túnel (Cloudflare ou outro) define PUBLIC_URL e o backend não força HTTP.
+    if (process.env.PUBLIC_URL && process.env.PUBLIC_URL.trim()) {
+      try {
+        const raw = process.env.PUBLIC_URL.trim().replace(/\/+$/, '');
+        const pubHost = new URL(raw.startsWith('http') ? raw : `https://${raw}`).hostname.toLowerCase();
+        const reqHost = host.split(':')[0];
+        if (pubHost && (reqHost === pubHost || reqHost.endsWith('.' + pubHost))) {
+          return next();
+        }
+      } catch {
+        // PUBLIC_URL inválida, segue o fluxo normal
+      }
+    }
     // Redirecionar para HTTP apenas em acesso direto (ex.: localhost)
     const hostNormalized = req.headers.host?.replace(':443', ':3000') || req.headers.host;
     const httpUrl = `http://${hostNormalized}${req.url}`;

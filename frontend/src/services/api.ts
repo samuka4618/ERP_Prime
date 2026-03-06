@@ -239,10 +239,12 @@ class ApiService {
     if (params.limit) sp.set('limit', String(params.limit));
     if (params.search) sp.set('search', params.search);
     const response = await this.api.get<ApiResponse<{ users: EntraUserListItem[]; nextLink?: string }>>(`/users/entra/list?${sp.toString()}`);
-    const data = response.data?.data;
+    const body = response.data as unknown;
+    const data = body && typeof body === 'object' && 'data' in body ? (body as ApiResponse<{ users: EntraUserListItem[]; nextLink?: string }>).data : undefined;
     // Resposta HTML ou null = requisição caiu no SPA em vez do backend (ex.: VITE_API_URL não definida)
     if (data == null || typeof data === 'string') {
-      const msg = typeof response.data === 'string' && response.data.trim().toLowerCase().startsWith('<!')
+      const isHtml = typeof body === 'string' && body.trim().toLowerCase().startsWith('<!');
+      const msg = isHtml
         ? 'A API retornou uma página em vez de dados. Defina VITE_API_URL com a URL do backend e faça um novo build do frontend.'
         : 'A API retornou resposta inválida. Verifique se VITE_API_URL aponta para o backend.';
       throw Object.assign(new Error(msg), { response: { data: { error: msg } } });

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Upload, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface OrcamentoItem {
   item_solicitacao_id: number;
@@ -57,7 +58,8 @@ const NovoOrcamento: React.FC = () => {
     try {
       setLoadingSolicitacao(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/solicitacoes-compra/${solicitacaoId}`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra/${solicitacaoId}`), {
+        credentials: 'include',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -154,8 +156,9 @@ const NovoOrcamento: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/orcamentos', {
+      const response = await fetch(apiUrl('orcamentos'), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -192,8 +195,9 @@ const NovoOrcamento: React.FC = () => {
         formDataUpload.append('orcamentoId', orcamentoId.toString());
         formDataUpload.append('tipo', 'orcamento');
 
-        const uploadResponse = await fetch('/api/compras-anexos/upload', {
+        const uploadResponse = await fetch(apiUrl('compras-anexos/upload'), {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Authorization': `Bearer ${token}`
           },

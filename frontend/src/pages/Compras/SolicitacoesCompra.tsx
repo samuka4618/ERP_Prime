@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { apiService } from '../../services/api';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface SolicitacaoCompra {
   id: number;
@@ -45,7 +46,8 @@ const SolicitacoesCompra: React.FC = () => {
         ...(searchTerm && { search: searchTerm })
       });
 
-      const response = await fetch(`/api/solicitacoes-compra?${params}`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra?${params}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

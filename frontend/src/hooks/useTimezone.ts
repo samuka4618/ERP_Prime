@@ -30,10 +30,16 @@ export const useTimezone = () => {
     const fetchTimezone = async () => {
       try {
         const response = await apiService.get('/system-config/timezone');
-        const tz = response?.data?.data?.timezone ?? response?.data?.timezone ?? 'America/Sao_Paulo';
-        setTimezone(tz);
+        const raw = response?.data as { data?: { timezone?: string }; timezone?: string } | undefined;
+        const tz = (typeof raw === 'object' && raw !== null)
+          ? (raw?.data?.timezone ?? (raw as any)?.timezone)
+          : null;
+        if (tz && typeof tz === 'string' && !tz.startsWith('<')) {
+          setTimezone(tz);
+        } else {
+          setTimezone('America/Sao_Paulo');
+        }
       } catch (error) {
-        console.warn('Erro ao obter timezone do sistema, usando padrão:', error);
         setTimezone('America/Sao_Paulo');
       } finally {
         setLoading(false);

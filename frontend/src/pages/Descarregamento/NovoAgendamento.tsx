@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Calendar, Clock, Truck, MapPin, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface Fornecedor {
   id: number;
@@ -41,7 +42,8 @@ const NovoAgendamento: React.FC = () => {
   const fetchFornecedores = async () => {
     try {
       setLoadingFornecedores(true);
-      const response = await fetch('/api/descarregamento/fornecedores?limit=1000', {
+      const response = await fetch(apiUrl('descarregamento/fornecedores?limit=1000'), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -75,7 +77,8 @@ const NovoAgendamento: React.FC = () => {
   const fetchDocas = async () => {
     try {
       setLoadingDocas(true);
-      const response = await fetch('/api/descarregamento/docas?activeOnly=true', {
+      const response = await fetch(apiUrl('descarregamento/docas?activeOnly=true'), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -104,7 +107,8 @@ const NovoAgendamento: React.FC = () => {
   const fetchAgendamento = async (agendamentoId: number) => {
     try {
       setLoadingData(true);
-      const response = await fetch(`/api/descarregamento/agendamentos/${agendamentoId}`, {
+      const response = await fetch(apiUrl(`descarregamento/agendamentos/${agendamentoId}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -146,13 +150,14 @@ const NovoAgendamento: React.FC = () => {
     try {
       setLoading(true);
       const url = isEditing 
-        ? `/api/descarregamento/agendamentos/${id}`
-        : '/api/descarregamento/agendamentos';
+        ? apiUrl(`descarregamento/agendamentos/${id}`)
+        : apiUrl('descarregamento/agendamentos');
       
       const method = isEditing ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`

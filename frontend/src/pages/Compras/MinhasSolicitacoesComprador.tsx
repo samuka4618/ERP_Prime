@@ -4,6 +4,7 @@ import { Search, Eye, ShoppingCart } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface SolicitacaoCompra {
   id: number;
@@ -40,7 +41,8 @@ const MinhasSolicitacoesComprador: React.FC = () => {
         ...(searchTerm && { search: searchTerm })
       });
 
-      const response = await fetch(`/api/solicitacoes-compra/minhas?${params}`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra/minhas?${params}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

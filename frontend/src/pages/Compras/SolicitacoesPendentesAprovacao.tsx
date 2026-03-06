@@ -4,6 +4,7 @@ import { Search, Eye, CheckCircle } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface SolicitacaoCompra {
   id: number;
@@ -40,7 +41,8 @@ const SolicitacoesPendentesAprovacao: React.FC = () => {
         ...(searchTerm && { search: searchTerm })
       });
 
-      const response = await fetch(`/api/solicitacoes-compra/pendentes-aprovacao?${params}`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra/pendentes-aprovacao?${params}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

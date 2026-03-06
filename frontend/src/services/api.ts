@@ -1082,6 +1082,14 @@ class ApiService {
   async deleteDocaDescarregamento(id: number) {
     await this.api.delete(`/descarregamento/docas/${id}`);
   }
+  async getFormulariosDescarregamento() {
+    const response = await this.api.get<ApiResponse<{ formularios: any[] }>>('/descarregamento/formularios');
+    return (response.data.data as any)?.formularios ?? [];
+  }
+  async getSmsTemplatesDescarregamento() {
+    const response = await this.api.get<ApiResponse<{ templates: any[] }>>('/descarregamento/sms-templates');
+    return (response.data.data as any)?.templates ?? [];
+  }
 }
 
 export const apiService = new ApiService();

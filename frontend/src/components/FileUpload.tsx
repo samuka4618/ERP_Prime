@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, File, FileText, Image, Archive, Video, Music } from 'lucide-react';
 import { Attachment } from '../types';
+import { apiUrl } from '../utils/apiUrl';
 
 interface FileUploadProps {
   onFilesSelect: (files: File[]) => void;
@@ -185,7 +186,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 </div>
                 <div className="flex items-center space-x-2">
                   <a
-                    href={`/api/attachments/${attachment.id}/download`}
+                    href={apiUrl(`attachments/${attachment.id}/download`)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 hover:text-blue-700 text-sm"

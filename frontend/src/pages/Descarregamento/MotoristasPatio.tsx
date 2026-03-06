@@ -4,6 +4,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import FormattedDate from '../../components/FormattedDate';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface FormResponse {
   id: number;
@@ -38,7 +39,8 @@ const MotoristasPatio: React.FC = () => {
   const fetchMotoristas = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/descarregamento/form-responses/patio', {
+      const response = await fetch(apiUrl('descarregamento/form-responses/patio'), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -58,8 +60,9 @@ const MotoristasPatio: React.FC = () => {
 
   const handleStartDischarge = async (motoristaId: number) => {
     try {
-      const res = await fetch(`/api/descarregamento/form-responses/${motoristaId}/start-discharge`, {
+      const res = await fetch(apiUrl(`descarregamento/form-responses/${motoristaId}/start-discharge`), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) {
@@ -78,8 +81,9 @@ const MotoristasPatio: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch(`/api/descarregamento/form-responses/${motoristaId}/checkout`, {
+      const res = await fetch(apiUrl(`descarregamento/form-responses/${motoristaId}/checkout`), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) {

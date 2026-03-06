@@ -3,6 +3,7 @@ import { ShoppingCart, Plus, X, User, CheckCircle, XCircle, Search } from 'lucid
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import FormattedDate from '../../components/FormattedDate';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface Comprador {
   id: number;
@@ -42,7 +43,8 @@ const ComprasConfig: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/compradores', {
+      const response = await fetch(apiUrl('compradores'), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -73,7 +75,8 @@ const ComprasConfig: React.FC = () => {
 
       // Buscar todos os usuários fazendo múltiplas requisições paginadas
       while (hasMore) {
-        const response = await fetch(`/api/users?page=${page}&limit=${limit}`, {
+        const response = await fetch(apiUrl(`users?page=${page}&limit=${limit}`), {
+          credentials: 'include',
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -117,8 +120,9 @@ const ComprasConfig: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/compradores', {
+      const response = await fetch(apiUrl('compradores'), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -145,8 +149,9 @@ const ComprasConfig: React.FC = () => {
   const handleToggleStatus = async (compradorId: number, currentStatus: boolean) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/compradores/${compradorId}`, {
+      const response = await fetch(apiUrl(`compradores/${compradorId}`), {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -175,8 +180,9 @@ const ComprasConfig: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/compradores/${compradorId}`, {
+      const response = await fetch(apiUrl(`compradores/${compradorId}`), {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         }

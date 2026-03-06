@@ -4,6 +4,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface Agendamento {
   id: number;
@@ -120,7 +121,8 @@ const GradeDescarregamento: React.FC = () => {
         ...(statusFilter !== 'all' && { status: statusFilter })
       });
 
-      const response = await fetch(`/api/descarregamento/agendamentos?${params}`, {
+      const response = await fetch(apiUrl(`descarregamento/agendamentos?${params}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -138,7 +140,8 @@ const GradeDescarregamento: React.FC = () => {
 
   const fetchMotoristas = async () => {
     try {
-      const response = await fetch('/api/descarregamento/form-responses/patio', {
+      const response = await fetch(apiUrl('descarregamento/form-responses/patio'), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -239,8 +242,9 @@ const GradeDescarregamento: React.FC = () => {
   const handleStartDischarge = async (m: Motorista) => {
     setActionLoadingId(m.id);
     try {
-      const res = await fetch(`/api/descarregamento/form-responses/${m.id}/start-discharge`, {
+      const res = await fetch(apiUrl(`descarregamento/form-responses/${m.id}/start-discharge`), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) {
@@ -260,8 +264,9 @@ const GradeDescarregamento: React.FC = () => {
     if (!window.confirm(`Confirmar que o descarregamento de ${m.driver_name} foi concluído? O motorista será liberado e receberá o SMS.`)) return;
     setActionLoadingId(m.id);
     try {
-      const res = await fetch(`/api/descarregamento/form-responses/${m.id}/checkout`, {
+      const res = await fetch(apiUrl(`descarregamento/form-responses/${m.id}/checkout`), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) {

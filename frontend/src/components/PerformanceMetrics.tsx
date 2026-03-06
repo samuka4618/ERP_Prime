@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Users, MessageSquare, Clock, Activity, Server, RefreshCw, ShoppingCart, Package, DollarSign } from 'lucide-react';
+import { apiUrl } from '../utils/apiUrl';
 
 interface PerformanceMetrics {
   uptime: {
@@ -73,7 +74,8 @@ const PerformanceMetrics: React.FC = () => {
         setIsRefreshing(true);
       }
       
-      const response = await fetch('/api/performance/dashboard', {
+      const response = await fetch(apiUrl('performance/dashboard'), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

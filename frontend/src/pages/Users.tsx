@@ -87,7 +87,7 @@ const Users: React.FC = () => {
       const data = await apiService.getEntraUsersList({ page: entraPage, limit: 20, search: entraSearch || undefined });
       setEntraUsers(data.users);
     } catch (e: any) {
-      toast.error(e.response?.data?.error || 'Erro ao listar usuários do Entra ID');
+      toast.error(e.response?.data?.error || e.message || 'Erro ao listar usuários do Entra ID');
       setEntraUsers([]);
     } finally {
       setLoadingEntraList(false);

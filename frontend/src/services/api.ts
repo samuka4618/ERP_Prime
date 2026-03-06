@@ -239,7 +239,19 @@ class ApiService {
     if (params.limit) sp.set('limit', String(params.limit));
     if (params.search) sp.set('search', params.search);
     const response = await this.api.get<ApiResponse<{ users: EntraUserListItem[]; nextLink?: string }>>(`/users/entra/list?${sp.toString()}`);
-    return response.data.data;
+    const data = response.data?.data;
+    // Resposta HTML ou null = requisição caiu no SPA em vez do backend (ex.: VITE_API_URL não definida)
+    if (data == null || typeof data === 'string') {
+      const msg = typeof response.data === 'string' && response.data.trim().toLowerCase().startsWith('<!')
+        ? 'A API retornou uma página em vez de dados. Defina VITE_API_URL com a URL do backend e faça um novo build do frontend.'
+        : 'A API retornou resposta inválida. Verifique se VITE_API_URL aponta para o backend.';
+      throw Object.assign(new Error(msg), { response: { data: { error: msg } } });
+    }
+    if (!Array.isArray(data.users)) {
+      const msg = 'Resposta da API sem lista de usuários. Verifique a URL do backend (VITE_API_URL).';
+      throw Object.assign(new Error(msg), { response: { data: { error: msg } } });
+    }
+    return data;
   }
 
   /** Importa um usuário do Entra ID (admin). */

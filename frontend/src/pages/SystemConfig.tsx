@@ -5,7 +5,7 @@ import axios from 'axios';
 import { Category, CategoryField } from '../types';
 import ThemeDemo from '../components/ThemeDemo';
 import { ClientConfigManager } from '../components/ClientConfigManager';
-import { Settings, Save, Plus, Edit, Trash2, Globe, Building2, X, Upload } from 'lucide-react';
+import { Settings, Save, Plus, Edit, Trash2, Globe, Building2, X, Upload, Play, CheckCircle, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
 import { getApiBaseUrl } from '../utils/apiUrl';
@@ -100,6 +100,8 @@ const SystemConfig: React.FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [selectedLogoPreview, setSelectedLogoPreview] = useState<string | null>(null);
   const [microsoftEnabled, setMicrosoftEnabled] = useState<boolean | null>(null);
+  const [testEntraLoading, setTestEntraLoading] = useState(false);
+  const [testEntraResult, setTestEntraResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Statuses padrão do sistema
   const defaultStatuses: TicketStatus[] = [
@@ -118,6 +120,26 @@ const SystemConfig: React.FC = () => {
   useEffect(() => {
     apiService.getAuthProviders().then((p) => setMicrosoftEnabled(p.microsoft?.enabled ?? false)).catch(() => setMicrosoftEnabled(false));
   }, []);
+
+  const testMicrosoftTenantConfig = async () => {
+    setTestEntraResult(null);
+    setTestEntraLoading(true);
+    try {
+      const { users } = await apiService.getEntraUsersList({ page: 1, limit: 5 });
+      const count = users?.length ?? 0;
+      setTestEntraResult({
+        success: true,
+        message: count > 0
+          ? `Conexão com o tenant OK. ${count} usuário(s) encontrado(s) nesta página.`
+          : 'Conexão com o tenant OK. Nenhum usuário retornado (lista vazia ou integração não configurada).'
+      });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTestEntraResult({ success: false, message: msg });
+    } finally {
+      setTestEntraLoading(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -747,6 +769,47 @@ const SystemConfig: React.FC = () => {
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
               Consulte a documentação (CONFIGURACAO_ENV.md) para os passos no portal Azure.
             </p>
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Testar configuração do tenant</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Verifica se as credenciais e permissões (User.Read.All / Directory.Read.All) estão corretas e se o backend consegue listar usuários do Entra ID.
+              </p>
+              <button
+                type="button"
+                onClick={testMicrosoftTenantConfig}
+                disabled={testEntraLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {testEntraLoading ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Testando...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Testar configuração
+                  </>
+                )}
+              </button>
+              {testEntraResult && (
+                <div
+                  className={clsx(
+                    'mt-3 flex items-start gap-2 p-3 rounded-md text-sm',
+                    testEntraResult.success
+                      ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                      : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+                  )}
+                >
+                  {testEntraResult.success ? (
+                    <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  )}
+                  <span>{testEntraResult.message}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Configurações de Arquivos */}

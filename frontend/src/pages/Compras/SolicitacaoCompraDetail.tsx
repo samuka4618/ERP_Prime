@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import FormattedDate from '../../components/FormattedDate';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface SolicitacaoCompraItem {
   id: number;
@@ -104,7 +105,8 @@ const SolicitacaoCompraDetail: React.FC = () => {
   const fetchSolicitacao = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/solicitacoes-compra/${id}`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra/${id}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -124,7 +126,8 @@ const SolicitacaoCompraDetail: React.FC = () => {
   const fetchHistorico = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/solicitacoes-compra/${id}/historico`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra/${id}/historico`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -142,7 +145,8 @@ const SolicitacaoCompraDetail: React.FC = () => {
   const fetchOrcamentos = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/orcamentos/solicitacao/${id}`, {
+      const response = await fetch(apiUrl(`orcamentos/solicitacao/${id}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -160,7 +164,8 @@ const SolicitacaoCompraDetail: React.FC = () => {
   const fetchCompradores = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/compradores', {
+      const response = await fetch(apiUrl('compradores'), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -178,8 +183,9 @@ const SolicitacaoCompraDetail: React.FC = () => {
   const handleAprovar = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/solicitacoes-compra/${id}/aprovar`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra/${id}/aprovar`), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -212,8 +218,9 @@ const SolicitacaoCompraDetail: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/solicitacoes-compra/${id}/rejeitar`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra/${id}/rejeitar`), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -241,8 +248,9 @@ const SolicitacaoCompraDetail: React.FC = () => {
   const handleEnviarAprovacao = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/solicitacoes-compra/${id}/enviar-aprovacao`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra/${id}/enviar-aprovacao`), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -269,8 +277,9 @@ const SolicitacaoCompraDetail: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/solicitacoes-compra/${id}/atribuir-comprador`, {
+      const response = await fetch(apiUrl(`solicitacoes-compra/${id}/atribuir-comprador`), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -300,8 +309,9 @@ const SolicitacaoCompraDetail: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/orcamentos/${orcamentoSelecionado}/aprovar`, {
+      const response = await fetch(apiUrl(`orcamentos/${orcamentoSelecionado}/aprovar`), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -336,8 +346,9 @@ const SolicitacaoCompraDetail: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/orcamentos/${orcamentoSelecionado}/rejeitar`, {
+      const response = await fetch(apiUrl(`orcamentos/${orcamentoSelecionado}/rejeitar`), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -372,8 +383,9 @@ const SolicitacaoCompraDetail: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/orcamentos/${orcamentoSelecionado}/devolver`, {
+      const response = await fetch(apiUrl(`orcamentos/${orcamentoSelecionado}/devolver`), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`

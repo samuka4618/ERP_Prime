@@ -5,6 +5,8 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import Modal from '../../components/Modal';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { QRCodeSVG } from 'qrcode.react';
+import { apiUrl } from '../../utils/apiUrl';
+import { apiService } from '../../services/api';
 
 interface Doca {
   id: number;
@@ -97,18 +99,8 @@ const DescarregamentoConfig: React.FC = () => {
   const fetchDocas = async () => {
     setErrorDocas(null);
     try {
-      const response = await fetch('/api/descarregamento/docas', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDocas(data.data?.docas || []);
-      } else {
-        setErrorDocas('Falha ao carregar docas. Tente novamente.');
-      }
+      const docasList = await apiService.getDocasDescarregamento();
+      setDocas(Array.isArray(docasList) ? docasList : []);
     } catch (error) {
       console.error('Erro ao carregar docas:', error);
       setErrorDocas('Falha ao carregar docas. Tente novamente.');
@@ -120,18 +112,8 @@ const DescarregamentoConfig: React.FC = () => {
   const fetchFormularios = async () => {
     setErrorFormularios(null);
     try {
-      const response = await fetch('/api/descarregamento/formularios', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFormularios(data.data?.formularios || []);
-      } else {
-        setErrorFormularios('Falha ao carregar formulários. Tente novamente.');
-      }
+      const list = await apiService.getFormulariosDescarregamento();
+      setFormularios(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Erro ao carregar formulários:', error);
       setErrorFormularios('Falha ao carregar formulários. Tente novamente.');
@@ -149,13 +131,14 @@ const DescarregamentoConfig: React.FC = () => {
     setDocaFieldErrors({});
     try {
       const url = editingDoca 
-        ? `/api/descarregamento/docas/${editingDoca.id}`
-        : '/api/descarregamento/docas';
+        ? apiUrl(`descarregamento/docas/${editingDoca.id}`)
+        : apiUrl('descarregamento/docas');
       
       const method = editingDoca ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -180,8 +163,9 @@ const DescarregamentoConfig: React.FC = () => {
     if (!window.confirm('Tem certeza que deseja excluir esta doca?')) return;
 
     try {
-      const response = await fetch(`/api/descarregamento/docas/${id}`, {
+      const response = await fetch(apiUrl(`descarregamento/docas/${id}`), {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -247,13 +231,14 @@ const DescarregamentoConfig: React.FC = () => {
       // (Nome do Motorista, Telefone, Fornecedor)
 
       const url = editingFormulario 
-        ? `/api/descarregamento/formularios/${editingFormulario.id}`
-        : '/api/descarregamento/formularios';
+        ? apiUrl(`descarregamento/formularios/${editingFormulario.id}`)
+        : apiUrl('descarregamento/formularios');
       
       const method = editingFormulario ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -302,8 +287,9 @@ const DescarregamentoConfig: React.FC = () => {
     if (!window.confirm('Tem certeza que deseja excluir este formulário?')) return;
 
     try {
-      const response = await fetch(`/api/descarregamento/formularios/${id}`, {
+      const response = await fetch(apiUrl(`descarregamento/formularios/${id}`), {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -324,7 +310,8 @@ const DescarregamentoConfig: React.FC = () => {
 
   const regenerateLink = async (formularioId: number) => {
     try {
-      const response = await fetch(`/api/descarregamento/formularios/${formularioId}/regenerate-link`, {
+      const response = await fetch(apiUrl(`descarregamento/formularios/${formularioId}/regenerate-link`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -415,18 +402,8 @@ const DescarregamentoConfig: React.FC = () => {
   const fetchSmsTemplates = async () => {
     setErrorSmsTemplates(null);
     try {
-      const response = await fetch('/api/descarregamento/sms-templates', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSmsTemplates(data.data?.templates || []);
-      } else {
-        setErrorSmsTemplates('Falha ao carregar templates SMS. Tente novamente.');
-      }
+      const list = await apiService.getSmsTemplatesDescarregamento();
+      setSmsTemplates(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Erro ao carregar templates SMS:', error);
       setErrorSmsTemplates('Falha ao carregar templates SMS. Tente novamente.');
@@ -441,13 +418,14 @@ const DescarregamentoConfig: React.FC = () => {
 
     try {
       const url = editingSmsTemplate
-        ? `/api/descarregamento/sms-templates/${editingSmsTemplate.id}`
-        : '/api/descarregamento/sms-templates';
+        ? apiUrl(`descarregamento/sms-templates/${editingSmsTemplate.id}`)
+        : apiUrl('descarregamento/sms-templates');
       
       const method = editingSmsTemplate ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -490,8 +468,9 @@ const DescarregamentoConfig: React.FC = () => {
     if (!window.confirm('Tem certeza que deseja excluir este template SMS?')) return;
 
     try {
-      const response = await fetch(`/api/descarregamento/sms-templates/${id}`, {
+      const response = await fetch(apiUrl(`descarregamento/sms-templates/${id}`), {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -528,8 +507,9 @@ const DescarregamentoConfig: React.FC = () => {
     }
 
     try {
-      const response = await fetch('/api/descarregamento/sms-templates/test', {
+      const response = await fetch(apiUrl('descarregamento/sms-templates/test'), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -547,15 +527,15 @@ const DescarregamentoConfig: React.FC = () => {
 
       const data = await response.json();
       const messageId = data?.data?.message_id;
-      const apiUrl = data?.data?.api_url;
+      const responseApiUrl = data?.data?.api_url;
       toast.success(
         messageId
           ? `SMS aceito pela Infobip (ID: ${messageId}). Se não recebeu: confira no painel Infobip em Analyze > Logs. Em contas trial, o número precisa estar verificado.`
           : 'SMS de teste enviado com sucesso!',
         { duration: 6000 }
       );
-      if (apiUrl && typeof console !== 'undefined' && console.info) {
-        console.info('[SMS Test] API URL usada:', apiUrl);
+      if (responseApiUrl && typeof console !== 'undefined' && console.info) {
+        console.info('[SMS Test] API URL usada:', responseApiUrl);
       }
       setShowTestSmsModal(false);
       setTestingTemplate(null);

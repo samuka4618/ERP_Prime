@@ -59,6 +59,15 @@ export interface AuditLogListResponse {
   totalPages: number;
 }
 
+export interface EntraUserListItem {
+  id: string;
+  displayName: string;
+  mail: string | null;
+  userPrincipalName: string;
+  jobTitle: string | null;
+  alreadyImported: boolean;
+}
+
 class ApiService {
   private api: AxiosInstance;
 
@@ -206,6 +215,12 @@ class ApiService {
     return response.data.data.user;
   }
 
+  /** Provedores de login disponíveis (ex.: Microsoft Entra ID). */
+  async getAuthProviders(): Promise<{ microsoft: { enabled: boolean } }> {
+    const response = await this.api.get<ApiResponse<{ microsoft: { enabled: boolean } }>>('/auth/providers');
+    return response.data.data;
+  }
+
   // Usuários
   async getUsers(page = 1, limit = 10): Promise<PaginatedResponse<User>> {
     const response = await this.api.get<ApiResponse<PaginatedResponse<User>>>(`/users?page=${page}&limit=${limit}`);
@@ -213,8 +228,39 @@ class ApiService {
   }
 
   async getUser(id: number): Promise<User> {
-    const response = await this.api.get<ApiResponse<User>>(`/users/${id}`);
-    return response.data.data;
+    const response = await this.api.get<ApiResponse<{ user: User }>>(`/users/${id}`);
+    return response.data.data.user;
+  }
+
+  /** Lista usuários do Entra ID (admin). */
+  async getEntraUsersList(params: { page?: number; limit?: number; search?: string } = {}): Promise<{ users: EntraUserListItem[]; nextLink?: string }> {
+    const sp = new URLSearchParams();
+    if (params.page) sp.set('page', String(params.page));
+    if (params.limit) sp.set('limit', String(params.limit));
+    if (params.search) sp.set('search', params.search);
+    const response = await this.api.get<ApiResponse<{ users: EntraUserListItem[]; nextLink?: string }>>(`/users/entra/list?${sp.toString()}`);
+    const body = response.data as unknown;
+    const data = body && typeof body === 'object' && 'data' in body ? (body as ApiResponse<{ users: EntraUserListItem[]; nextLink?: string }>).data : undefined;
+    // Resposta HTML ou null = requisição caiu no SPA em vez do backend (ex.: VITE_API_URL não definida)
+    if (data == null || typeof data === 'string') {
+      const isHtml = typeof body === 'string' && body.trim().toLowerCase().startsWith('<!');
+      const msg = isHtml
+        ? 'A API retornou uma página em vez de dados. Defina VITE_API_URL com a URL do backend e faça um novo build do frontend.'
+        : 'A API retornou resposta inválida. Verifique se VITE_API_URL aponta para o backend.';
+      throw Object.assign(new Error(msg), { response: { data: { error: msg } } });
+    }
+    if (!Array.isArray(data.users)) {
+      const msg = 'Resposta da API sem lista de usuários. Verifique a URL do backend (VITE_API_URL).';
+      throw Object.assign(new Error(msg), { response: { data: { error: msg } } });
+    }
+    return data;
+  }
+
+  /** Importa um usuário do Entra ID (admin). */
+  async importEntraUser(body: { microsoft_id: string; role: 'user' | 'attendant' | 'admin'; name?: string; email: string; job_title?: string | null }): Promise<User> {
+    const response = await this.api.post<ApiResponse<{ user: User }>>('/users/entra/import', body);
+    const data = response.data.data as { user: User };
+    return data.user;
   }
 
   async createUser(userData: Partial<User>): Promise<User> {
@@ -1081,6 +1127,14 @@ class ApiService {
   }
   async deleteDocaDescarregamento(id: number) {
     await this.api.delete(`/descarregamento/docas/${id}`);
+  }
+  async getFormulariosDescarregamento() {
+    const response = await this.api.get<ApiResponse<{ formularios: any[] }>>('/descarregamento/formularios');
+    return (response.data.data as any)?.formularios ?? [];
+  }
+  async getSmsTemplatesDescarregamento() {
+    const response = await this.api.get<ApiResponse<{ templates: any[] }>>('/descarregamento/sms-templates');
+    return (response.data.data as any)?.templates ?? [];
   }
 }
 

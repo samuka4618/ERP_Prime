@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Truck, Tag, Hash } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { apiUrl } from '../../utils/apiUrl';
 
 const NovoFornecedor: React.FC = () => {
   const navigate = useNavigate();
@@ -27,7 +28,8 @@ const NovoFornecedor: React.FC = () => {
   const fetchFornecedor = async (fornecedorId: number) => {
     try {
       setLoadingData(true);
-      const response = await fetch(`/api/descarregamento/fornecedores/${fornecedorId}`, {
+      const response = await fetch(apiUrl(`descarregamento/fornecedores/${fornecedorId}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -65,13 +67,14 @@ const NovoFornecedor: React.FC = () => {
     try {
       setLoading(true);
       const url = isEditing 
-        ? `/api/descarregamento/fornecedores/${id}`
-        : '/api/descarregamento/fornecedores';
+        ? apiUrl(`descarregamento/fornecedores/${id}`)
+        : apiUrl('descarregamento/fornecedores');
       
       const method = isEditing ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`

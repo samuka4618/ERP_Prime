@@ -3,28 +3,53 @@
  * Versão: 2025-10-01T10:00:00Z - Corrigido timezone dinâmico
  */
 
+import { apiUrl } from './apiUrl';
+
+const DEFAULT_TZ = 'America/Sao_Paulo';
+
 // Cache do timezone do sistema
 let systemTimezone: string | null = null;
+// Promessa única em andamento para evitar várias requisições paralelas
+let timezonePromise: Promise<string> | null = null;
 
 /**
- * Obtém o timezone configurado no sistema
+ * Obtém o timezone configurado no sistema.
+ * Se a resposta for HTML (ex.: front em outro domínio sem VITE_API_URL), usa o padrão.
  */
 const getSystemTimezone = async (): Promise<string> => {
   if (systemTimezone) {
     return systemTimezone;
   }
-
-  try {
-    const response = await fetch('/api/system-config/timezone');
-    const data = await response.json();
-    const tz = (data?.data?.timezone ?? data?.timezone) || 'America/Sao_Paulo';
-    systemTimezone = tz;
-    return tz;
-  } catch (error) {
-    console.warn('Erro ao obter timezone do sistema, usando padrão:', error);
-    systemTimezone = 'America/Sao_Paulo';
-    return systemTimezone;
+  if (timezonePromise) {
+    return timezonePromise;
   }
+
+  timezonePromise = (async () => {
+    try {
+      const response = await fetch(apiUrl('system-config/timezone'), { credentials: 'include' });
+      const contentType = response.headers.get('content-type') || '';
+      if (!response.ok || !contentType.includes('application/json')) {
+        systemTimezone = DEFAULT_TZ;
+        return DEFAULT_TZ;
+      }
+      const text = await response.text();
+      if (!text || text.trim().startsWith('<')) {
+        systemTimezone = DEFAULT_TZ;
+        return DEFAULT_TZ;
+      }
+      const data = JSON.parse(text) as { data?: { timezone?: string }; timezone?: string };
+      const tz = (data?.data?.timezone ?? data?.timezone) || DEFAULT_TZ;
+      systemTimezone = tz;
+      return tz;
+    } catch (error) {
+      systemTimezone = DEFAULT_TZ;
+      return DEFAULT_TZ;
+    } finally {
+      timezonePromise = null;
+    }
+  })();
+
+  return timezonePromise;
 };
 
 /**

@@ -4,6 +4,7 @@ import { Plus, Search, Edit, Trash2, Truck, Tag, Hash } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface Fornecedor {
   id: number;
@@ -29,7 +30,8 @@ const Fornecedores: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/descarregamento/fornecedores/categories', {
+      const response = await fetch(apiUrl('descarregamento/fornecedores/categories'), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -54,7 +56,8 @@ const Fornecedores: React.FC = () => {
         ...(searchTerm && { search: searchTerm })
       });
 
-      const response = await fetch(`/api/descarregamento/fornecedores?${params}`, {
+      const response = await fetch(apiUrl(`descarregamento/fornecedores?${params}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -84,8 +87,9 @@ const Fornecedores: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/descarregamento/fornecedores/${id}`, {
+      const response = await fetch(apiUrl(`descarregamento/fornecedores/${id}`), {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
 import { Eye, EyeOff, Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getApiBaseUrl } from '../utils/apiUrl';
+import { apiService } from '../services/api';
 
 const Login: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -15,8 +17,17 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
+  const [microsoftEnabled, setMicrosoftEnabled] = useState(false);
   const { login } = useAuth();
   const { config } = useSystemConfig();
+
+  useEffect(() => {
+    const error = searchParams.get('error');
+    if (error) {
+      toast.error(decodeURIComponent(error));
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const check = async () => {
@@ -34,6 +45,18 @@ const Login: React.FC = () => {
       }
     };
     check();
+  }, []);
+
+  useEffect(() => {
+    const loadProviders = async () => {
+      try {
+        const providers = await apiService.getAuthProviders();
+        setMicrosoftEnabled(providers.microsoft?.enabled === true);
+      } catch {
+        setMicrosoftEnabled(false);
+      }
+    };
+    loadProviders();
   }, []);
 
   const systemName = config?.system_name || 'ERP PRIME';
@@ -201,6 +224,31 @@ const Login: React.FC = () => {
                 </>
               )}
             </button>
+
+            {microsoftEnabled && (
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200 dark:border-gray-600" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">ou</span>
+                </div>
+              </div>
+            )}
+            {microsoftEnabled && (
+              <a
+                href={`${getApiBaseUrl()}/auth/microsoft`}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 shadow-sm"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 21 21" fill="none">
+                  <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                  <rect x="11" y="1" width="9" height="9" fill="#00A4EF" />
+                  <rect x="1" y="11" width="9" height="9" fill="#7FBA00" />
+                  <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+                </svg>
+                Entrar com Microsoft
+              </a>
+            )}
 
             {registrationOpen === true && (
               <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">

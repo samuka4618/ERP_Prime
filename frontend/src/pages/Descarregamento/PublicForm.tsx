@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Truck, User, Save, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface FormField {
   id: string;
@@ -49,12 +50,11 @@ const PublicForm: React.FC = () => {
 
   const fetchFormulario = async () => {
     try {
-      let url = '/api/descarregamento/formularios/public/default';
-      if (id) {
-        url = `/api/descarregamento/formularios/public/${id}`;
-      }
+      const url = id
+        ? apiUrl(`descarregamento/formularios/public/${id}`)
+        : apiUrl('descarregamento/formularios/public/default');
       
-      const response = await fetch(url);
+      const response = await fetch(url, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setFormulario(data.data?.formulario || null);
@@ -71,7 +71,7 @@ const PublicForm: React.FC = () => {
 
   const fetchFornecedores = async () => {
     try {
-      const response = await fetch('/api/descarregamento/fornecedores/public?limit=1000');
+      const response = await fetch(apiUrl('descarregamento/fornecedores/public?limit=1000'), { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setFornecedores(data.data?.data || []);
@@ -118,8 +118,9 @@ const PublicForm: React.FC = () => {
         });
       }
 
-      const response = await fetch('/api/descarregamento/form-responses/public/chegada', {
+      const response = await fetch(apiUrl('descarregamento/form-responses/public/chegada'), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         },

@@ -4,6 +4,7 @@ import { FileText, Eye } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface Orcamento {
   id: number;
@@ -39,7 +40,8 @@ const OrcamentosRecebidos: React.FC = () => {
         ...(statusFilter && { status: statusFilter })
       });
 
-      const response = await fetch(`/api/orcamentos?${params}`, {
+      const response = await fetch(apiUrl(`orcamentos?${params}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

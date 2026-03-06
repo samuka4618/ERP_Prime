@@ -3,9 +3,12 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
+    password VARCHAR(255),
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'attendant', 'admin')),
     is_active BOOLEAN DEFAULT 1,
+    microsoft_id VARCHAR(255) UNIQUE,
+    avatar_url TEXT,
+    job_title VARCHAR(255),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

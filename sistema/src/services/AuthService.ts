@@ -11,12 +11,25 @@ function generateToken(payload: any, secret: string, expiresIn: string): string 
   return (jwt.sign as any)(payload, secret, { expiresIn });
 }
 
+/** Perfil retornado pelo login Microsoft (Entra ID). */
+export interface MicrosoftLoginProfile {
+  sub: string;
+  email: string;
+  name: string;
+  jobTitle?: string | null;
+  avatarUrl?: string | null;
+}
+
 export class AuthService {
   static async login(credentials: LoginRequest): Promise<AuthResponse> {
     const user = await UserModel.findByEmail(credentials.email);
     
     if (!user || !user.is_active) {
       throw new Error('Credenciais inválidas');
+    }
+
+    if (user.microsoft_id) {
+      throw new Error('Use o login com Microsoft para esta conta.');
     }
 
     const isValidPassword = await UserModel.verifyPassword(user, credentials.password);
@@ -73,7 +86,7 @@ export class AuthService {
         }, 'AUTH');
         
         // Reativa o usuário existente com os novos dados
-        const hashedPassword = await bcrypt.hash(userData.password, 10);
+        const hashedPassword = await bcrypt.hash(userData.password!, 10);
         
         await UserModel.update(inactiveUser.id, {
           name: userData.name,
@@ -82,7 +95,7 @@ export class AuthService {
           is_active: true
         });
         
-        await UserModel.updatePassword(inactiveUser.id, userData.password);
+        await UserModel.updatePassword(inactiveUser.id, userData.password!);
         
         const reactivatedUser = await UserModel.findById(inactiveUser.id);
         if (!reactivatedUser) {
@@ -238,6 +251,35 @@ export class AuthService {
   static validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  }
+
+  /**
+   * Login com perfil obtido do callback Microsoft (apenas usuários já importados com microsoft_id).
+   */
+  static async loginWithMicrosoft(profile: MicrosoftLoginProfile): Promise<AuthResponse> {
+    const user = await UserModel.findByMicrosoftId(profile.sub);
+    if (!user || !user.is_active) {
+      throw new Error('Usuário não autorizado. Peça ao administrador para importar sua conta do Entra ID.');
+    }
+
+    const token = generateToken(
+      { userId: user.id, role: user.role },
+      config.jwt.secret,
+      config.jwt.expiresIn
+    );
+
+    tokenCacheService.addActiveToken(token, {
+      userId: user.id,
+      userRole: user.role,
+      userName: user.name,
+      userEmail: user.email
+    });
+
+    const { password, ...userWithoutPassword } = user;
+    return {
+      user: userWithoutPassword,
+      token
+    };
   }
 
   static generateRandomPassword(length: number = 12): string {

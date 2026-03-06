@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { apiService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { apiUrl } from '../utils/apiUrl';
 import { 
   UsersIcon, 
   UserGroupIcon, 
@@ -93,13 +94,16 @@ const AdminDashboard: React.FC = () => {
       if (!token) return;
 
       const [overviewRes, usersRes, attendantsRes] = await Promise.all([
-        fetch('/api/admin-metrics/overview', {
+        fetch(apiUrl('admin-metrics/overview'), {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('/api/admin-metrics/users', {
+        fetch(apiUrl('admin-metrics/users'), {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('/api/admin-metrics/attendants', {
+        fetch(apiUrl('admin-metrics/attendants'), {
+          credentials: 'include',
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);

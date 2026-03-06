@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, X, User, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface SolicitacaoItem {
   item_numero: number;
@@ -126,8 +127,9 @@ const NovaSolicitacaoCompra: React.FC = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/solicitacoes-compra', {
+      const response = await fetch(apiUrl('solicitacoes-compra'), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -157,8 +159,9 @@ const NovaSolicitacaoCompra: React.FC = () => {
       // Enviar automaticamente para aprovação (apenas se houver aprovadores selecionados)
       if (solicitacaoId && aprovadoresSelecionados.length > 0) {
         try {
-          const approvalResponse = await fetch(`/api/solicitacoes-compra/${solicitacaoId}/enviar-aprovacao`, {
+          const approvalResponse = await fetch(apiUrl(`solicitacoes-compra/${solicitacaoId}/enviar-aprovacao`), {
             method: 'POST',
+            credentials: 'include',
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -212,7 +215,8 @@ const NovaSolicitacaoCompra: React.FC = () => {
 
       // Buscar todos os usuários fazendo múltiplas requisições paginadas
       while (hasMore) {
-        const response = await fetch(`/api/users?page=${page}&limit=${limit}`, {
+        const response = await fetch(apiUrl(`users?page=${page}&limit=${limit}`), {
+          credentials: 'include',
           headers: {
             'Authorization': `Bearer ${token}`
           }

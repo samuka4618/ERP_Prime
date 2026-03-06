@@ -10,6 +10,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import FormattedDate from '../../components/FormattedDate';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface OrcamentoItem {
   id: number;
@@ -94,7 +95,8 @@ const OrcamentoDetail: React.FC = () => {
   const fetchOrcamento = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/orcamentos/${id}`, {
+      const res = await fetch(apiUrl(`orcamentos/${id}`), {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Orçamento não encontrado');
@@ -109,7 +111,8 @@ const OrcamentoDetail: React.FC = () => {
 
   const fetchAnexos = async () => {
     try {
-      const res = await fetch(`/api/compras-anexos/orcamento/${id}`, {
+      const res = await fetch(apiUrl(`compras-anexos/orcamento/${id}`), {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.ok) {
@@ -133,8 +136,9 @@ const OrcamentoDetail: React.FC = () => {
       if (entregaEfetiva) body.entrega_efetiva = entregaEfetiva;
       else body.entrega_efetiva = null;
 
-      const res = await fetch(`/api/orcamentos/${id}/entrega`, {
+      const res = await fetch(apiUrl(`orcamentos/${id}/entrega`), {
         method: 'PATCH',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -156,8 +160,9 @@ const OrcamentoDetail: React.FC = () => {
 
   const handleConfirmarSolicitante = async () => {
     try {
-      const res = await fetch(`/api/orcamentos/${id}/confirmar-entrega-solicitante`, {
+      const res = await fetch(apiUrl(`orcamentos/${id}/confirmar-entrega-solicitante`), {
         method: 'POST',
+        credentials: 'include',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Não autorizado');
@@ -170,8 +175,9 @@ const OrcamentoDetail: React.FC = () => {
 
   const handleConfirmarComprador = async () => {
     try {
-      const res = await fetch(`/api/orcamentos/${id}/confirmar-entrega-comprador`, {
+      const res = await fetch(apiUrl(`orcamentos/${id}/confirmar-entrega-comprador`), {
         method: 'POST',
+        credentials: 'include',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Não autorizado');
@@ -192,8 +198,9 @@ const OrcamentoDetail: React.FC = () => {
       for (let i = 0; i < fileList.length; i++) {
         form.append('attachments', fileList[i]);
       }
-      const res = await fetch('/api/compras-anexos/upload', {
+      const res = await fetch(apiUrl('compras-anexos/upload'), {
         method: 'POST',
+        credentials: 'include',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: form
       });
@@ -209,7 +216,8 @@ const OrcamentoDetail: React.FC = () => {
 
   const handleDownload = async (anexoId: number, nomeOriginal: string) => {
     try {
-      const res = await fetch(`/api/compras-anexos/${anexoId}/download`, {
+      const res = await fetch(apiUrl(`compras-anexos/${anexoId}/download`), {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) throw new Error('Falha no download');

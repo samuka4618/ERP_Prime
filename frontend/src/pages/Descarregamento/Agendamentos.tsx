@@ -4,6 +4,7 @@ import { Plus, Search, Calendar, Truck, Clock, CheckCircle, AlertCircle, Package
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface Agendamento {
   id: number;
@@ -37,8 +38,9 @@ const Agendamentos: React.FC = () => {
   const handleDelete = async (id: number, label: string) => {
     if (!window.confirm(`Tem certeza que deseja excluir o agendamento "${label}"? A resposta de chegada (se houver) permanecerá, mas não ficará vinculada a um agendamento.`)) return;
     try {
-      const res = await fetch(`/api/descarregamento/agendamentos/${id}`, {
+      const res = await fetch(apiUrl(`descarregamento/agendamentos/${id}`), {
         method: 'DELETE',
+        credentials: 'include',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!res.ok) {
@@ -78,7 +80,8 @@ const Agendamentos: React.FC = () => {
         ...(searchTerm && { search: searchTerm })
       });
 
-      const response = await fetch(`/api/descarregamento/agendamentos?${params}`, {
+      const response = await fetch(apiUrl(`descarregamento/agendamentos?${params}`), {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -3,7 +3,9 @@ import { UserModel } from '../models/User';
 import { CreateUserRequest, UpdateUserRequest, UserRole } from '../types';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AuthService } from '../services/AuthService';
-import { createUserSchema, updateUserSchema } from '../schemas/user';
+import { createUserSchema, updateUserSchema, entraListQuerySchema, entraImportSchema } from '../schemas/user';
+import { fetchUserPhotoFromGraph, listUsersFromEntra, markAlreadyImported } from '../services/MicrosoftAuthService';
+import { config } from '../config/database';
 import Joi from 'joi';
 
 
@@ -22,7 +24,11 @@ export class UserController {
     // A validação já foi feita pelo middleware, então usamos req.body diretamente
     const userData = req.body as CreateUserRequest;
     
-    // Validar senha
+    // Validar senha (obrigatória no cadastro manual)
+    if (!userData.password || typeof userData.password !== 'string') {
+      res.status(400).json({ error: 'Senha é obrigatória' });
+      return;
+    }
     const passwordValidation = AuthService.validatePassword(userData.password);
     if (!passwordValidation.isValid) {
       res.status(400).json({ 
@@ -51,7 +57,7 @@ export class UserController {
         is_active: true
       });
       
-      await UserModel.updatePassword(inactiveUser.id, userData.password);
+      await UserModel.updatePassword(inactiveUser.id, userData.password!);
       
       const updatedUser = await UserModel.findById(inactiveUser.id);
       if (!updatedUser) {
@@ -116,6 +122,28 @@ export class UserController {
         total: total
       }
     });
+  });
+
+  static getAvatar = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const userId = parseInt(id, 10);
+    if (isNaN(userId)) {
+      res.status(400).json({ error: 'ID inválido' });
+      return;
+    }
+    const user = await UserModel.findById(userId);
+    if (!user || !user.microsoft_id) {
+      res.status(404).json({ error: 'Avatar não disponível' });
+      return;
+    }
+    const photo = await fetchUserPhotoFromGraph(user.microsoft_id);
+    if (!photo) {
+      res.status(404).json({ error: 'Foto não encontrada' });
+      return;
+    }
+    res.set('Content-Type', photo.contentType);
+    res.set('Cache-Control', 'private, max-age=3600');
+    res.send(photo.body);
   });
 
   static findById = asyncHandler(async (req: Request, res: Response) => {
@@ -330,6 +358,64 @@ export class UserController {
     res.json({
       message: 'Senha gerada com sucesso',
       data: { password }
+    });
+  });
+
+  static listEntraUsers = asyncHandler(async (req: Request, res: Response) => {
+    if (!config.microsoft.enabled) {
+      res.status(503).json({ error: 'Integração Microsoft não configurada.' });
+      return;
+    }
+    const { error, value } = entraListQuerySchema.validate(req.query);
+    if (error) {
+      res.status(400).json({ error: 'Parâmetros inválidos', details: error.details.map(d => d.message) });
+      return;
+    }
+    const { page, limit, search } = value;
+    const { users, nextLink } = await listUsersFromEntra(search, page, limit);
+    const importedIds = await UserModel.getAllMicrosoftIds();
+    markAlreadyImported(users, importedIds);
+    res.json({
+      message: 'Usuários do Entra ID obtidos',
+      data: { users, nextLink: nextLink || undefined }
+    });
+  });
+
+  static importEntraUser = asyncHandler(async (req: Request, res: Response) => {
+    if (!config.microsoft.enabled) {
+      res.status(503).json({ error: 'Integração Microsoft não configurada.' });
+      return;
+    }
+    const { error, value } = entraImportSchema.validate(req.body);
+    if (error) {
+      res.status(400).json({ error: 'Dados inválidos', details: error.details.map(d => d.message) });
+      return;
+    }
+    const { microsoft_id, role, name, email, job_title } = value;
+    const existingByMicrosoftId = await UserModel.findByMicrosoftId(microsoft_id);
+    if (existingByMicrosoftId) {
+      res.status(409).json({ error: 'Usuário já importado com este Microsoft ID.' });
+      return;
+    }
+    const existingByEmail = await UserModel.findByEmailActive(email);
+    if (existingByEmail) {
+      res.status(409).json({ error: 'Já existe um usuário ativo com este e-mail.' });
+      return;
+    }
+    const displayName = name || email?.split('@')[0] || 'Usuário Entra ID';
+    const userData: CreateUserRequest = {
+      name: displayName,
+      email,
+      role: role as UserRole,
+      is_active: true,
+      microsoft_id,
+      job_title: job_title || null
+    };
+    const user = await UserModel.create(userData);
+    const { password, ...userWithoutPassword } = user;
+    res.status(201).json({
+      message: 'Usuário importado do Entra ID com sucesso',
+      data: { user: userWithoutPassword }
     });
   });
 

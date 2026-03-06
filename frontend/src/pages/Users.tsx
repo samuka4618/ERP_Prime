@@ -12,10 +12,11 @@ import {
   Download,
   Upload,
   FileCheck,
-  AlertCircle
+  AlertCircle,
+  Building2
 } from 'lucide-react';
 import { User } from '../types';
-import { apiService } from '../services/api';
+import { apiService, EntraUserListItem } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
 import UserAvatar from '../components/UserAvatar';
@@ -67,9 +68,84 @@ const Users: React.FC = () => {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingImport, setLoadingImport] = useState(false);
 
+  const [showEntraModal, setShowEntraModal] = useState(false);
+  const [entraUsers, setEntraUsers] = useState<EntraUserListItem[]>([]);
+  const [entraSearch, setEntraSearch] = useState('');
+  const [entraPage, setEntraPage] = useState(1);
+  const [loadingEntraList, setLoadingEntraList] = useState(false);
+  const [loadingEntraImport, setLoadingEntraImport] = useState(false);
+  const [selectedEntraIds, setSelectedEntraIds] = useState<Set<string>>(new Set());
+  const [entraImportRole, setEntraImportRole] = useState<'user' | 'attendant' | 'admin'>('user');
+
   useEffect(() => {
     fetchUsers();
   }, [currentPage]);
+
+  const fetchEntraUsers = async () => {
+    setLoadingEntraList(true);
+    try {
+      const data = await apiService.getEntraUsersList({ page: entraPage, limit: 20, search: entraSearch || undefined });
+      setEntraUsers(data.users);
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || e.message || 'Erro ao listar usuários do Entra ID');
+      setEntraUsers([]);
+    } finally {
+      setLoadingEntraList(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showEntraModal) fetchEntraUsers();
+  }, [showEntraModal, entraPage, entraSearch]);
+
+  const handleEntraSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setEntraPage(1);
+    fetchEntraUsers();
+  };
+
+  const toggleEntraSelect = (id: string) => {
+    setSelectedEntraIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleImportEntra = async () => {
+    if (selectedEntraIds.size === 0) {
+      toast.error('Selecione pelo menos um usuário');
+      return;
+    }
+    setLoadingEntraImport(true);
+    let ok = 0;
+    let err = 0;
+    for (const id of selectedEntraIds) {
+      const u = entraUsers.find((x) => x.id === id);
+      if (!u) continue;
+      try {
+        await apiService.importEntraUser({
+          microsoft_id: u.id,
+          email: u.mail || u.userPrincipalName,
+          name: u.displayName,
+          job_title: u.jobTitle || undefined,
+          role: entraImportRole
+        });
+        ok++;
+      } catch {
+        err++;
+      }
+    }
+    setLoadingEntraImport(false);
+    if (ok) {
+      toast.success(`${ok} usuário(s) importado(s)`);
+      setShowEntraModal(false);
+      setSelectedEntraIds(new Set());
+      fetchUsers();
+    }
+    if (err) toast.error(`${err} falha(s) na importação`);
+  };
 
   const fetchUsers = async () => {
     try {
@@ -297,6 +373,14 @@ const Users: React.FC = () => {
             <Settings className="w-4 h-4" />
             <span>Configurações</span>
           </Link>
+          <button
+            type="button"
+            onClick={() => { setShowEntraModal(true); setEntraPage(1); setEntraSearch(''); setSelectedEntraIds(new Set()); }}
+            className="btn btn-outline flex items-center space-x-2"
+          >
+            <Building2 className="w-4 h-4" />
+            <span>Importar do Entra ID</span>
+          </button>
           <button 
             onClick={() => setShowCreateModal(true)}
             className="btn btn-primary flex items-center space-x-2"
@@ -466,6 +550,103 @@ const Users: React.FC = () => {
         )}
       </div>
 
+      {/* Modal Importar do Entra ID */}
+      {showEntraModal && (
+      <Modal
+        title="Importar usuários do Entra ID"
+        onClose={() => { setShowEntraModal(false); setSelectedEntraIds(new Set()); }}
+        size="xl"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Liste os usuários do seu diretório Microsoft e importe para o sistema. Apenas usuários importados poderão fazer login com Microsoft.
+          </p>
+          <form onSubmit={handleEntraSearch} className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Buscar por nome ou e-mail..."
+              value={entraSearch}
+              onChange={(e) => setEntraSearch(e.target.value)}
+              className="input flex-1"
+            />
+            <button type="submit" className="btn btn-primary" disabled={loadingEntraList}>
+              {loadingEntraList ? '...' : 'Buscar'}
+            </button>
+          </form>
+          <div className="flex items-center gap-4">
+            <label className="text-sm text-gray-700 dark:text-gray-300">
+              Papel para importação:
+              <select
+                value={entraImportRole}
+                onChange={(e) => setEntraImportRole(e.target.value as 'user' | 'attendant' | 'admin')}
+                className="input ml-2 py-1"
+              >
+                <option value="user">Usuário</option>
+                <option value="attendant">Atendente</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </label>
+          </div>
+          <div className="max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-md">
+            {loadingEntraList ? (
+              <div className="p-4 text-center text-gray-500">Carregando...</div>
+            ) : entraUsers.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">Nenhum usuário encontrado. Ajuste a busca ou verifique a configuração do Entra ID.</div>
+            ) : (
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                  <tr>
+                    <th className="w-10 px-2 py-2" />
+                    <th className="text-left px-2 py-2">Nome</th>
+                    <th className="text-left px-2 py-2">E-mail</th>
+                    <th className="text-left px-2 py-2">Cargo</th>
+                    <th className="text-left px-2 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                  {entraUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-2 py-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedEntraIds.has(u.id)}
+                          onChange={() => toggleEntraSelect(u.id)}
+                          disabled={u.alreadyImported}
+                        />
+                      </td>
+                      <td className="px-2 py-2 font-medium">{u.displayName}</td>
+                      <td className="px-2 py-2 text-gray-600 dark:text-gray-400">{u.mail || u.userPrincipalName}</td>
+                      <td className="px-2 py-2 text-gray-500">{u.jobTitle || '—'}</td>
+                      <td className="px-2 py-2">
+                        {u.alreadyImported ? (
+                          <span className="text-green-600 dark:text-green-400 text-xs">Já importado</span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={() => setShowEntraModal(false)} className="btn btn-outline">
+              Fechar
+            </button>
+            <button
+              type="button"
+              onClick={handleImportEntra}
+              disabled={selectedEntraIds.size === 0 || loadingEntraImport}
+              className="btn btn-primary"
+            >
+              {loadingEntraImport ? 'Importando...' : `Importar (${selectedEntraIds.size})`}
+            </button>
+          </div>
+        </div>
+      </Modal>
+      )}
+
       {/* Users List */}
       <div className="card">
         <div className="overflow-x-auto">
@@ -477,6 +658,9 @@ const Users: React.FC = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Cargo
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Função
@@ -507,6 +691,9 @@ const Users: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {user.email}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {user.job_title || '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
@@ -549,7 +736,7 @@ const Users: React.FC = () => {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     Nenhum usuário encontrado
                   </td>
                 </tr>

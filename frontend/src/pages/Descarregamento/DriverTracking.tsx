@@ -4,6 +4,7 @@ import { Clock, CheckCircle, AlertCircle, Truck, Phone, Calendar, User } from 'l
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
+import { apiUrl } from '../../utils/apiUrl';
 
 interface FormResponse {
   id: number;
@@ -42,7 +43,7 @@ const DriverTracking: React.FC = () => {
 
   const fetchStatus = async () => {
     try {
-      const response = await fetch(`/api/descarregamento/form-responses/public/tracking/${trackingCode}`);
+      const response = await fetch(apiUrl(`descarregamento/form-responses/public/tracking/${trackingCode}`), { credentials: 'include' });
       
       if (!response.ok) {
         if (response.status === 404) {

@@ -211,16 +211,6 @@ export async function listUsersFromEntra(
     url += `&$filter=${encodeURIComponent(filter)}`;
   }
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    logger.error('Graph list users falhou', { status: res.status, body: text }, 'MICROSOFT_AUTH');
-    throw new Error('Não foi possível listar usuários do Entra ID. Verifique permissão User.Read.All e consentimento admin.');
-  }
-
   interface GraphUser {
     id: string;
     displayName?: string;
@@ -232,7 +222,46 @@ export async function listUsersFromEntra(
     value?: GraphUser[];
     '@odata.nextLink'?: string;
   }
-  const data = await res.json() as GraphUsersResponse;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const contentType = res.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+
+  if (!res.ok) {
+    const text = await res.text();
+    logger.error('Graph list users falhou', { status: res.status, contentType, bodyPreview: text.slice(0, 200) }, 'MICROSOFT_AUTH');
+    if (!isJson || text.trim().toLowerCase().startsWith('<!')) {
+      throw new Error(
+        'A Microsoft retornou uma página em vez de dados. Verifique no Portal Azure: permissão de aplicação "User.Read.All" ou "Directory.Read.All", consentimento admin e credenciais (AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID).'
+      );
+    }
+    try {
+      const errBody = JSON.parse(text) as { error?: { message?: string } };
+      const msg = errBody?.error?.message || text.slice(0, 200);
+      throw new Error(`Entra ID: ${msg}`);
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith('Entra ID:')) throw e;
+      throw new Error('Não foi possível listar usuários do Entra ID. Verifique permissão User.Read.All e consentimento admin.');
+    }
+  }
+
+  const bodyText = await res.text();
+  let data: GraphUsersResponse;
+  try {
+    if (!isJson || bodyText.trim().toLowerCase().startsWith('<!')) {
+      throw new Error('Resposta não é JSON');
+    }
+    data = JSON.parse(bodyText) as GraphUsersResponse;
+  } catch {
+    logger.error('Graph list users: resposta não é JSON', { contentType, bodyPreview: bodyText.slice(0, 200) }, 'MICROSOFT_AUTH');
+    throw new Error(
+      'A Microsoft retornou uma página em vez de dados. Confira no Azure: permissões de aplicação User.Read.All ou Directory.Read.All e consentimento admin.'
+    );
+  }
+
   const rawUsers = data.value || [];
 
   const users: EntraUserListItem[] = rawUsers.map((u) => ({

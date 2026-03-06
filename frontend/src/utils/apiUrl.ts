@@ -30,15 +30,14 @@ function getApiOrigin(): string {
 
 /**
  * URL base para chamadas à API (axios baseURL). Inclui /api.
+ * Em localhost, usa sempre a origem do backend (ex.: http://localhost:3004) para evitar
+ * que as requisições caiam no servidor do frontend (Vite) e retornem HTML em vez de JSON.
  */
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const fromEnv = import.meta.env.VITE_API_URL as string | undefined;
-    if (!fromEnv?.trim() && (hostname === 'localhost' || hostname === '127.0.0.1')) {
-      return '/api';
-    }
-    // Aviso apenas quando front e API estão em origens diferentes (ex.: front na Vercel, API no Railway)
+    // Aviso quando em produção/rede e VITE_API_URL não definida (requisições podem ir para o front e retornar HTML)
     if (!fromEnv?.trim() && hostname !== 'localhost' && hostname !== '127.0.0.1') {
       const origin = getApiOrigin();
       const currentOrigin = window.location.origin;

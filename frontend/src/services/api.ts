@@ -241,17 +241,22 @@ class ApiService {
     if (params.search) sp.set('search', params.search);
     const response = await this.api.get<ApiResponse<{ users: EntraUserListItem[]; nextLink?: string }>>(`/users/entra/list?${sp.toString()}`);
     const body = response.data as unknown;
+    // Backend pode retornar { error: string } (ex.: 4xx/5xx)
+    if (body && typeof body === 'object' && 'error' in body && !('data' in body)) {
+      const msg = (body as { error: string }).error || 'Erro ao listar usuários do Entra ID.';
+      throw Object.assign(new Error(msg), { response: { data: { error: msg } } });
+    }
     const data = body && typeof body === 'object' && 'data' in body ? (body as ApiResponse<{ users: EntraUserListItem[]; nextLink?: string }>).data : undefined;
-    // Resposta HTML ou null = requisição caiu no SPA em vez do backend (ex.: VITE_API_URL não definida)
+    // Resposta HTML ou null = requisição caiu no SPA em vez do backend (ex.: backend parado ou URL errada)
     if (data == null || typeof data === 'string') {
       const isHtml = typeof body === 'string' && body.trim().toLowerCase().startsWith('<!');
       const msg = isHtml
-        ? 'A API retornou uma página em vez de dados. Defina VITE_API_URL com a URL do backend e faça um novo build do frontend.'
-        : 'A API retornou resposta inválida. Verifique se VITE_API_URL aponta para o backend.';
+        ? 'A API retornou uma página em vez de dados. Verifique: (1) Backend está rodando na porta correta (ex.: 3004); (2) No .env do frontend, VITE_BACKEND_PORT igual à porta do backend; (3) Ou defina VITE_API_URL com a URL completa do backend.'
+        : 'Resposta inválida da API. Confira se o backend está rodando e se VITE_API_URL (ou VITE_BACKEND_PORT em localhost) está correto.';
       throw Object.assign(new Error(msg), { response: { data: { error: msg } } });
     }
     if (!Array.isArray(data.users)) {
-      const msg = 'Resposta da API sem lista de usuários. Verifique a URL do backend (VITE_API_URL).';
+      const msg = 'Resposta da API sem lista de usuários. Verifique se o backend está rodando e a URL da API (VITE_API_URL ou VITE_BACKEND_PORT).';
       throw Object.assign(new Error(msg), { response: { data: { error: msg } } });
     }
     return data;

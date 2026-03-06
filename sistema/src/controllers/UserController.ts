@@ -362,8 +362,12 @@ export class UserController {
   });
 
   static listEntraUsers = asyncHandler(async (req: Request, res: Response) => {
+    // Sempre retornar JSON com estrutura { data: { users, nextLink } } para o frontend não confundir com HTML
     if (!config.microsoft.enabled) {
-      res.status(503).json({ error: 'Integração Microsoft não configurada.' });
+      res.status(200).json({
+        message: 'Integração Microsoft não configurada. Configure AZURE_CLIENT_ID, AZURE_CLIENT_SECRET e AZURE_TENANT_ID no .env do backend.',
+        data: { users: [], nextLink: undefined }
+      });
       return;
     }
     const { error, value } = entraListQuerySchema.validate(req.query);

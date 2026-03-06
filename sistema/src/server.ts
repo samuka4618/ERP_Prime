@@ -29,6 +29,11 @@ import clientRegistrationsRoutes from './routes/clientRegistrations';
 import clientConfigRoutes from './routes/clientConfig';
 import analiseCreditoRoutes from './routes/analiseCredito';
 import { initializeWebSocket } from './services/WebSocketService';
+import { authenticate, authorize } from './middleware/auth';
+import { validateQuery } from './middleware/validation';
+import { UserController } from './controllers/UserController';
+import { entraListQuerySchema } from './schemas/user';
+import { UserRole } from './types';
 
 const app = express();
 
@@ -107,7 +112,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Middleware de cache headers
 app.use((req, res, next) => {
   // Headers para APIs (não cachear)
-  if (req.path.startsWith('/api/')) {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/users/') || req.path.startsWith('/auth/')) {
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
@@ -123,31 +128,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// Servir arquivos estáticos do frontend
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-// Middleware de logging
+// Middleware de logging (antes de tudo para logar todas as requisições)
 app.use((req, res, next) => {
   const startTime = Date.now();
   const requestId = Math.random().toString(36).substring(7);
-  
-  // Adicionar requestId ao req para uso em outros middlewares
   (req as any).requestId = requestId;
-  
   logger.apiRequest(req.method, req.path, req.body, req.user);
-  
-  // Interceptar resposta para logar status e tempo
   const originalSend = res.send;
   res.send = function(data) {
     const responseTime = Date.now() - startTime;
     logger.apiResponse(req.method, req.path, res.statusCode, responseTime);
     return originalSend.call(this, data);
   };
-  
   next();
 });
 
-// Rota raiz
+// ========== ROTAS DA API PRIMEIRO (antes de static/catch-all) ==========
+// Assim /api/* e /users/* nunca caem no static nem no index.html
+
 app.get('/', (req, res) => {
   res.json({
     message: 'Sistema de Chamados Financeiro',
@@ -155,82 +153,16 @@ app.get('/', (req, res) => {
     status: 'OK',
     timestamp: new Date().toISOString(),
     environment: config.nodeEnv,
-    endpoints: {
-      api: '/api',
-      health: '/health',
-      auth: '/api/auth',
-      users: '/api/users',
-      tickets: '/api/tickets',
-      dashboard: '/api/dashboard',
-      notifications: '/api/notifications',
-      reports: '/api/reports'
-    }
+    endpoints: { api: '/api', health: '/health', auth: '/api/auth', users: '/api/users', tickets: '/api/tickets', dashboard: '/api/dashboard', notifications: '/api/notifications', reports: '/api/reports' }
   });
 });
 
+app.get('/favicon.ico', (req, res) => { res.status(204).end(); });
 
-// Rota para favicon (evita erro 404)
-app.get('/favicon.ico', (req, res) => {
-  res.status(204).end();
-});
-
-// Rota de teste para imagens
-app.get('/test-images', (req, res) => {
-  const fs = require('fs');
-  try {
-    const files = fs.readdirSync(path.join(process.cwd(), 'imgCadastros/20251027'));
-    res.json({ 
-      success: true, 
-      files,
-      cwd: process.cwd(),
-      imgPath: path.join(process.cwd(), 'imgCadastros/20251027')
-    });
-  } catch (err) {
-    res.json({ 
-      success: false, 
-      error: err instanceof Error ? err.message : String(err),
-      cwd: process.cwd(),
-      imgPath: path.join(process.cwd(), 'imgCadastros/20251027')
-    });
-  }
-});
-
-// Rotas de saúde
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: config.nodeEnv
-  });
+  res.json({ status: 'OK', timestamp: new Date().toISOString(), uptime: process.uptime(), environment: config.nodeEnv });
 });
 
-// Rotas da API com rate limiting específico
-app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/tickets', ticketRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/system', systemRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/attachments', uploadLimiter, attachmentRoutes);
-app.use('/api/category-assignments', categoryAssignmentRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/admin-metrics', adminMetricsRoutes);
-app.use('/api/realtime', realtimeRoutes);
-app.use('/api/system-config', systemConfigRoutes);
-app.use('/api/performance', performanceRoutes);
-app.use('/api/client-registrations', clientRegistrationsRoutes);
-app.use('/api/client-config', clientConfigRoutes);
-app.use('/api/analise-credito', analiseCreditoRoutes);
-
-// IMPORTANTE: Servir arquivos estáticos ANTES da rota catch-all
-// Servir imagens de cadastros de clientes
-app.use('/imgCadastros', express.static(path.join(process.cwd(), 'imgCadastros')));
-// Servir arquivos de uploads (fallback)
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-// Rota de documentação básica
 app.get('/api', (req, res) => {
   res.json({
     message: 'Sistema de Chamados Financeiro API',
@@ -248,8 +180,54 @@ app.get('/api', (req, res) => {
   });
 });
 
-// Rota catch-all para servir o frontend (deve vir antes dos middlewares de erro)
-app.get('*', (req, res) => {
+// Rota explícita para lista Entra ID — garantia de sempre retornar JSON (evita HTML do SPA)
+app.get(
+  ['/api/users/entra/list', '/users/entra/list'],
+  authenticate,
+  authorize(UserRole.ADMIN),
+  validateQuery(entraListQuerySchema),
+  UserController.listEntraUsers
+);
+
+// Rotas da API (ordem importa: rotas mais específicas primeiro)
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/users', userRoutes); // path sem /api (proxy que remove prefixo)
+app.use('/api/tickets', ticketRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/system', systemRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/attachments', uploadLimiter, attachmentRoutes);
+app.use('/api/category-assignments', categoryAssignmentRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/admin-metrics', adminMetricsRoutes);
+app.use('/api/realtime', realtimeRoutes);
+app.use('/api/system-config', systemConfigRoutes);
+app.use('/api/performance', performanceRoutes);
+app.use('/api/client-registrations', clientRegistrationsRoutes);
+app.use('/api/client-config', clientConfigRoutes);
+app.use('/api/analise-credito', analiseCreditoRoutes);
+
+// Rota de teste para imagens (manter se usar)
+app.get('/test-images', (req, res) => {
+  const fs = require('fs');
+  try {
+    const files = fs.readdirSync(path.join(process.cwd(), 'imgCadastros/20251027'));
+    res.json({ success: true, files, cwd: process.cwd(), imgPath: path.join(process.cwd(), 'imgCadastros/20251027') });
+  } catch (err) {
+    res.json({ success: false, error: err instanceof Error ? err.message : String(err), cwd: process.cwd(), imgPath: path.join(process.cwd(), 'imgCadastros/20251027') });
+  }
+});
+
+// ========== DEPOIS: estáticos e SPA ==========
+app.use('/imgCadastros', express.static(path.join(process.cwd(), 'imgCadastros')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// SPA fallback: só para paths que não são API e não bateram em arquivo estático
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/users') || req.path.startsWith('/auth') || req.path === '/health') return next();
   res.sendFile(path.join(process.cwd(), 'frontend/dist/index.html'));
 });
 

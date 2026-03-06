@@ -307,6 +307,9 @@ export class AuthController {
 
   /** GET /api/auth/providers — lista provedores de login (ex.: Microsoft) para o frontend. */
   static getProviders = asyncHandler(async (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('X-ERP-Prime-API', '1');
     res.json({
       message: 'Provedores obtidos',
       data: {

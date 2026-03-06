@@ -362,7 +362,11 @@ export class UserController {
   });
 
   static listEntraUsers = asyncHandler(async (req: Request, res: Response) => {
-    // Sempre retornar JSON com estrutura { data: { users, nextLink } } para o frontend não confundir com HTML
+    // Evitar que proxy/CDN sirva cache HTML: forçar JSON e header de identificação
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('X-ERP-Prime-API', '1');
+
     if (!config.microsoft.enabled) {
       res.status(200).json({
         message: 'Integração Microsoft não configurada. Configure AZURE_CLIENT_ID, AZURE_CLIENT_SECRET e AZURE_TENANT_ID no .env do backend.',

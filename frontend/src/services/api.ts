@@ -247,12 +247,19 @@ class ApiService {
       throw Object.assign(new Error(msg), { response: { data: { error: msg } } });
     }
     const data = body && typeof body === 'object' && 'data' in body ? (body as ApiResponse<{ users: EntraUserListItem[]; nextLink?: string }>).data : undefined;
-    // Resposta HTML ou null = requisição caiu no SPA em vez do backend (ex.: backend parado ou URL errada)
+    // Resposta HTML ou null = proxy/CDN serviu SPA ou backend não respondeu em JSON
     if (data == null || typeof data === 'string') {
       const isHtml = typeof body === 'string' && body.trim().toLowerCase().startsWith('<!');
-      const msg = isHtml
-        ? 'A API retornou uma página em vez de dados. Verifique: (1) Backend está rodando na porta correta (ex.: 3004); (2) No .env do frontend, VITE_BACKEND_PORT igual à porta do backend; (3) Ou defina VITE_API_URL com a URL completa do backend.'
-        : 'Resposta inválida da API. Confira se o backend está rodando e se VITE_API_URL (ou VITE_BACKEND_PORT em localhost) está correto.';
+      const baseUrl = this.api.defaults.baseURL || '';
+      const isProductionApi = /https?:\/\/api\.|railway|render|vercel|onrender\.com/i.test(baseUrl);
+      let msg: string;
+      if (isHtml && isProductionApi) {
+        msg = 'A resposta veio como página HTML em vez de JSON. Isso costuma ocorrer quando um proxy ou CDN (ex.: Cloudflare, nginx) na frente do backend serve o index.html do frontend para rotas /api/*. Configure o proxy para encaminhar /api/* ao backend Node e não servir SPA para essas rotas; aumente o timeout se o backend demorar (ex.: Microsoft Graph).';
+      } else if (isHtml) {
+        msg = 'A API retornou uma página em vez de dados. Verifique: (1) Backend na porta correta (ex.: 3004); (2) VITE_BACKEND_PORT no .env do frontend; (3) Ou VITE_API_URL com a URL do backend. Em produção, confira se o proxy encaminha /api/* ao backend.';
+      } else {
+        msg = 'Resposta inválida da API. Confira se o backend está rodando e se VITE_API_URL (ou VITE_BACKEND_PORT) está correto.';
+      }
       throw Object.assign(new Error(msg), { response: { data: { error: msg } } });
     }
     if (!Array.isArray(data.users)) {

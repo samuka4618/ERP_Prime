@@ -10,16 +10,22 @@ dotenv.config(); // fallback: .env no cwd atual
 const usePostgres = process.env.USE_POSTGRES === 'true' && !!process.env.DATABASE_URL?.trim();
 const databaseUrl = (process.env.DATABASE_URL || '').trim();
 
+const nodeEnv = process.env.NODE_ENV || 'development';
+const jwtSecret = process.env.JWT_SECRET?.trim();
+if (nodeEnv === 'production' && (!jwtSecret || jwtSecret.length < 32)) {
+  throw new Error('Em produção, JWT_SECRET é obrigatório e deve ter no mínimo 32 caracteres. Defina a variável de ambiente JWT_SECRET.');
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv,
   database: {
     path: process.env.DB_PATH || './data/database/chamados.db',
     usePostgres,
     databaseUrl
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'sua_chave_secreta_jwt_aqui',
+    secret: jwtSecret || 'sua_chave_secreta_jwt_aqui',
     expiresIn: process.env.JWT_EXPIRES_IN || '24h'
   },
   email: {

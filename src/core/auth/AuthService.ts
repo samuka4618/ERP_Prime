@@ -240,8 +240,8 @@ export class AuthService {
       throw new Error('Email não encontrado');
     }
 
-    // Aqui você implementaria o envio de email com link de reset
-    // Por enquanto, apenas logamos
+    // Quando implementar envio de email com link de reset, fazer em background (fire-and-forget
+    // com .catch()) para não bloquear a resposta da API e evitar timeout. Por enquanto apenas log.
     console.log(`Reset de senha solicitado para: ${email}`);
   }
 

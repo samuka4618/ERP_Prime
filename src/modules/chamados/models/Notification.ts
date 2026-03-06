@@ -1,5 +1,6 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
 import { sqlBooleanFalse, sqlBooleanTrue, sqlNowMinusDaysParam } from '../../../core/database/sql-dialect';
+import { toISOFromDB } from '../../../shared/utils/dateUtils';
 import { Notification } from '../../../shared/types';
 
 export class NotificationModel {
@@ -38,7 +39,7 @@ export class NotificationModel {
       title: lastNotification.title,
       message: lastNotification.message,
       is_read: Boolean(lastNotification.is_read),
-      created_at: new Date(lastNotification.created_at),
+      created_at: toISOFromDB(lastNotification.created_at) ?? new Date().toISOString(),
       user: lastNotification.user_name ? {
         id: lastNotification.user_id,
         name: lastNotification.user_name,
@@ -73,7 +74,7 @@ export class NotificationModel {
       title: notification.title,
       message: notification.message,
       is_read: Boolean(notification.is_read),
-      created_at: new Date(notification.created_at),
+      created_at: toISOFromDB(notification.created_at) ?? new Date().toISOString(),
       user: notification.user_name ? {
         id: notification.user_id,
         name: notification.user_name,
@@ -95,8 +96,8 @@ export class NotificationModel {
         priority: 'medium' as any,
         sla_first_response: new Date(),
         sla_resolution: new Date(),
-        created_at: new Date(),
-        updated_at: new Date()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       } : undefined
     };
   }
@@ -123,7 +124,7 @@ export class NotificationModel {
       title: notification.title,
       message: notification.message,
       is_read: Boolean(notification.is_read),
-      created_at: new Date(notification.created_at),
+      created_at: toISOFromDB(notification.created_at) ?? new Date().toISOString(),
       user: notification.user_name ? {
         id: notification.user_id,
         name: notification.user_name,
@@ -145,8 +146,8 @@ export class NotificationModel {
         priority: 'medium' as any,
         sla_first_response: new Date(),
         sla_resolution: new Date(),
-        created_at: new Date(),
-        updated_at: new Date()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       } : undefined
     }));
   }

@@ -38,11 +38,11 @@ export function getApiBaseUrl(): string {
     if (!fromEnv?.trim() && (hostname === 'localhost' || hostname === '127.0.0.1')) {
       return '/api';
     }
-    // Aviso: em produção (front em outro domínio, ex. Railway) é obrigatório definir VITE_API_URL
+    // Aviso apenas quando front e API estão em origens diferentes (ex.: front na Vercel, API no Railway)
     if (!fromEnv?.trim() && hostname !== 'localhost' && hostname !== '127.0.0.1') {
       const origin = getApiOrigin();
       const currentOrigin = window.location.origin;
-      if (origin === currentOrigin) {
+      if (origin !== currentOrigin) {
         console.warn(
           '[ERP Prime] VITE_API_URL não está definida. As requisições estão indo para o mesmo servidor do frontend (respostas em HTML). Defina VITE_API_URL com a URL da API no build (ex.: no Railway, variável de ambiente VITE_API_URL=https://api.seudominio.com) e faça um novo deploy.'
         );

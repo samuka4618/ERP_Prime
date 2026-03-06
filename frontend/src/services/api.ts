@@ -76,6 +76,7 @@ class ApiService {
     const baseURL = getApiBaseUrl();
     console.log('API Base URL configurada:', baseURL);
     
+    // Timeout padrão 10s; rotas pesadas (relatórios, export, integração Atak) sobrescrevem com 30s/60s. Ver docs/PLANO_ACAO_TIMEOUT_LENTIDAO.md e docs/ENDPOINTS_TIMEOUTS.md.
     this.api = axios.create({
       baseURL,
       timeout: 10000,

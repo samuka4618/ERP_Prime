@@ -64,23 +64,25 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware de segurança
+// Middleware de segurança (em produção com HTTPS, HSTS pode ser reativado via DISABLE_HSTS=0)
+const disableHsts = process.env.DISABLE_HSTS === 'true' || config.nodeEnv !== 'production';
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: false, // Desabilitado para evitar erro em HTTP (só funciona em HTTPS ou localhost)
-  strictTransportSecurity: false, // Desabilitado para não forçar HTTPS em HTTP
-  contentSecurityPolicy: false, // Pode causar problemas com recursos em desenvolvimento
-  originAgentCluster: false // Desabilitado para evitar erro de agent cluster
+  crossOriginOpenerPolicy: false,
+  strictTransportSecurity: disableHsts ? false : { maxAge: 31536000, includeSubDomains: true },
+  contentSecurityPolicy: false,
+  originAgentCluster: false
 }));
 
-// Middleware DEPOIS do Helmet para garantir remoção de headers problemáticos
+// Middleware DEPOIS do Helmet: em dev remove headers que forçam HTTPS; em produção mantém HSTS se habilitado
 app.use((req, res, next) => {
-  // Remover headers que causam problemas em HTTP
   res.removeHeader('Cross-Origin-Opener-Policy');
   res.removeHeader('Cross-Origin-Embedder-Policy');
   res.removeHeader('Origin-Agent-Cluster');
-  res.removeHeader('Strict-Transport-Security');
-  res.removeHeader('Upgrade-Insecure-Requests');
+  if (config.nodeEnv !== 'production' || disableHsts) {
+    res.removeHeader('Strict-Transport-Security');
+    res.removeHeader('Upgrade-Insecure-Requests');
+  }
   next();
 });
 
@@ -128,14 +130,37 @@ app.options('*', (req, res) => {
 // Middleware de compressão
 app.use(compression());
 
-// Rate limiting global (desabilitado em desenvolvimento)
-const globalLimiter = (req: any, res: any, next: any) => next(); // Desabilita rate limiting completamente
+// Rate limiting: ativo em produção para mitigar abuso; desabilitado em desenvolvimento
+const isProduction = config.nodeEnv === 'production';
+const globalLimiter = isProduction
+  ? rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 100,
+      message: { error: 'Muitas requisições. Tente novamente em alguns minutos.' },
+      standardHeaders: true,
+      legacyHeaders: false
+    })
+  : (req: express.Request, res: express.Response, next: express.NextFunction) => next();
 
-// Rate limiting para autenticação (desabilitado em desenvolvimento)
-const authLimiter = (req: any, res: any, next: any) => next(); // Desabilita rate limiting de auth
+const authLimiter = isProduction
+  ? rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 20,
+      message: { error: 'Muitas tentativas de login. Tente novamente em alguns minutos.' },
+      standardHeaders: true,
+      legacyHeaders: false
+    })
+  : (req: express.Request, res: express.Response, next: express.NextFunction) => next();
 
-// Rate limiting para uploads (desabilitado em desenvolvimento)
-const uploadLimiter = (req: any, res: any, next: any) => next(); // Desabilita rate limiting de uploads
+const uploadLimiter = isProduction
+  ? rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 30,
+      message: { error: 'Muitos uploads. Tente novamente em alguns minutos.' },
+      standardHeaders: true,
+      legacyHeaders: false
+    })
+  : (req: express.Request, res: express.Response, next: express.NextFunction) => next();
 
 // Aplicar rate limiting global
 app.use(globalLimiter);
@@ -175,9 +200,8 @@ app.use((req, res, next) => {
 
 // Servir arquivos estáticos do frontend
 app.use(express.static(path.join(process.cwd(), 'frontend/dist'), {
-  setHeaders: (res, filePath) => {
-    // Garantir que não há headers que forçam HTTPS
-    res.removeHeader('Strict-Transport-Security');
+  setHeaders: (res) => {
+    if (config.nodeEnv !== 'production' || disableHsts) res.removeHeader('Strict-Transport-Security');
     res.removeHeader('Origin-Agent-Cluster');
   }
 }));
@@ -208,21 +232,25 @@ app.get('/favicon.ico', (req, res) => {
   res.status(204).end();
 });
 
-// Rota de teste para imagens
+// Rota de teste para imagens (apenas em desenvolvimento; em produção não expõe caminhos/IPs)
 app.get('/test-images', (req, res) => {
+  if (config.nodeEnv === 'production') {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
   const fs = require('fs');
   try {
     const imagesPath = path.join(process.cwd(), 'storage/images');
     const files = fs.readdirSync(imagesPath);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       files,
       cwd: process.cwd(),
       imgPath: imagesPath
     });
   } catch (err) {
-    res.json({ 
-      success: false, 
+    res.json({
+      success: false,
       error: err instanceof Error ? err.message : String(err),
       cwd: process.cwd(),
       imgPath: path.join(process.cwd(), 'storage/images')
@@ -240,8 +268,12 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Rota de teste de conectividade (para diagnóstico de rede)
+// Rota de teste de conectividade (apenas em desenvolvimento; em produção não expõe IPs/headers)
 app.get('/api/test-connection', (req, res) => {
+  if (config.nodeEnv === 'production') {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
   res.json({
     success: true,
     message: 'Conexão estabelecida com sucesso!',
@@ -382,11 +414,12 @@ app.get('/api', (req, res) => {
 
 // Rota catch-all para servir o frontend (deve vir antes dos middlewares de erro)
 app.get('*', (req, res, next) => {
-  // Garantir que não há headers que forçam HTTPS antes de servir o HTML
-  res.removeHeader('Strict-Transport-Security');
+  if (config.nodeEnv !== 'production' || disableHsts) {
+    res.removeHeader('Strict-Transport-Security');
+    res.removeHeader('Upgrade-Insecure-Requests');
+  }
   res.removeHeader('Origin-Agent-Cluster');
-  res.removeHeader('Upgrade-Insecure-Requests');
-  
+
   // Servir o HTML
   res.sendFile(path.join(process.cwd(), 'frontend/dist/index.html'), (err) => {
     if (err) {
@@ -488,6 +521,14 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+// Promises em background (notificações, etc.) não devem derrubar o processo
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('unhandledRejection:', reason);
+  if (typeof (promise as any)?.catch === 'function') {
+    (promise as Promise<unknown>).catch(() => {});
+  }
+});
 
 // Inicializar servidor
 startServer();

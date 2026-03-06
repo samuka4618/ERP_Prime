@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AttachmentModel } from '../models/Attachment';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
+import { logger } from '../../../shared/utils/logger';
 import path from 'path';
 import fs from 'fs';
 
@@ -9,7 +10,7 @@ export class AttachmentController {
     const { ticketId, messageId } = req.body;
     const userId = req.user?.id;
 
-    console.log('🔍 DEBUG - Request body:', { ticketId, messageId, userId });
+    logger.debug('Attachment upload - Request body', { ticketId, messageId, userId }, 'ATTACHMENT');
 
     if (!userId) {
       res.status(401).json({ error: 'Usuário não autenticado' });
@@ -28,9 +29,9 @@ export class AttachmentController {
       let parsedMessageId = null;
       if (messageId && messageId !== 'undefined' && messageId !== 'null' && !isNaN(parseInt(messageId))) {
         parsedMessageId = parseInt(messageId);
-        console.log('🔍 DEBUG - messageId válido:', parsedMessageId);
+        logger.debug('messageId válido', { parsedMessageId }, 'ATTACHMENT');
       } else {
-        console.log('🔍 DEBUG - messageId inválido ou null:', messageId);
+        logger.debug('messageId inválido ou null', { messageId }, 'ATTACHMENT');
       }
 
       const attachmentData = {
@@ -44,7 +45,7 @@ export class AttachmentController {
         mime_type: file.mimetype
       };
 
-      console.log('🔍 DEBUG - Dados do anexo:', attachmentData);
+      logger.debug('Dados do anexo', attachmentData, 'ATTACHMENT');
 
       const attachment = await AttachmentModel.create(attachmentData);
       attachments.push(attachment);

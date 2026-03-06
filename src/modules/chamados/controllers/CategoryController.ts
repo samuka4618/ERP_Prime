@@ -15,6 +15,7 @@ import {
 import { log as auditLog } from '../../../core/audit/AuditService';
 import { dbRun } from '../../../core/database/connection';
 import { config } from '../../../config/database';
+import { logger } from '../../../shared/utils/logger';
 
 const getIp = (req: Request) => req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
 const useTransaction = !config.database.usePostgres;
@@ -27,16 +28,16 @@ const querySchema = Joi.object({
 
 export class CategoryController {
   static create = asyncHandler(async (req: Request, res: Response) => {
-    console.log('🔍 DEBUG CREATE CATEGORY - Body recebido:', req.body);
-    
+    logger.debug('CREATE CATEGORY - Body recebido', req.body, 'CATEGORY');
+
     const { error, value } = createCategorySchema.validate(req.body);
     if (error) {
-      console.log('❌ ERRO DE VALIDAÇÃO:', error.details);
+      logger.debug('ERRO DE VALIDAÇÃO', error.details, 'CATEGORY');
       res.status(400).json({ error: 'Dados inválidos', details: error.details.map(d => d.message) });
       return;
     }
 
-    console.log('✅ Dados validados:', value);
+    logger.debug('Dados validados', value, 'CATEGORY');
     const categoryData = value as CreateCategoryRequest;
     const category = await CategoryModel.create(categoryData);
     

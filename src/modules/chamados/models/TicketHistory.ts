@@ -1,7 +1,7 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
 import { TicketHistory } from '../types';
 import { UserRole } from '../../../shared/types';
-import { formatSystemDate, formatSystemDateOnly } from '../../../shared/utils/dateUtils';
+import { formatSystemDate, formatSystemDateOnlyWithTimezone, getSystemTimezone } from '../../../shared/utils/dateUtils';
 
 export class TicketHistoryModel {
   static async create(ticketId: number, authorId: number, message: string, attachment?: string): Promise<TicketHistory> {
@@ -95,31 +95,26 @@ export class TicketHistoryModel {
       });
     }
 
-    // Formatar datas usando o timezone do sistema (apenas data, sem hora)
-    const formattedHistories = await Promise.all(histories.map(async (history) => {
-      const formattedDate = await formatSystemDateOnly(history.created_at);
-      
-      // Log removido - sistema funcionando corretamente
-      
-      return {
-        id: history.id,
-        ticket_id: history.ticket_id,
-        author_id: history.author_id,
-        message: history.message,
-        attachment: history.attachment,
-        created_at: history.created_at, // Manter data original ISO
-        formatted_date: formattedDate, // Data formatada com timezone (apenas data)
-        author: history.author_name ? {
-          id: history.author_id,
-          name: history.author_name,
-          email: history.author_email,
-          password: '',
-          role: UserRole.USER,
-          is_active: true,
-          created_at: await formatSystemDate(new Date()),
-          updated_at: await formatSystemDate(new Date())
-        } : undefined
-      };
+    // Timezone uma vez (evita N+1 em getTimezone)
+    const timezone = await getSystemTimezone();
+    const formattedHistories = histories.map((history) => ({
+      id: history.id,
+      ticket_id: history.ticket_id,
+      author_id: history.author_id,
+      message: history.message,
+      attachment: history.attachment,
+      created_at: history.created_at,
+      formatted_date: formatSystemDateOnlyWithTimezone(timezone, history.created_at),
+      author: history.author_name ? {
+        id: history.author_id,
+        name: history.author_name,
+        email: history.author_email,
+        password: '',
+        role: UserRole.USER,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } : undefined
     }));
 
     return formattedHistories;

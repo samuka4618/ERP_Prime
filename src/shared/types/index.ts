@@ -115,7 +115,8 @@ export interface Notification {
   title: string;
   message: string;
   is_read: boolean;
-  created_at: Date;
+  /** ISO 8601 string (UTC) na resposta da API; o frontend formata com o timezone do sistema */
+  created_at: Date | string;
   user?: User;
   ticket?: Ticket;
 }

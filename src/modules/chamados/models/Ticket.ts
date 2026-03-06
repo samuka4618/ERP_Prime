@@ -4,7 +4,7 @@ import { Ticket, TicketStatus, CreateTicketRequest, UpdateTicketRequest, Paginat
 import { config } from '../../../config/database';
 import { CategoryAssignmentModel } from './CategoryAssignment';
 import { CategoryAssignmentRuleModel, resolveAttendantFromRules } from './CategoryAssignmentRule';
-import { formatSystemDate } from '../../../shared/utils/dateUtils';
+import { formatSystemDate, toISOFromDB } from '../../../shared/utils/dateUtils';
 
 // Função auxiliar para fazer parse do custom_data
 const parseCustomData = (customDataStr: string | null | undefined): Record<string, any> | undefined => {
@@ -117,10 +117,10 @@ export class TicketModel {
       sla_first_response: new Date(lastTicket.sla_first_response),
       sla_resolution: new Date(lastTicket.sla_resolution),
       custom_data: parseCustomData(lastTicket.custom_data),
-      created_at: new Date(lastTicket.created_at),
-      updated_at: new Date(lastTicket.updated_at),
-      closed_at: lastTicket.closed_at ? new Date(lastTicket.closed_at) : undefined,
-      reopened_at: lastTicket.reopened_at ? new Date(lastTicket.reopened_at) : undefined,
+      created_at: toISOFromDB(lastTicket.created_at) ?? '',
+      updated_at: toISOFromDB(lastTicket.updated_at) ?? '',
+      closed_at: lastTicket.closed_at ? (toISOFromDB(lastTicket.closed_at) ?? undefined) : undefined,
+      reopened_at: lastTicket.reopened_at ? (toISOFromDB(lastTicket.reopened_at) ?? undefined) : undefined,
       user: lastTicket.user_name ? {
         id: lastTicket.user_id,
         name: lastTicket.user_name,
@@ -165,10 +165,10 @@ export class TicketModel {
       sla_first_response: await formatSystemDate(ticket.sla_first_response),
       sla_resolution: await formatSystemDate(ticket.sla_resolution),
       custom_data: parseCustomData(ticket.custom_data),
-      created_at: await formatSystemDate(ticket.created_at),
-      updated_at: await formatSystemDate(ticket.updated_at),
-      closed_at: ticket.closed_at ? await formatSystemDate(ticket.closed_at) : undefined,
-      reopened_at: ticket.reopened_at ? await formatSystemDate(ticket.reopened_at) : undefined,
+      created_at: toISOFromDB(ticket.created_at) ?? '',
+      updated_at: toISOFromDB(ticket.updated_at) ?? '',
+      closed_at: ticket.closed_at ? (toISOFromDB(ticket.closed_at) ?? undefined) : undefined,
+      reopened_at: ticket.reopened_at ? (toISOFromDB(ticket.reopened_at) ?? undefined) : undefined,
       user: ticket.user_name ? {
         id: ticket.user_id,
         name: ticket.user_name,
@@ -260,10 +260,10 @@ export class TicketModel {
       sla_first_response: new Date(ticket.sla_first_response),
       sla_resolution: new Date(ticket.sla_resolution),
       custom_data: parseCustomData(ticket.custom_data),
-      created_at: new Date(ticket.created_at),
-      updated_at: new Date(ticket.updated_at),
-      closed_at: ticket.closed_at ? new Date(ticket.closed_at) : undefined,
-      reopened_at: ticket.reopened_at ? new Date(ticket.reopened_at) : undefined,
+      created_at: toISOFromDB(ticket.created_at) ?? '',
+      updated_at: toISOFromDB(ticket.updated_at) ?? '',
+      closed_at: ticket.closed_at ? (toISOFromDB(ticket.closed_at) ?? undefined) : undefined,
+      reopened_at: ticket.reopened_at ? (toISOFromDB(ticket.reopened_at) ?? undefined) : undefined,
       user: ticket.user_name ? {
         id: ticket.user_id,
         name: ticket.user_name,
@@ -381,10 +381,10 @@ export class TicketModel {
       sla_first_response: new Date(ticket.sla_first_response),
       sla_resolution: new Date(ticket.sla_resolution),
       custom_data: parseCustomData(ticket.custom_data),
-      created_at: new Date(ticket.created_at),
-      updated_at: new Date(ticket.updated_at),
-      closed_at: ticket.closed_at ? new Date(ticket.closed_at) : undefined,
-      reopened_at: ticket.reopened_at ? new Date(ticket.reopened_at) : undefined,
+      created_at: toISOFromDB(ticket.created_at) ?? '',
+      updated_at: toISOFromDB(ticket.updated_at) ?? '',
+      closed_at: ticket.closed_at ? (toISOFromDB(ticket.closed_at) ?? undefined) : undefined,
+      reopened_at: ticket.reopened_at ? (toISOFromDB(ticket.reopened_at) ?? undefined) : undefined,
       user: ticket.user_name ? {
         id: ticket.user_id,
         name: ticket.user_name,
@@ -484,10 +484,10 @@ export class TicketModel {
       sla_first_response: new Date(ticket.sla_first_response),
       sla_resolution: new Date(ticket.sla_resolution),
       custom_data: parseCustomData(ticket.custom_data),
-      created_at: new Date(ticket.created_at),
-      updated_at: new Date(ticket.updated_at),
-      closed_at: ticket.closed_at ? new Date(ticket.closed_at) : undefined,
-      reopened_at: ticket.reopened_at ? new Date(ticket.reopened_at) : undefined,
+      created_at: toISOFromDB(ticket.created_at) ?? '',
+      updated_at: toISOFromDB(ticket.updated_at) ?? '',
+      closed_at: ticket.closed_at ? (toISOFromDB(ticket.closed_at) ?? undefined) : undefined,
+      reopened_at: ticket.reopened_at ? (toISOFromDB(ticket.reopened_at) ?? undefined) : undefined,
       user: ticket.user_name ? {
         id: ticket.user_id,
         name: ticket.user_name,
@@ -583,10 +583,10 @@ export class TicketModel {
       priority: ticket.priority,
       sla_first_response: new Date(ticket.sla_first_response),
       sla_resolution: new Date(ticket.sla_resolution),
-      created_at: new Date(ticket.created_at),
-      updated_at: new Date(ticket.updated_at),
-      closed_at: ticket.closed_at ? new Date(ticket.closed_at) : undefined,
-      reopened_at: ticket.reopened_at ? new Date(ticket.reopened_at) : undefined,
+      created_at: toISOFromDB(ticket.created_at) ?? '',
+      updated_at: toISOFromDB(ticket.updated_at) ?? '',
+      closed_at: ticket.closed_at ? (toISOFromDB(ticket.closed_at) ?? undefined) : undefined,
+      reopened_at: ticket.reopened_at ? (toISOFromDB(ticket.reopened_at) ?? undefined) : undefined,
       user: ticket.user_name ? {
         id: ticket.user_id,
         name: ticket.user_name,
@@ -649,10 +649,10 @@ export class TicketModel {
       priority: ticket.priority,
       sla_first_response: new Date(ticket.sla_first_response),
       sla_resolution: new Date(ticket.sla_resolution),
-      created_at: new Date(ticket.created_at),
-      updated_at: new Date(ticket.updated_at),
-      closed_at: ticket.closed_at ? new Date(ticket.closed_at) : undefined,
-      reopened_at: ticket.reopened_at ? new Date(ticket.reopened_at) : undefined,
+      created_at: toISOFromDB(ticket.created_at) ?? '',
+      updated_at: toISOFromDB(ticket.updated_at) ?? '',
+      closed_at: ticket.closed_at ? (toISOFromDB(ticket.closed_at) ?? undefined) : undefined,
+      reopened_at: ticket.reopened_at ? (toISOFromDB(ticket.reopened_at) ?? undefined) : undefined,
       user: ticket.user_name ? {
         id: ticket.user_id,
         name: ticket.user_name,
@@ -976,7 +976,7 @@ export class TicketModel {
         type: 'ticket_created',
         title: 'Novo chamado criado',
         description: `Chamado #${ticket.ticket_id} - ${ticket.ticket_subject}`,
-        timestamp: new Date(ticket.created_at),
+        timestamp: new Date(toISOFromDB(ticket.created_at) ?? new Date().toISOString()),
         user_name: ticket.user_name,
         ticket_id: ticket.ticket_id,
         ticket_subject: ticket.ticket_subject
@@ -989,7 +989,7 @@ export class TicketModel {
           type: 'ticket_resolved',
           title: 'Chamado resolvido',
           description: `Chamado #${ticket.ticket_id} - ${ticket.ticket_subject}`,
-          timestamp: new Date(ticket.closed_at),
+          timestamp: new Date(toISOFromDB(ticket.closed_at) ?? new Date().toISOString()),
           user_name: ticket.user_name,
           ticket_id: ticket.ticket_id,
           ticket_subject: ticket.ticket_subject
@@ -1003,7 +1003,7 @@ export class TicketModel {
           type: 'ticket_closed',
           title: 'Chamado fechado',
           description: `Chamado #${ticket.ticket_id} - ${ticket.ticket_subject}`,
-          timestamp: new Date(ticket.closed_at),
+          timestamp: new Date(toISOFromDB(ticket.closed_at) ?? new Date().toISOString()),
           user_name: ticket.user_name,
           ticket_id: ticket.ticket_id,
           ticket_subject: ticket.ticket_subject
@@ -1017,7 +1017,7 @@ export class TicketModel {
           type: 'ticket_reopened',
           title: 'Chamado reaberto',
           description: `Chamado #${ticket.ticket_id} - ${ticket.ticket_subject}`,
-          timestamp: new Date(ticket.reopened_at),
+          timestamp: new Date(toISOFromDB(ticket.reopened_at) ?? new Date().toISOString()),
           user_name: ticket.user_name,
           ticket_id: ticket.ticket_id,
           ticket_subject: ticket.ticket_subject

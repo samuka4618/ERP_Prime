@@ -1,14 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
-
-const isDev = process.env.NODE_ENV !== 'production';
+import { logger } from '../utils/logger';
 
 export const validate = (schema: Joi.ObjectSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (isDev) {
-      console.log('🔍 DEBUG VALIDATION - Validando dados:', req.body);
-      console.log('🔍 DEBUG VALIDATION - Schema:', schema.describe());
-    }
+    logger.debug('VALIDATION - Validando dados', req.body, 'VALIDATION');
+    logger.debug('VALIDATION - Schema', schema.describe() as any, 'VALIDATION');
 
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
@@ -16,15 +13,15 @@ export const validate = (schema: Joi.ObjectSchema) => {
     });
 
     if (error) {
-      if (isDev) console.log('❌ ERRO DE VALIDAÇÃO NO MIDDLEWARE:', error.details);
-      res.status(400).json({ 
-        error: 'Dados inválidos', 
-        details: error.details.map(detail => detail.message) 
+      logger.debug('ERRO DE VALIDAÇÃO', error.details, 'VALIDATION');
+      res.status(400).json({
+        error: 'Dados inválidos',
+        details: error.details.map(detail => detail.message)
       });
       return;
     }
 
-    if (isDev) console.log('✅ VALIDAÇÃO PASSOU - Dados validados:', value);
+    logger.debug('VALIDAÇÃO PASSOU', value, 'VALIDATION');
     next();
   };
 };

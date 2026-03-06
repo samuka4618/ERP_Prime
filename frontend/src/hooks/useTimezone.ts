@@ -1,52 +1,44 @@
 import { useState, useEffect } from 'react';
-import { apiService } from '../services/api';
 
 /**
- * Converte string de data do backend (UTC, formato SQLite "YYYY-MM-DD HH:MM:SS")
- * para Date interpretado como UTC. Evita que o navegador interprete como hora local.
- * Só aplica quando a string está em formato ISO (YYYY-MM-DD); caso contrário usa new Date() normal.
+ * Converte string de data da API (sempre UTC em ISO 8601, ex.: "2024-01-15T10:30:00.000Z")
+ * para Date. Garante que valores com Z ou offset sejam interpretados como UTC.
  */
 function parseDateAsUTC(dateString: string | Date): Date {
   if (dateString instanceof Date) return dateString;
   const str = String(dateString).trim();
   if (!str) return new Date(NaN);
-  // Formato ISO do backend/SQLite (UTC): "YYYY-MM-DD HH:MM:SS" ou "YYYY-MM-DDTHH:MM:SS"
   if (/^\d{4}-\d{2}-\d{2}[\sT]/.test(str)) {
     const iso = str.includes('T') ? str.replace(/\s/g, '') : str.replace(' ', 'T');
-    const asUtc = /Z$|[-+]\d{2}:?\d{2}$/.test(iso) ? iso : iso + 'Z';
-    return new Date(asUtc);
+    const hasUtc = /Z$|[-+]\d{2}:?\d{2}$/.test(iso);
+    return new Date(hasUtc ? iso : iso + 'Z');
   }
   return new Date(str);
 }
 
 /**
- * Hook para gerenciar timezone do sistema
+ * Obtém o timezone do navegador (ex.: "America/Sao_Paulo").
+ * Melhor prática: exibir datas na hora local do usuário (Moesif, MDN).
+ */
+function getBrowserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo';
+  } catch {
+    return 'America/Sao_Paulo';
+  }
+}
+
+/**
+ * Hook para gerenciar timezone na exibição de datas.
+ * Usa o timezone do navegador para que o usuário sempre veja "sua" hora local.
  */
 export const useTimezone = () => {
-  const [timezone, setTimezone] = useState<string>('America/Sao_Paulo');
-  const [loading, setLoading] = useState(true);
+  const [timezone, setTimezone] = useState<string>(() => getBrowserTimezone());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchTimezone = async () => {
-      try {
-        const response = await apiService.get('/system-config/timezone');
-        const raw = response?.data as { data?: { timezone?: string }; timezone?: string } | undefined;
-        const tz = (typeof raw === 'object' && raw !== null)
-          ? (raw?.data?.timezone ?? (raw as any)?.timezone)
-          : null;
-        if (tz && typeof tz === 'string' && !tz.startsWith('<')) {
-          setTimezone(tz);
-        } else {
-          setTimezone('America/Sao_Paulo');
-        }
-      } catch (error) {
-        setTimezone('America/Sao_Paulo');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTimezone();
+    setTimezone(getBrowserTimezone());
+    setLoading(false);
   }, []);
 
   const formatDate = (dateString: string | Date | null | undefined, includeTime: boolean = true): string => {
@@ -56,7 +48,7 @@ export const useTimezone = () => {
 
     try {
       const date = parseDateAsUTC(dateString as string | Date);
-      
+
       if (isNaN(date.getTime())) {
         console.warn('Data inválida recebida:', dateString);
         return 'Data inválida';
@@ -66,7 +58,7 @@ export const useTimezone = () => {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
-        timeZone: timezone,
+        // Não passar timeZone: o navegador usa o fuso do sistema (mesmo do console), evitando divergência.
       };
 
       if (includeTime) {

@@ -117,11 +117,9 @@ export class ClientRegistrationController {
         console.error(`❌ [CLIENT-REGISTRATION] Erro ao iniciar consulta:`, error);
       });
       
-      try {
-        await NotificationService.notifyClientRegistrationCreated(registration.id, req.user!.id);
-      } catch (err: any) {
+      NotificationService.notifyClientRegistrationCreated(registration.id, req.user!.id).catch((err: any) => {
         console.error('Erro ao notificar cadastro criado (cadastro foi salvo):', err?.message || err);
-      }
+      });
 
       res.status(201).json({
         success: true,
@@ -271,22 +269,20 @@ export class ClientRegistrationController {
       );
       
       if (currentRegistration.status !== validatedData.status) {
-        try {
-          const statusDescriptions: Record<string, string> = {
-            'cadastro_enviado': 'Cadastro Enviado',
-            'aguardando_analise_credito': 'Aguardando Análise de Crédito',
-            'cadastro_finalizado': 'Cadastro Finalizado'
-          };
-          await NotificationService.notifyClientRegistrationStatusChange(
-            id,
-            currentRegistration.user_id,
-            currentRegistration.status,
-            validatedData.status,
-            statusDescriptions[currentRegistration.status] || currentRegistration.status
-          );
-        } catch (err: any) {
+        const statusDescriptions: Record<string, string> = {
+          'cadastro_enviado': 'Cadastro Enviado',
+          'aguardando_analise_credito': 'Aguardando Análise de Crédito',
+          'cadastro_finalizado': 'Cadastro Finalizado'
+        };
+        NotificationService.notifyClientRegistrationStatusChange(
+          id,
+          currentRegistration.user_id,
+          currentRegistration.status,
+          validatedData.status,
+          statusDescriptions[currentRegistration.status] || currentRegistration.status
+        ).catch((err: any) => {
           console.error('Erro ao notificar mudança de status do cadastro:', err?.message || err);
-        }
+        });
       }
 
       // 5. Retornar registro atualizado

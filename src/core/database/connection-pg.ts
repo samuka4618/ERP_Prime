@@ -30,21 +30,15 @@ function toPgParams(sql: string): string {
   return sql.replace(/\?/g, () => `$${++i}`);
 }
 
-/** Para INSERT sem RETURNING, adiciona RETURNING id apenas se a tabela tiver coluna id. */
+/** Para INSERT sem RETURNING, adiciona RETURNING id para obter o id gerado (SERIAL ou default). */
 function ensureReturning(sql: string): string {
   const trimmed = sql.trim();
   const upper = trimmed.toUpperCase();
   if (!upper.startsWith('INSERT') || /\bRETURNING\b/i.test(trimmed)) {
     return sql;
   }
-  // Só adicionar RETURNING id se a lista de colunas do INSERT incluir "id" (evita erro em tabelas com PK não-id, ex.: notification_email_templates)
-  const colListMatch = trimmed.match(/INSERT\s+INTO\s+\S+\s*\(([^)]+)\)/i);
-  const hasIdColumn = colListMatch
-    ? colListMatch[1].split(',').some((c) => c.trim().toLowerCase() === 'id')
-    : false;
-  if (!hasIdColumn) {
-    return sql;
-  }
+  // Inserções sem "id" na lista (ex.: ticket_history) geram id no banco; precisamos de RETURNING id.
+  // Inserções com "id" na lista também se beneficiam de RETURNING id para lastID no adapter.
   const lastParen = trimmed.lastIndexOf(')');
   if (lastParen === -1) return sql;
   const afterValues = trimmed.slice(lastParen + 1).trim();

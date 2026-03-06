@@ -88,12 +88,30 @@ export class Logger {
     this.writeLog('success', message, data, context);
   }
 
+  /** Campos que não devem ser logados (segurança). */
+  private static readonly SENSITIVE_KEYS = ['password', 'currentPassword', 'newPassword', 'token', 'secret', 'authorization', 'cookie'];
+
+  /** Remove campos sensíveis do body para log (evita vazar senha/token). */
+  private static sanitizeBodyForLog(body: any): any {
+    if (body == null || typeof body !== 'object') return body;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(body)) {
+      const keyLower = k.toLowerCase();
+      if (this.SENSITIVE_KEYS.some((s) => keyLower.includes(s.toLowerCase()))) {
+        out[k] = '[REDACTED]';
+      } else {
+        out[k] = typeof v === 'object' && v !== null ? this.sanitizeBodyForLog(v) : v;
+      }
+    }
+    return out;
+  }
+
   // Logs específicos para diferentes contextos
   static apiRequest(method: string, url: string, body?: any, user?: any) {
     this.info(`API Request: ${method} ${url}`, {
       method,
       url,
-      body: body ? JSON.stringify(body) : null,
+      body: body ? JSON.stringify(this.sanitizeBodyForLog(body)) : null,
       user: user ? { id: user.id, role: user.role } : null
     }, 'API');
   }

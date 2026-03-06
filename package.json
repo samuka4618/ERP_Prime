@@ -22,6 +22,7 @@
     "migrate:user-profile": "ts-node src/core/database/run-user-profile-migration.ts",
     "migrate:reports-types": "ts-node src/core/database/migrate_reports_types.ts",
     "migrate:push-tokens": "ts-node src/core/database/run-device-push-tokens-migration.ts",
+    "migrate:custom-fields": "ts-node src/core/database/run-custom-fields-migration.ts",
     "check-user": "ts-node scripts/check-user.ts",
     "create-user": "node dist/scripts/create-user.js",
     "db:reset": "node scripts/reset-db.js",

@@ -33,9 +33,13 @@ export class TicketController {
     const ticketData = value as CreateTicketRequest;
     const ticket = await TicketModel.create(userId, ticketData);
 
-    // Notificar sobre novo chamado
-    await NotificationService.notifyTicketCreated(ticket.id);
-    
+    // Notificar sobre novo chamado (não falhar a resposta se notificação der erro)
+    try {
+      await NotificationService.notifyTicketCreated(ticket.id);
+    } catch (err: any) {
+      console.error('Erro ao enviar notificações do chamado (chamado foi criado):', err?.message || err);
+    }
+
     res.status(201).json({
       message: 'Chamado criado com sucesso',
       data: { ticket }
@@ -148,8 +152,11 @@ export class TicketController {
       return;
     }
 
-    // Notificar sobre fechamento
-    await NotificationService.notifyStatusChange(ticketId, oldTicket.status, TicketStatus.CLOSED);
+    try {
+      await NotificationService.notifyStatusChange(ticketId, oldTicket.status, TicketStatus.CLOSED);
+    } catch (err: any) {
+      console.error('Erro ao notificar fechamento do chamado:', err?.message || err);
+    }
 
     res.json({
       message: 'Chamado fechado com sucesso',
@@ -172,8 +179,11 @@ export class TicketController {
       return;
     }
 
-    // Notificar sobre reabertura
-    await NotificationService.notifyTicketReopened(ticketId);
+    try {
+      await NotificationService.notifyTicketReopened(ticketId);
+    } catch (err: any) {
+      console.error('Erro ao notificar reabertura do chamado:', err?.message || err);
+    }
 
     res.json({
       message: 'Chamado reaberto com sucesso',
@@ -221,43 +231,36 @@ export class TicketController {
     const history = await TicketHistoryModel.create(ticketId, userId, message, attachment);
     console.log('🔍 DEBUG - Mensagem criada:', history);
 
-    // Notificar sobre nova mensagem
-    await NotificationService.notifyNewMessage(ticketId, userId);
+    try {
+      await NotificationService.notifyNewMessage(ticketId, userId);
+    } catch (err: any) {
+      console.error('Erro ao notificar nova mensagem (mensagem foi salva):', err?.message || err);
+    }
 
-    // Enviar evento em tempo real para todos os clientes conectados ao ticket
-    console.log('🔌 ENVIANDO MENSAGEM VIA WEBSOCKET:', {
-      ticketId,
-      userId,
-      messageId: history.id,
-      message: history.message
-    });
-    
-    // Preparar dados da mensagem no formato correto
-    const messageData = {
-      id: history.id,
-      ticket_id: ticketId,
-      author_id: userId,
-      message: history.message,
-      attachment: history.attachment,
-      created_at: history.created_at,
-      author: {
-        id: req.user?.id,
-        name: req.user?.name,
-        email: req.user?.email,
-        role: req.user?.role
+    // Enviar evento em tempo real para todos os clientes conectados ao ticket (não falhar a resposta)
+    try {
+      const messageData = {
+        id: history.id,
+        ticket_id: ticketId,
+        author_id: userId,
+        message: history.message,
+        attachment: history.attachment,
+        created_at: history.created_at,
+        author: {
+          id: req.user?.id,
+          name: req.user?.name,
+          email: req.user?.email,
+          role: req.user?.role
+        }
+      };
+      const wsService = getWebSocketService();
+      if (wsService) {
+        wsService.sendMessageToTicket(ticketId, messageData);
+      } else {
+        realtimeService.sendMessageToTicket(ticketId, messageData);
       }
-    };
-    
-    console.log('🔌 Dados da mensagem preparados:', messageData);
-    
-    // Tentar WebSocket primeiro, fallback para SSE
-    const wsService = getWebSocketService();
-    if (wsService) {
-      // Não excluir o próprio usuário para que veja sua mensagem
-      wsService.sendMessageToTicket(ticketId, messageData);
-    } else {
-      // Não excluir o próprio usuário para que veja sua mensagem
-      realtimeService.sendMessageToTicket(ticketId, messageData);
+    } catch (err: any) {
+      console.error('Erro ao enviar mensagem em tempo real (mensagem foi salva):', err?.message || err);
     }
 
     res.status(201).json({
@@ -377,9 +380,11 @@ export class TicketController {
     // Adicionar entrada no histórico se o status mudou
     if (updateData.status && updateData.status !== existingTicket.status) {
       await TicketHistoryModel.create(ticketId, userId!, `Status alterado de "${existingTicket.status}" para "${updateData.status}"`);
-      
-      // Notificar sobre mudança de status
-      await NotificationService.notifyStatusChange(ticketId, existingTicket.status as any, updateData.status as any);
+      try {
+        await NotificationService.notifyStatusChange(ticketId, existingTicket.status as any, updateData.status as any);
+      } catch (err: any) {
+        console.error('Erro ao notificar mudança de status:', err?.message || err);
+      }
     }
 
     // Enviar evento em tempo real para todos os clientes conectados ao ticket
@@ -436,14 +441,17 @@ export class TicketController {
     try {
       const ticket = await TicketModel.claimTicket(ticketId, attendantId);
 
-      // Enviar notificação para o usuário
-      await NotificationService.createNotification(
-        ticket.user_id,
-        ticketId,
-        'status_change',
-        'Chamado assumido',
-        `Seu chamado #${ticket.id} foi assumido por um técnico e está sendo atendido.`
-      );
+      try {
+        await NotificationService.createNotification(
+          ticket.user_id,
+          ticketId,
+          'status_change',
+          'Chamado assumido',
+          `Seu chamado #${ticket.id} foi assumido por um técnico e está sendo atendido.`
+        );
+      } catch (notifErr: any) {
+        console.error('Erro ao notificar chamado assumido:', notifErr?.message || notifErr);
+      }
 
       res.json({
         message: 'Ticket assumido com sucesso',
@@ -495,8 +503,11 @@ export class TicketController {
     // Adicionar entrada no histórico
     await TicketHistoryModel.create(ticketId, userId, 'Chamado finalizado pelo atendente - aguardando aprovação do solicitante para encerramento');
 
-    // Enviar notificação para o solicitante
-    await NotificationService.notifyApprovalRequired(ticketId);
+    try {
+      await NotificationService.notifyApprovalRequired(ticketId);
+    } catch (err: any) {
+      console.error('Erro ao notificar solicitação de aprovação:', err?.message || err);
+    }
 
     // Enviar evento em tempo real
     realtimeService.sendTicketUpdate(ticketId, {
@@ -554,9 +565,12 @@ export class TicketController {
     // Adicionar entrada no histórico
     await TicketHistoryModel.create(ticketId, userId, 'Chamado aprovado pelo solicitante - problema confirmado como resolvido');
 
-    // Enviar notificação para o atendente
     if (existingTicket.attendant_id) {
-      await NotificationService.notifyApprovalReceived(ticketId, true);
+      try {
+        await NotificationService.notifyApprovalReceived(ticketId, true);
+      } catch (err: any) {
+        console.error('Erro ao notificar aprovação recebida:', err?.message || err);
+      }
     }
 
     // Enviar evento em tempo real
@@ -620,9 +634,12 @@ export class TicketController {
     
     await TicketHistoryModel.create(ticketId, userId, historyMessage);
 
-    // Enviar notificação para o atendente
     if (existingTicket.attendant_id) {
-      await NotificationService.notifyApprovalReceived(ticketId, false);
+      try {
+        await NotificationService.notifyApprovalReceived(ticketId, false);
+      } catch (err: any) {
+        console.error('Erro ao notificar rejeição recebida:', err?.message || err);
+      }
     }
 
     // Enviar evento em tempo real

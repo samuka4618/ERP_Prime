@@ -14,7 +14,9 @@ async function runMigration() {
       await dbRun(`ALTER TABLE ticket_categories ADD COLUMN custom_fields TEXT`);
       console.log('✅ Campo custom_fields adicionado na tabela ticket_categories');
     } catch (error: any) {
-      if (error.message && error.message.includes('duplicate column name')) {
+      const msg = error.message || '';
+      const alreadyExists = msg.includes('duplicate column name') || msg.includes('already exists');
+      if (alreadyExists) {
         console.log('ℹ️  Campo custom_fields já existe na tabela ticket_categories');
       } else {
         throw error;
@@ -26,7 +28,9 @@ async function runMigration() {
       await dbRun(`ALTER TABLE tickets ADD COLUMN custom_data TEXT`);
       console.log('✅ Campo custom_data adicionado na tabela tickets');
     } catch (error: any) {
-      if (error.message && error.message.includes('duplicate column name')) {
+      const msg = error.message || '';
+      const alreadyExists = msg.includes('duplicate column name') || msg.includes('already exists');
+      if (alreadyExists) {
         console.log('ℹ️  Campo custom_data já existe na tabela tickets');
       } else {
         throw error;

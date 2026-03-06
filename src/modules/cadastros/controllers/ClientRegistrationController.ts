@@ -117,9 +117,12 @@ export class ClientRegistrationController {
         console.error(`❌ [CLIENT-REGISTRATION] Erro ao iniciar consulta:`, error);
       });
       
-      // 9. Notificar sobre novo cadastro
-      await NotificationService.notifyClientRegistrationCreated(registration.id, req.user!.id);
-      
+      try {
+        await NotificationService.notifyClientRegistrationCreated(registration.id, req.user!.id);
+      } catch (err: any) {
+        console.error('Erro ao notificar cadastro criado (cadastro foi salvo):', err?.message || err);
+      }
+
       res.status(201).json({
         success: true,
         message: 'Cadastro de cliente criado com sucesso',
@@ -267,23 +270,25 @@ export class ClientRegistrationController {
         validatedData.limite_aprovado
       );
       
-      // 4. Notificar sobre mudança de status (se mudou)
       if (currentRegistration.status !== validatedData.status) {
-        const statusDescriptions: Record<string, string> = {
-          'cadastro_enviado': 'Cadastro Enviado',
-          'aguardando_analise_credito': 'Aguardando Análise de Crédito',
-          'cadastro_finalizado': 'Cadastro Finalizado'
-        };
-        
-        await NotificationService.notifyClientRegistrationStatusChange(
-          id,
-          currentRegistration.user_id,
-          currentRegistration.status,
-          validatedData.status,
-          statusDescriptions[currentRegistration.status] || currentRegistration.status
-        );
+        try {
+          const statusDescriptions: Record<string, string> = {
+            'cadastro_enviado': 'Cadastro Enviado',
+            'aguardando_analise_credito': 'Aguardando Análise de Crédito',
+            'cadastro_finalizado': 'Cadastro Finalizado'
+          };
+          await NotificationService.notifyClientRegistrationStatusChange(
+            id,
+            currentRegistration.user_id,
+            currentRegistration.status,
+            validatedData.status,
+            statusDescriptions[currentRegistration.status] || currentRegistration.status
+          );
+        } catch (err: any) {
+          console.error('Erro ao notificar mudança de status do cadastro:', err?.message || err);
+        }
       }
-      
+
       // 5. Retornar registro atualizado
       res.json({
         success: true,

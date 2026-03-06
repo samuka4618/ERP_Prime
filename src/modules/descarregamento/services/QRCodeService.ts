@@ -19,10 +19,11 @@ export class QRCodeService {
     // o link do formulário deve abrir no front (Railway), não na API.
     const clientUrl = (process.env.CLIENT_URL || process.env.FRONTEND_URL || '').trim();
     if (clientUrl) {
-      const base = clientUrl.replace(/\/+$/, '');
-      if (/^https?:\/\//i.test(base)) {
-        return `${base}${path}`;
+      let base = clientUrl.replace(/\/+$/, '');
+      if (!/^https?:\/\//i.test(base)) {
+        base = `https://${base}`;
       }
+      return `${base}${path}`;
     }
 
     // Ngrok ativo (dev): normalmente tunela o app inteiro

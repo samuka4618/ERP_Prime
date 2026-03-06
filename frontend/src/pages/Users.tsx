@@ -551,10 +551,11 @@ const Users: React.FC = () => {
       </div>
 
       {/* Modal Importar do Entra ID */}
+      {showEntraModal && (
       <Modal
-        isOpen={showEntraModal}
-        onClose={() => { setShowEntraModal(false); setSelectedEntraIds(new Set()); }}
         title="Importar usuários do Entra ID"
+        onClose={() => { setShowEntraModal(false); setSelectedEntraIds(new Set()); }}
+        size="xl"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -644,6 +645,7 @@ const Users: React.FC = () => {
           </div>
         </div>
       </Modal>
+      )}
 
       {/* Users List */}
       <div className="card">

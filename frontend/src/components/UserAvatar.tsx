@@ -47,7 +47,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
       <>
         <img
           src={avatarUrl!}
-          alt={user.name || 'Usuário'}
+          alt={user?.name || 'Usuário'}
           className={clsx(
             sizeClass,
             'rounded-full object-cover',

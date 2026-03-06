@@ -289,7 +289,8 @@ PUBLIC_URL=https://SEU-SUBDOMINIO.trycloudflare.com
 # URL do frontend no Railway (exatamente como aparece no navegador, sem barra no final)
 ALLOWED_ORIGINS=https://nomedoservico-production-xxxx.up.railway.app
 
-# Opcional: mesma URL do front para links em e-mails
+# Obrigatório quando o front está no Railway: URL do front para links de formulário e QR code.
+# Sem isso, os links saem com a URL da API (túnel) e não abrem a página do formulário.
 CLIENT_URL=https://nomedoservico-production-xxxx.up.railway.app
 ```
 
@@ -457,7 +458,8 @@ Documentação oficial: [Cloudflare Tunnel – Get started](https://developers.c
 
 ### Formulários públicos / QR code com URL errada
 
-- O backend usa **PUBLIC_URL** para montar links de formulário e QR. Garanta que **PUBLIC_URL** está com a URL atual do túnel (com `https://`).
+- Com **front no Railway e API no túnel**, os links do formulário devem abrir no **front** (Railway), não na API. Defina **CLIENT_URL** (ou **FRONTEND_URL**) no `.env` do backend com a URL do frontend (ex.: `https://seu-app.up.railway.app`). O sistema prioriza CLIENT_URL para gerar links de formulário e QR code.
+- Se front e back estiverem no mesmo servidor/túnel, **PUBLIC_URL** continua sendo usada para esses links.
 
 ---
 

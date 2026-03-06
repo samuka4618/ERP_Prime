@@ -8,30 +8,43 @@ import { NgrokService } from './NgrokService';
  */
 export class QRCodeService {
   /**
-   * Gera URL pública do formulário
+   * Gera URL pública do formulário.
+   * Com túnel (API em um domínio, front no Railway): usar CLIENT_URL/FRONTEND_URL (onde o front está).
+   * Sem túnel (front e back no mesmo servidor): usar PUBLIC_URL ou hostname.
    */
   static async getPublicFormUrl(formularioId: number): Promise<string> {
-    // Primeiro, verificar se ngrok está ativo (para desenvolvimento/testes)
-    const ngrokUrl = await NgrokService.getNgrokUrl();
-    if (ngrokUrl) {
-      return `${ngrokUrl}/descarregamento/formulario/${formularioId}`;
-    }
+    const path = `/descarregamento/formulario/${formularioId}`;
 
-    // Se PUBLIC_URL estiver definida (ex.: Cloudflare Tunnel), usar como base completa (sem adicionar porta).
-    // Em túneis a URL pública já é a final (ex.: https://xxx.trycloudflare.com); em dev não concatenamos :port.
-    if (process.env.PUBLIC_URL && process.env.PUBLIC_URL.trim()) {
-      const base = process.env.PUBLIC_URL.trim().replace(/\/+$/, '');
+    // Quando o front está em outro domínio (ex.: Railway) e a API no túnel (api.ssnas.com.br),
+    // o link do formulário deve abrir no front (Railway), não na API.
+    const clientUrl = (process.env.CLIENT_URL || process.env.FRONTEND_URL || '').trim();
+    if (clientUrl) {
+      const base = clientUrl.replace(/\/+$/, '');
       if (/^https?:\/\//i.test(base)) {
-        return `${base}/descarregamento/formulario/${formularioId}`;
+        return `${base}${path}`;
       }
     }
 
-    // Comportamento original: hostname + protocolo + porta (rede local ou produção sem túnel)
+    // Ngrok ativo (dev): normalmente tunela o app inteiro
+    const ngrokUrl = await NgrokService.getNgrokUrl();
+    if (ngrokUrl) {
+      return `${ngrokUrl}${path}`;
+    }
+
+    // PUBLIC_URL (ex.: Cloudflare Tunnel) quando front e back estão no mesmo túnel
+    if (process.env.PUBLIC_URL && process.env.PUBLIC_URL.trim()) {
+      const base = process.env.PUBLIC_URL.trim().replace(/\/+$/, '');
+      if (/^https?:\/\//i.test(base)) {
+        return `${base}${path}`;
+      }
+    }
+
+    // Fallback: hostname + protocolo + porta (rede local ou produção sem túnel)
     const hostname = this.getPublicHostname();
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
     const port = process.env.NODE_ENV === 'production' ? '' : `:${config.port}`;
     
-    return `${protocol}://${hostname}${port}/descarregamento/formulario/${formularioId}`;
+    return `${protocol}://${hostname}${port}${path}`;
   }
 
   /**

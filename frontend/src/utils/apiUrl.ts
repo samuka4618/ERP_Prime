@@ -8,7 +8,6 @@ function getApiOrigin(): string {
   const fromEnv = import.meta.env.VITE_API_URL as string | undefined;
   if (fromEnv && fromEnv.trim()) {
     let url = fromEnv.trim().replace(/\/+$/, '');
-    // Se não tiver protocolo, o axios trata como path relativo (ex.: request vai para a Vercel)
     if (!/^https?:\/\//i.test(url)) {
       url = `https://${url}`;
     }
@@ -20,12 +19,12 @@ function getApiOrigin(): string {
   }
   const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
   const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
+  const backendPort = (import.meta.env.VITE_BACKEND_PORT as string) || '3004';
+  // Sempre usar VITE_BACKEND_PORT quando definido (ou 3004), para não mandar requisições para a porta do frontend (ex.: 5173)
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    const backendPort = (import.meta.env.VITE_BACKEND_PORT as string) || '3004';
     return `${protocol}//localhost:${backendPort}`;
   }
-  const port = typeof window !== 'undefined' ? (window.location.port || '3004') : '3004';
-  return `${protocol}//${hostname}:${port}`;
+  return `${protocol}//${hostname}:${backendPort}`;
 }
 
 /**

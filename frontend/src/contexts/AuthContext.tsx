@@ -12,6 +12,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   updateUserDirectly: (updatedUser: User) => void;
@@ -41,6 +42,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
+      const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+      const urlToken = params.get('token');
+      const microsoft = params.get('microsoft');
+      if (urlToken && microsoft === '1') {
+        try {
+          localStorage.setItem('token', urlToken);
+          const profile = await apiService.getProfile();
+          setUser(profile);
+          setToken('cookie');
+          localStorage.setItem('user', JSON.stringify(profile));
+          logger.success('Login Microsoft concluído (token da URL)', { userId: profile.id }, 'AUTH');
+          if (typeof window !== 'undefined' && window.history.replaceState) {
+            window.history.replaceState({}, '', window.location.pathname || '/');
+          }
+        } catch {
+          setUser(null);
+          setToken(null);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          if (typeof window !== 'undefined' && window.history.replaceState) {
+            window.history.replaceState({}, '', `${window.location.pathname || '/'}?error=${encodeURIComponent('Falha ao validar token')}`);
+          }
+        }
+        setLoading(false);
+        return;
+      }
       logger.debug('Inicializando autenticação (cookie httpOnly)', {}, 'AUTH');
       try {
         const profile = await apiService.getProfile();
@@ -83,6 +110,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email: credentials.email,
         error: error instanceof Error ? error.message : 'Unknown error'
       }, 'AUTH');
+      throw error;
+    }
+  };
+
+  const loginWithToken = async (token: string) => {
+    logger.info('Login com token (ex.: callback Microsoft)', {}, 'AUTH');
+    try {
+      localStorage.setItem('token', token);
+      const profile = await apiService.getProfile();
+      setUser(profile);
+      setToken('cookie');
+      localStorage.setItem('user', JSON.stringify(profile));
+      logger.success('Login com token concluído', { userId: profile.id }, 'AUTH');
+      try {
+        await apiService.trackActivity(profile.id, 'login');
+      } catch {
+        // ignorar falha de rastreamento
+      }
+    } catch (error) {
+      logger.error('Falha ao validar token', { error: error instanceof Error ? error.message : 'Unknown' }, 'AUTH');
+      localStorage.removeItem('token');
       throw error;
     }
   };
@@ -146,6 +194,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     token,
     loading,
     login,
+    loginWithToken,
     logout,
     refreshUser,
     updateUserDirectly,

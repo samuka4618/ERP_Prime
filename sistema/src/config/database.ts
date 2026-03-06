@@ -29,5 +29,13 @@ export const config = {
     firstResponseHours: parseInt(process.env.SLA_FIRST_RESPONSE || '4'),
     resolutionHours: parseInt(process.env.SLA_RESOLUTION || '24'),
     reopenDays: parseInt(process.env.REOPEN_DAYS || '7')
-  }
+  },
+  microsoft: {
+    enabled: !!(process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET),
+    clientId: process.env.AZURE_CLIENT_ID || '',
+    tenantId: process.env.AZURE_TENANT_ID || 'common',
+    clientSecret: process.env.AZURE_CLIENT_SECRET || '',
+    redirectUri: process.env.AZURE_REDIRECT_URI || ''
+  },
+  clientUrl: process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173'
 };

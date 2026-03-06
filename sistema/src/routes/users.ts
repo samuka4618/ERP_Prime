@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { UserController } from '../controllers/UserController';
 import { authenticate, authorize } from '../middleware/auth';
 import { validate, validateQuery, validateParams } from '../middleware/validation';
-import { createUserSchema, updateUserSchema, changePasswordSchema, userQuerySchema } from '../schemas/user';
+import { createUserSchema, updateUserSchema, changePasswordSchema, userQuerySchema, entraListQuerySchema, entraImportSchema } from '../schemas/user';
 import { UserRole } from '../types';
 import Joi from 'joi';
 
@@ -20,6 +20,9 @@ router.post('/', authorize(UserRole.ADMIN), validate(createUserSchema), UserCont
 router.get('/', authorize(UserRole.ADMIN), validateQuery(userQuerySchema), UserController.findAll);
 router.get('/stats', authorize(UserRole.ADMIN), UserController.getStats);
 router.get('/generate-password', authorize(UserRole.ADMIN), UserController.generatePassword);
+router.get('/entra/list', authorize(UserRole.ADMIN), validateQuery(entraListQuerySchema), UserController.listEntraUsers);
+router.post('/entra/import', authorize(UserRole.ADMIN), validate(entraImportSchema), UserController.importEntraUser);
+router.get('/:id/avatar', validateParams(paramsSchema), UserController.getAvatar);
 router.get('/:id', authorize(UserRole.ADMIN), validateParams(paramsSchema), UserController.findById);
 router.delete('/:id', authorize(UserRole.ADMIN), validateParams(paramsSchema), UserController.delete);
 router.post('/:id/reset-password', authorize(UserRole.ADMIN), validateParams(paramsSchema), validate(changePasswordSchema), UserController.resetPassword);

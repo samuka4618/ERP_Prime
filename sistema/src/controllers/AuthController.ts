@@ -8,6 +8,11 @@ import { config } from '../config/database';
 import { logger } from '../utils/logger';
 import jwt from 'jsonwebtoken';
 import Joi from 'joi';
+import {
+  createAndStoreState,
+  getAuthorizationUrl,
+  handleCallback as handleMicrosoftCallback
+} from '../services/MicrosoftAuthService';
 
 
 const loginSchema = Joi.object({
@@ -298,6 +303,60 @@ export class AuthController {
       message: 'Perfil obtido com sucesso',
       data: { user }
     });
+  });
+
+  /** GET /api/auth/providers — lista provedores de login (ex.: Microsoft) para o frontend. */
+  static getProviders = asyncHandler(async (req: Request, res: Response) => {
+    res.json({
+      message: 'Provedores obtidos',
+      data: {
+        microsoft: {
+          enabled: config.microsoft.enabled
+        }
+      }
+    });
+  });
+
+  /** GET /api/auth/microsoft — redireciona para o login Microsoft. */
+  static redirectToMicrosoft = asyncHandler(async (req: Request, res: Response) => {
+    if (!config.microsoft.enabled) {
+      res.status(503).json({ error: 'Login com Microsoft não está configurado.' });
+      return;
+    }
+    const state = createAndStoreState();
+    const url = await getAuthorizationUrl(state);
+    res.redirect(url);
+  });
+
+  /** GET /api/auth/microsoft/callback — recebe code e state da Microsoft, troca por token e redireciona ao front. */
+  static microsoftCallback = asyncHandler(async (req: Request, res: Response) => {
+    const { code, state } = req.query as { code?: string; state?: string };
+    const redirectUri = config.microsoft.redirectUri;
+    const clientUrl = config.clientUrl || 'http://localhost:5173';
+
+    if (!code || !state) {
+      const error = encodeURIComponent('Parâmetros de callback inválidos.');
+      res.redirect(`${clientUrl}/login?error=${error}`);
+      return;
+    }
+    if (!redirectUri) {
+      const error = encodeURIComponent('Redirect URI não configurado.');
+      res.redirect(`${clientUrl}/login?error=${error}`);
+      return;
+    }
+
+    try {
+      const profile = await handleMicrosoftCallback(code, state, redirectUri);
+      const result = await AuthService.loginWithMicrosoft(profile);
+      const token = result.token;
+      const returnUrl = `${clientUrl}/?token=${encodeURIComponent(token)}&microsoft=1`;
+      res.redirect(returnUrl);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha ao autenticar com a Microsoft.';
+      logger.warn('Callback Microsoft falhou', { error: message }, 'AUTH');
+      const error = encodeURIComponent(message);
+      res.redirect(`${clientUrl}/login?error=${error}`);
+    }
   });
 
   static updateProfile = asyncHandler(async (req: Request, res: Response) => {

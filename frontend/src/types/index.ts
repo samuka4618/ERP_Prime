@@ -27,6 +27,9 @@ export interface User {
   email: string;
   role: 'user' | 'attendant' | 'admin';
   is_active: boolean;
+  microsoft_id?: string | null;
+  avatar_url?: string | null;
+  job_title?: string | null;
   // Campos corporativos
   phone?: string;
   department?: string;

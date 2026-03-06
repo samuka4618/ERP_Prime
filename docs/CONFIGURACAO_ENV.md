@@ -131,6 +131,34 @@ DISABLE_RATE_LIMIT=false  # Desabilitar rate limiting
 DEBUG=false               # Modo debug
 ```
 
+## 🔷 Microsoft Entra ID (login com Microsoft) – opcional
+
+Para permitir login com contas Microsoft (single-tenant), crie um **App registration** no [portal Azure](https://portal.azure.com) e configure no `.env`:
+
+| Variável | Descrição |
+|----------|-----------|
+| `AZURE_CLIENT_ID` | Application (client) ID do app no Entra |
+| `AZURE_TENANT_ID` | Directory (tenant) ID do seu diretório |
+| `AZURE_CLIENT_SECRET` | Client secret (Certificates & secrets) |
+| `AZURE_REDIRECT_URI` | URL de callback: `https://seu-backend.com/api/auth/microsoft/callback` |
+
+**Passos no Azure:**
+
+1. **Azure Active Directory** → **App registrations** → **New registration**
+   - Nome: ex. "ERP PRIME"
+   - Supported account types: **Single tenant**
+   - Redirect URI: **Web** → `https://seu-dominio-backend.com/api/auth/microsoft/callback`
+
+2. **Authentication:** conferir redirect URI; habilitar **ID tokens** em Implicit grant (ou usar apenas Authorization code).
+
+3. **Certificates & secrets:** criar **Client secret** e copiar o valor em `AZURE_CLIENT_SECRET`.
+
+4. **API permissions:** adicionar:
+   - **Delegated:** `openid`, `profile`, `email` (e opcionalmente `User.Read` para foto)
+   - **Application:** `User.Read.All` (para o admin listar usuários do tenant); exigir **Admin consent**.
+
+5. Após configurar as variáveis, o botão "Entrar com Microsoft" aparece na tela de login. Apenas usuários **importados** pelo admin (em Usuários → Importar do Entra ID) podem fazer login.
+
 ## ✅ Checklist de Configuração
 
 - [ ] Arquivo `.env` criado a partir do `env.example`
@@ -139,6 +167,7 @@ DEBUG=false               # Modo debug
 - [ ] Caminhos de armazenamento verificados
 - [ ] E-mail configurado (opcional)
 - [ ] SQL Server configurado (se necessário)
+- [ ] Microsoft Entra ID configurado (opcional)
 - [ ] Arquivo `.env` adicionado ao `.gitignore` (não commitar!)
 
 ## 🚨 Importante

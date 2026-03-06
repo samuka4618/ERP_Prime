@@ -2,6 +2,7 @@ import React from 'react';
 import { User } from 'lucide-react';
 import { User as UserType } from '../types';
 import clsx from 'clsx';
+import { getApiBaseUrl } from '../utils/apiUrl';
 
 interface UserAvatarProps {
   user?: UserType | null;
@@ -34,7 +35,10 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   iconClassName = '',
   showFallback = true
 }) => {
-  const hasAvatar = user?.avatar && user.avatar.trim() !== '';
+  const avatarUrl = user?.avatar_url?.trim()
+    || (user?.microsoft_id && user?.id ? `${getApiBaseUrl()}/users/${user.id}/avatar` : null)
+    || (user?.avatar?.trim() ? `/${user.avatar}` : null);
+  const hasAvatar = !!avatarUrl;
   const sizeClass = sizeClasses[size];
   const iconSizeClass = iconSizeClasses[size];
 
@@ -42,7 +46,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
     return (
       <>
         <img
-          src={`/${user.avatar}?v=${Date.now()}`}
+          src={avatarUrl!}
           alt={user.name || 'Usuário'}
           className={clsx(
             sizeClass,

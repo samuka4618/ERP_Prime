@@ -25,6 +25,9 @@ export interface User {
   password: string;
   role: UserRole;
   is_active: boolean;
+  microsoft_id?: string | null;
+  avatar_url?: string | null;
+  job_title?: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -161,9 +164,12 @@ export interface UpdateCategoryRequest {
 export interface CreateUserRequest {
   name: string;
   email: string;
-  password: string;
+  password?: string; // opcional para usuários importados do Entra ID
   role: UserRole;
   is_active?: boolean;
+  microsoft_id?: string | null;
+  avatar_url?: string | null;
+  job_title?: string | null;
 }
 
 export interface UpdateUserRequest {
@@ -171,6 +177,8 @@ export interface UpdateUserRequest {
   email?: string;
   role?: UserRole;
   is_active?: boolean;
+  avatar_url?: string | null;
+  job_title?: string | null;
 }
 
 export interface AuthResponse {

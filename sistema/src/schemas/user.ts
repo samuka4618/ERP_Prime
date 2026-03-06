@@ -19,6 +19,8 @@ export const updateUserSchema = Joi.object({
     Joi.boolean(),
     Joi.number().integer().valid(0, 1)
   ).optional(),
+  avatar_url: Joi.string().max(500).allow('', null).optional(),
+  job_title: Joi.string().max(255).allow('', null).optional(),
   currentPassword: Joi.string().optional(),
   newPassword: Joi.string().min(6).optional()
 }).min(1).unknown(false).messages({
@@ -35,4 +37,18 @@ export const userQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(100).default(20),
   search: Joi.string().max(255),
   role: Joi.string().valid('user', 'attendant', 'admin')
+});
+
+export const entraListQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(50),
+  search: Joi.string().max(255).optional()
+});
+
+export const entraImportSchema = Joi.object({
+  microsoft_id: Joi.string().required(),
+  role: Joi.string().valid('user', 'attendant', 'admin').required(),
+  name: Joi.string().max(255).optional(),
+  email: Joi.string().email().max(255).required(),
+  job_title: Joi.string().max(255).allow('', null).optional()
 });

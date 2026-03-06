@@ -99,6 +99,7 @@ const SystemConfig: React.FC = () => {
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [selectedLogoPreview, setSelectedLogoPreview] = useState<string | null>(null);
+  const [microsoftEnabled, setMicrosoftEnabled] = useState<boolean | null>(null);
 
   // Statuses padrão do sistema
   const defaultStatuses: TicketStatus[] = [
@@ -112,6 +113,10 @@ const SystemConfig: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    apiService.getAuthProviders().then((p) => setMicrosoftEnabled(p.microsoft?.enabled ?? false)).catch(() => setMicrosoftEnabled(false));
   }, []);
 
   const fetchData = async () => {
@@ -715,6 +720,33 @@ const SystemConfig: React.FC = () => {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Integração Microsoft Entra ID */}
+          <div id="microsoft" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 scroll-mt-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary-500" />
+              Integração Microsoft Entra ID
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              As credenciais são configuradas no arquivo <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">.env</code> do servidor. Esta tela apenas exibe o status e as variáveis necessárias.
+            </p>
+            {microsoftEnabled !== null && (
+              <p className="text-sm mb-3">
+                Status: <span className={microsoftEnabled ? 'text-green-600 dark:text-green-400 font-medium' : 'text-amber-600 dark:text-amber-400'}>
+                  {microsoftEnabled ? 'Configurado' : 'Não configurado'}
+                </span>
+              </p>
+            )}
+            <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+              <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">AZURE_CLIENT_ID</code> — Application (client) ID</li>
+              <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">AZURE_TENANT_ID</code> — Directory (tenant) ID</li>
+              <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">AZURE_CLIENT_SECRET</code> — Client secret</li>
+              <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">AZURE_REDIRECT_URI</code> — URL de callback (ex.: https://seu-backend.com/api/auth/microsoft/callback)</li>
+            </ul>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+              Consulte a documentação (CONFIGURACAO_ENV.md) para os passos no portal Azure.
+            </p>
           </div>
 
           {/* Configurações de Arquivos */}

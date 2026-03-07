@@ -223,9 +223,22 @@ export async function listUsersFromEntra(
     '@odata.nextLink'?: string;
   }
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal
+    });
+  } catch (e) {
+    clearTimeout(timeoutId);
+    if ((e as Error)?.name === 'AbortError') {
+      throw new Error('Timeout ao contactar a Microsoft Graph. Tente de novo; se persistir, verifique a rede ou aumente o timeout do proxy (Cloudflare Tunnel).');
+    }
+    throw e;
+  }
+  clearTimeout(timeoutId);
 
   const contentType = res.headers.get('content-type') || '';
   const isJson = contentType.includes('application/json');

@@ -90,18 +90,34 @@ class SqlServerConnection {
     return this.pool!;
   }
 
+  private isConnectionClosedError(err: unknown): boolean {
+    const code = (err as { code?: string })?.code;
+    const message = (err as Error)?.message ?? '';
+    return code === 'ECONNCLOSED' || code === 'ECONNRESET' || /connection is closed/i.test(message);
+  }
+
   async executeQuery(query: string, params?: Record<string, any>): Promise<any[]> {
-    const pool = await this.getConnection();
-    const request = new sql.Request(pool);
-    
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        request.input(key, value);
-      });
+    const run = async (): Promise<any[]> => {
+      const pool = await this.getConnection();
+      const request = new sql.Request(pool);
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          request.input(key, value);
+        });
+      }
+      const result = await request.query(query);
+      return result.recordset;
+    };
+
+    try {
+      return await run();
+    } catch (err) {
+      if (this.isConnectionClosedError(err)) {
+        await this.disconnect();
+        return await run();
+      }
+      throw err;
     }
-    
-    const result = await request.query(query);
-    return result.recordset;
   }
 
   async executeTransaction(operations: (transaction: sql.Transaction) => Promise<any>): Promise<any> {

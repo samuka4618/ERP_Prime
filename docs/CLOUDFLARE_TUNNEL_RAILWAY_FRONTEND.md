@@ -8,10 +8,12 @@ Este guia descreve **do zero** como configurar o ERP Prime com:
 
 Não é necessário abrir portas no roteador. Você pode usar **dois tipos** de túnel:
 
-| Ambiente | Tipo de túnel | URL | Quando usar |
-|----------|----------------|-----|-------------|
-| **Teste** | **Quick Tunnel** (TryCloudflare) | URL **muda** a cada reinício (ex.: `https://xxxx.trycloudflare.com`) | Desenvolvimento e testes rápidos; não exige conta Cloudflare |
-| **Produção** | **Túnel gerenciado** (nome fixo) | URL **fixa** (ex.: `https://api.seudominio.com`) | Uso contínuo; exige conta Cloudflare e domínio adicionado à Cloudflare |
+
+| Ambiente     | Tipo de túnel                    | URL                                                                  | Quando usar                                                            |
+| ------------ | -------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Teste**    | **Quick Tunnel** (TryCloudflare) | URL **muda** a cada reinício (ex.: `https://xxxx.trycloudflare.com`) | Desenvolvimento e testes rápidos; não exige conta Cloudflare           |
+| **Produção** | **Túnel gerenciado** (nome fixo) | URL **fixa** (ex.: `https://api.seudominio.com`)                     | Uso contínuo; exige conta Cloudflare e domínio adicionado à Cloudflare |
+
 
 O guia cobre os dois: primeiro o **Quick Tunnel** (teste) e, em seguida, o **túnel gerenciado** (produção).
 
@@ -33,12 +35,12 @@ O guia cobre os dois: primeiro o **Quick Tunnel** (teste) e, em seguida, o **tú
 
 ### Parte B – Produção (túnel gerenciado, URL fixa)
 
-10. [Túnel gerenciado para produção](#10-túnel-gerenciado-para-produção)
+1. [Túnel gerenciado para produção](#10-túnel-gerenciado-para-produção)
 
 ### Final
 
-11. [Troubleshooting](#11-troubleshooting)
-12. [Checklist resumido](#12-checklist-resumido)
+1. [Troubleshooting](#11-troubleshooting)
+2. [Checklist resumido](#12-checklist-resumido)
 
 ---
 
@@ -46,11 +48,13 @@ O guia cobre os dois: primeiro o **Quick Tunnel** (teste) e, em seguida, o **tú
 
 ### O que você vai ter ao final
 
-| Componente      | Onde roda        | Acesso |
-|-----------------|------------------|--------|
-| **Backend (API)** | Sua máquina      | Exposto na internet via Cloudflare Tunnel (Quick Tunnel: URL variável; Produção: URL fixa) |
-| **Frontend**      | Railway          | URL do Railway (ex.: `https://erp-prime-frontend.up.railway.app`) |
-| **Banco de dados** | Local (SQLite) ou remoto (ex.: PostgreSQL no Railway) | Acessado apenas pelo backend |
+
+| Componente         | Onde roda                                             | Acesso                                                                                     |
+| ------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Backend (API)**  | Sua máquina                                           | Exposto na internet via Cloudflare Tunnel (Quick Tunnel: URL variável; Produção: URL fixa) |
+| **Frontend**       | Railway                                               | URL do Railway (ex.: `https://erp-prime-frontend.up.railway.app`)                          |
+| **Banco de dados** | Local (SQLite) ou remoto (ex.: PostgreSQL no Railway) | Acessado apenas pelo backend                                                               |
+
 
 O navegador abre o frontend no Railway; o frontend chama a API usando a URL do túnel. O túnel encaminha as requisições para o backend na sua máquina.
 
@@ -66,13 +70,15 @@ Para **produção** (Parte B): é necessário **conta na Cloudflare** e um **dom
 
 ### Teste vs Produção
 
-| | **Teste (Quick Tunnel)** | **Produção (túnel gerenciado)** |
-|--|---------------------------|----------------------------------|
-| **URL** | Muda a cada reinício | Fixa (ex.: `https://api.seudominio.com`) |
-| **Conta Cloudflare** | Não obrigatória | Obrigatória |
-| **Domínio** | Não precisa | Domínio adicionado à Cloudflare |
-| **Limite** | ~200 req. simultâneas; sem SSE | Sem esse limite; suporta SSE/WebSocket |
-| **Uso** | Desenvolvimento e testes | Uso contínuo, pode rodar como serviço |
+
+|                      | **Teste (Quick Tunnel)**       | **Produção (túnel gerenciado)**          |
+| -------------------- | ------------------------------ | ---------------------------------------- |
+| **URL**              | Muda a cada reinício           | Fixa (ex.: `https://api.seudominio.com`) |
+| **Conta Cloudflare** | Não obrigatória                | Obrigatória                              |
+| **Domínio**          | Não precisa                    | Domínio adicionado à Cloudflare          |
+| **Limite**           | ~200 req. simultâneas; sem SSE | Sem esse limite; suporta SSE/WebSocket   |
+| **Uso**              | Desenvolvimento e testes       | Uso contínuo, pode rodar como serviço    |
+
 
 ### Limitações do Quick Tunnel (TryCloudflare) – só teste
 
@@ -91,9 +97,9 @@ O **cloudflared** é o cliente oficial do Cloudflare Tunnel. Instale na máquina
 
 1. Abra o **Terminal** (PowerShell ou Prompt de Comando).
 2. Execute:
-   ```powershell
+  ```powershell
    winget install --id Cloudflare.cloudflared
-   ```
+  ```
 3. Feche e reabra o terminal. Teste: `cloudflared --version`.
 
 **Opção B – Download manual**
@@ -157,14 +163,14 @@ npm run migrate
 
 Use o `.env` da raiz. Garanta pelo menos:
 
-- **`PORT`** – Porta em que o backend sobe (ex.: `3000` ou `3004`). O túnel vai apontar para `http://localhost:PORT`.
-- **`JWT_SECRET`** – Chave para JWT.
+- `**PORT**` – Porta em que o backend sobe (ex.: `3000` ou `3004`). O túnel vai apontar para `http://localhost:PORT`.
+- `**JWT_SECRET**` – Chave para JWT.
 - Banco: **SQLite** (`DB_PATH`) ou **PostgreSQL** (`USE_POSTGRES=true` e `DATABASE_URL`).
 
 Para o frontend no Railway conseguir acessar o backend via túnel e para formulários/QR codes usarem a URL pública:
 
-- **`PUBLIC_URL`** – Será a URL do túnel que você vai anotar no próximo passo (ex.: `https://abc123.trycloudflare.com`). Assim o backend não redireciona HTTPS→HTTP quando a requisição vier desse host e os links de formulário/QR usam essa URL.
-- **`ALLOWED_ORIGINS`** – URL do frontend no Railway (ex.: `https://erp-prime-frontend.up.railway.app`). Pode ser mais de uma, separadas por vírgula.
+- `**PUBLIC_URL`** – Será a URL do túnel que você vai anotar no próximo passo (ex.: `https://abc123.trycloudflare.com`). Assim o backend não redireciona HTTPS→HTTP quando a requisição vier desse host e os links de formulário/QR usam essa URL.
+- `**ALLOWED_ORIGINS**` – URL do frontend no Railway (ex.: `https://erp-prime-frontend.up.railway.app`). Pode ser mais de uma, separadas por vírgula.
 
 Exemplo (ajuste depois com a URL real do túnel e do front):
 
@@ -221,8 +227,8 @@ https://abc-def-123.trycloudflare.com
 
 **Anote essa URL.** Você vai usar em:
 
-- **`PUBLIC_URL`** no `.env` do backend
-- **`VITE_API_URL`** no frontend no Railway (a mesma URL, sem barra no final)
+- `**PUBLIC_URL`** no `.env` do backend
+- `**VITE_API_URL**` no frontend no Railway (a mesma URL, sem barra no final)
 
 Depois de configurar o `.env`, reinicie o backend (Ctrl+C e `npm run start:server` de novo) para carregar `PUBLIC_URL` e `ALLOWED_ORIGINS`.
 
@@ -232,7 +238,7 @@ Deixe o **cloudflared** rodando enquanto quiser que o backend local esteja acess
 
 ## 5. Deploy do frontend no Railway
 
-O frontend do ERP Prime fica na pasta **`frontend`** do repositório (React + Vite). No Railway você vai criar um **serviço** que faz o build dessa pasta e serve os arquivos estáticos.
+O frontend do ERP Prime fica na pasta `**frontend`** do repositório (React + Vite). No Railway você vai criar um **serviço** que faz o build dessa pasta e serve os arquivos estáticos.
 
 ### 5.1 Criar projeto e serviço
 
@@ -248,14 +254,16 @@ O frontend do ERP Prime fica na pasta **`frontend`** do repositório (React + Vi
 2. Abra **Settings** (ou **Variables** / **Settings** conforme a interface).
 3. Defina:
 
-| Configuração      | Valor |
-|-------------------|--------|
-| **Root Directory** | `frontend` |
-| **Build Command**  | `npm install && npm run build` (ou apenas `npm run build` se o Railway já rodar `npm install`) |
-| **Start Command**  | `npx serve -s dist -l $PORT` |
-| **Watch Paths** (se existir) | `frontend/**` (opcional, para redeploy só quando algo em `frontend` mudar) |
 
-O Railway define a variável **`PORT`** automaticamente. O comando `npx serve -s dist -l $PORT` serve a pasta `dist` (saída do `vite build`) como site estático na porta correta.
+| Configuração                 | Valor                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| **Root Directory**           | `frontend`                                                                                     |
+| **Build Command**            | `npm install && npm run build` (ou apenas `npm run build` se o Railway já rodar `npm install`) |
+| **Start Command**            | `npx serve -s dist -l $PORT`                                                                   |
+| **Watch Paths** (se existir) | `frontend/`** (opcional, para redeploy só quando algo em `frontend` mudar)                     |
+
+
+O Railway define a variável `**PORT**` automaticamente. O comando `npx serve -s dist -l $PORT` serve a pasta `dist` (saída do `vite build`) como site estático na porta correta.
 
 Se a interface do Railway tiver apenas **Build** e **Start** genéricos, use os mesmos valores acima. Em alguns casos o Build Command pode aparecer como **Nixpacks** ou **Custom**; informe o Root Directory como `frontend` e o comando de build como `npm run build`.
 
@@ -264,7 +272,7 @@ Se a interface do Railway tiver apenas **Build** e **Start** genéricos, use os 
 1. No mesmo serviço (frontend), vá em **Settings** → **Networking** (ou **Public Networking**).
 2. Clique em **Generate Domain** (ou **Add Domain**).
 3. O Railway vai gerar uma URL como `https://nomedoservico-production-xxxx.up.railway.app`.
-4. **Copie essa URL** – essa é a URL do **frontend**. Você vai usá-la em **`ALLOWED_ORIGINS`** e **`CLIENT_URL`** no backend (passo 6). A URL da **API** (para o frontend chamar) é a do **túnel** (passo 4), que será usada em **`VITE_API_URL`** no frontend (passo 7).
+4. **Copie essa URL** – essa é a URL do **frontend**. Você vai usá-la em `**ALLOWED_ORIGINS`** e `**CLIENT_URL**` no backend (passo 6). A URL da **API** (para o frontend chamar) é a do **túnel** (passo 4), que será usada em `**VITE_API_URL`** no frontend (passo 7).
 
 Resumo:
 
@@ -305,13 +313,15 @@ O frontend precisa saber **qual é a URL da API**. Como a API está atrás do Cl
 1. No Railway, no **serviço do frontend**, vá em **Variables** (ou **Settings** → **Environment Variables**).
 2. Adicione:
 
-| Nome           | Valor |
-|----------------|--------|
+
+| Nome             | Valor                                      |
+| ---------------- | ------------------------------------------ |
 | **VITE_API_URL** | `https://SEU-SUBDOMINIO.trycloudflare.com` |
+
 
 Use a **mesma** URL que você anotou no passo 4 (e que está em `PUBLIC_URL`). **Sem** barra no final. **Com** `https://`.
 
-3. Salve. O Railway costuma fazer **redeploy** automático ao alterar variáveis. Se não fizer, dispare um **Redeploy** manual (Deployments → último deploy → Redeploy).
+1. Salve. O Railway costuma fazer **redeploy** automático ao alterar variáveis. Se não fizer, dispare um **Redeploy** manual (Deployments → último deploy → Redeploy).
 
 Importante: variáveis que começam com **VITE_** são injetadas no build. Por isso, após alterar **VITE_API_URL**, é necessário um **novo deploy** (build de novo) para o front passar a usar a nova URL.
 
@@ -367,9 +377,9 @@ Os passos abaixo descrevem o fluxo no **Zero Trust**; no dashboard principal o f
 4. Escolha o conector **Cloudflared** e avance.
 5. **Nome do túnel:** use um nome que identifique o uso (ex.: `erp-prime-api`). Clique em **Save tunnel**.
 6. Na tela seguinte, o Cloudflare mostra um **comando de instalação** para o seu sistema (Windows, macOS ou Linux), no formato:
-   ```bash
+  ```bash
    cloudflared tunnel run --token <TOKEN_LONGO>
-   ```
+  ```
 7. **Copie esse comando** (ou apenas o valor de `--token`). Você vai usá-lo para iniciar o túnel na sua máquina. Não compartilhe o token.
 
 ### 10.4 Configurar o hostname público (Public hostname)
@@ -378,28 +388,28 @@ Antes de rodar o túnel, é preciso dizer qual URL pública vai apontar para o s
 
 1. Na mesma tela do túnel (ou em **Configure** / **Public Hostname** / **Published applications**), adicione um **Public Hostname** (ou “Public application” / “Published application”).
 2. Preencha:
-   - **Subdomain:** por exemplo `api` ou `erp-api` (o que você quiser; será a primeira parte da URL).
-   - **Domain:** selecione no dropdown o **domínio** que você adicionou à Cloudflare (ex.: `seudominio.com`).
-   - **Service type:** **HTTP**.
-   - **URL:** `http://localhost:3000` (ou a porta que o backend usa – a mesma do `PORT` no seu `.env`).
+  - **Subdomain:** por exemplo `api` ou `erp-api` (o que você quiser; será a primeira parte da URL).
+  - **Domain:** selecione no dropdown o **domínio** que você adicionou à Cloudflare (ex.: `seudominio.com`).
+  - **Service type:** **HTTP**.
+  - **URL:** `http://localhost:PORT` — use **exatamente** o mesmo número da variável **PORT** do seu `.env` do backend (ex.: se no `.env` está `PORT=3004`, use `**http://localhost:3004`**). Se usar outra porta ou a do frontend em dev (ex.: 5173), a API pode devolver HTML em vez de JSON.
 3. Salve (**Save** / **Save tunnel**).
 
-A URL pública do backend será então **`https://api.seudominio.com`** (ou o subdomínio que você escolheu). Essa URL **não muda** quando você reinicia o `cloudflared`.
+A URL pública do backend será então `**https://api.seudominio.com`** (ou o subdomínio que você escolheu). Essa URL **não muda** quando você reinicia o `cloudflared`.
 
 ### 10.5 Rodar o túnel na sua máquina
 
 1. Na máquina onde o **backend** roda, abra um terminal.
 2. Execute o comando que você copiou no passo 10.3, por exemplo:
-   ```bash
+  ```bash
    cloudflared tunnel run --token SEU_TOKEN_AQUI
-   ```
+  ```
 3. O túnel deve conectar e aparecer como **Healthy** (ou **Active**) no dashboard da Cloudflare. Deixe esse terminal aberto enquanto quiser o backend acessível pela URL fixa.
 
 ### 10.6 Usar a URL fixa no ERP Prime
 
 1. **Backend (.env):**
-   - **PUBLIC_URL** = a URL fixa que você configurou (ex.: `https://api.seudominio.com`).
-   - **ALLOWED_ORIGINS** = URL do frontend no Railway (ex.: `https://seu-frontend.up.railway.app`).
+  - **PUBLIC_URL** = a URL fixa que você configurou (ex.: `https://api.seudominio.com`).
+  - **ALLOWED_ORIGINS** = URL do frontend no Railway (ex.: `https://seu-frontend.up.railway.app`).
 2. **Frontend (Railway):** variável **VITE_API_URL** = mesma URL fixa (ex.: `https://api.seudominio.com`), **sem** barra no final. Faça **redeploy** do frontend após alterar.
 3. Reinicie o backend local para carregar o novo `PUBLIC_URL`.
 
@@ -450,6 +460,18 @@ Documentação oficial: [Cloudflare Tunnel – Get started](https://developers.c
 - Teste no navegador: abra **PUBLIC_URL** (ex.: `https://xxx.trycloudflare.com`) e veja se aparece alguma resposta (ex.: rota `/health` ou mensagem do servidor). Se não abrir, o túnel ou o backend estão inacessíveis.
 - Confirme **VITE_API_URL** no Railway = URL do túnel (sem barra no final) e que você fez **redeploy** do frontend depois de definir essa variável.
 
+### "A API retornou uma página em vez de dados" / rotas `/api/*` devolvem HTML
+
+Isso ocorre quando o túnel encaminha o tráfego para um **serviço que serve o frontend (HTML)** em vez do **backend Node (JSON)**.
+
+1. **Verifique a porta do Public Hostname no túnel**
+  - No dashboard do Cloudflare (Tunnels → seu túnel → Public Hostname / Published application), o **URL** (Origin Server) deve ser `**http://localhost:PORT`**, onde **PORT** é **exatamente** a mesma variável **PORT** do seu `.env` do backend (ex.: `3004`).
+  - Se estiver `http://localhost:3000` mas seu backend usa **PORT=3004**, altere no Cloudflare para `**http://localhost:3004`** e salve.
+  - Se você tiver o frontend em modo dev na mesma máquina (ex.: Vite na porta 5173), **nunca** use essa porta no túnel; o túnel deve apontar **só** para a porta do backend **N**ode.
+2. **Teste direto no navegador**
+  - Abra `**https://api.seudominio.com/health`** (ou a URL do seu túnel). Deve retornar **JSON** (ex.: `{"status":"OK",...}`). Se retornar uma **página HTML** (layout do sistema, login, etc.), o túnel está apontando para o serviço errado — corrija a porta no Public Hostname conforme o item anterior.
+3. **Reinicie o cloudflared** após alterar a configuração do hostname no dashboard (em alguns casos é necessário).
+
 ### URL do túnel mudou
 
 - Atualize no backend: **PUBLIC_URL**.
@@ -467,20 +489,20 @@ Documentação oficial: [Cloudflare Tunnel – Get started](https://developers.c
 
 ### Teste (Quick Tunnel)
 
-- [ ] **cloudflared** instalado e no PATH (`cloudflared --version`).
-- [ ] Backend local: `.env` com **PORT**, **JWT_SECRET**, **PUBLIC_URL** (URL do túnel), **ALLOWED_ORIGINS** (URL do front no Railway).
-- [ ] Backend rodando: `npm run start:server` (ou `node dist/src/server.js`).
-- [ ] Túnel (teste) rodando: `cloudflared tunnel --url http://localhost:PORT`; URL anotada.
-- [ ] Railway: serviço do **frontend** com **Root Directory** = `frontend`, **Build** = `npm run build`, **Start** = `npx serve -s dist -l $PORT`.
-- [ ] Railway: domínio público gerado para o frontend; URL anotada.
-- [ ] Railway (frontend): variável **VITE_API_URL** = URL do túnel (sem barra no final); redeploy feito.
-- [ ] Teste: abrir a URL do frontend no Railway e fazer login.
+- **cloudflared** instalado e no PATH (`cloudflared --version`).
+- Backend local: `.env` com **PORT**, **JWT_SECRET**, **PUBLIC_URL** (URL do túnel), **ALLOWED_ORIGINS** (URL do front no Railway).
+- Backend rodando: `npm run start:server` (ou `node dist/src/server.js`).
+- Túnel (teste) rodando: `cloudflared tunnel --url http://localhost:PORT`; URL anotada.
+- Railway: serviço do **frontend** com **Root Directory** = `frontend`, **Build** = `npm run build`, **Start** = `npx serve -s dist -l $PORT`.
+- Railway: domínio público gerado para o frontend; URL anotada.
+- Railway (frontend): variável **VITE_API_URL** = URL do túnel (sem barra no final); redeploy feito.
+- Teste: abrir a URL do frontend no Railway e fazer login.
 
 ### Produção (túnel gerenciado)
 
-- [ ] Conta Cloudflare e domínio adicionado à Cloudflare.
-- [ ] Túnel criado no Zero Trust (ou dashboard) e **Public Hostname** configurado (HTTP → `localhost:PORT`).
-- [ ] Comando `cloudflared tunnel run --token ...` copiado; túnel rodando (ou configurado como serviço).
-- [ ] **PUBLIC_URL** e **VITE_API_URL** com a URL fixa (ex.: `https://api.seudominio.com`); backend reiniciado e frontend com redeploy.
+- Conta Cloudflare e domínio adicionado à Cloudflare.
+- Túnel criado no Zero Trust (ou dashboard) e **Public Hostname** configurado (HTTP → `localhost:PORT`).
+- Comando `cloudflared tunnel run --token ...` copiado; túnel rodando (ou configurado como serviço).
+- **PUBLIC_URL** e **VITE_API_URL** com a URL fixa (ex.: `https://api.seudominio.com`); backend reiniciado e frontend com redeploy.
 
 Com isso, o frontend no Railway usa o backend local via Cloudflare Tunnel (teste com Quick Tunnel ou produção com túnel gerenciado). Para um fluxo com backend e banco também na nuvem, veja [DEPLOY.md](../DEPLOY.md) e [RAILWAY_POSTGRES_PASSO_A_PASSO.md](RAILWAY_POSTGRES_PASSO_A_PASSO.md).

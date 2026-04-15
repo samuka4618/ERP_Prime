@@ -27,7 +27,15 @@ const DriverTrackingPage: React.FC = () => {
   const token = trackingToken || '';
   const [loading, setLoading] = useState(true);
   const [response, setResponse] = useState<TrackingResponse | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date>(() => new Date());
+  /** Momento em que o último status foi obtido com sucesso no servidor. */
+  const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
+  /** Atualizado a cada 1s para o relógio e o contador “há X s” fluírem em tempo real. */
+  const [clockMs, setClockMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setClockMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -40,7 +48,7 @@ const DriverTrackingPage: React.FC = () => {
         }
         const data = (await res.json()) as { data?: { response?: TrackingResponse } };
         setResponse(data.data?.response || null);
-        setLastUpdate(new Date());
+        setLastSyncAt(new Date());
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : 'Erro ao buscar status';
         toast.error(msg);
@@ -119,6 +127,24 @@ const DriverTrackingPage: React.FC = () => {
   const StatusIcon = status.icon;
   const phase = response.phase || 'submitted';
 
+  const agoraStr = new Date(clockMs).toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  const secDesdeSync =
+    lastSyncAt !== null ? Math.max(0, Math.floor((clockMs - lastSyncAt.getTime()) / 1000)) : null;
+  const ultimaLeituraStr =
+    lastSyncAt !== null
+      ? lastSyncAt.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        })
+      : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
       <div className="max-w-2xl mx-auto">
@@ -194,10 +220,22 @@ const DriverTrackingPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="text-center text-sm text-gray-500">
-              Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
-              <br />
-              <span className="text-xs">Atualização automática a cada 10 segundos</span>
+            <div className="text-center text-sm text-gray-600 space-y-1">
+              <div className="font-mono text-base text-gray-800 tabular-nums">Agora: {agoraStr}</div>
+              {ultimaLeituraStr !== null && secDesdeSync !== null && (
+                <div className="text-sm">
+                  Última leitura no servidor:{' '}
+                  <span className="font-mono font-medium tabular-nums">{ultimaLeituraStr}</span>
+                  <span className="text-gray-500">
+                    {' '}
+                    (há <span className="font-mono font-semibold text-blue-700 tabular-nums">{secDesdeSync}</span>s)
+                  </span>
+                </div>
+              )}
+              <div className="text-xs text-gray-500 pt-1">
+                O status é consultado no servidor a cada 10 segundos; o relógio e o contador atualizam a cada
+                segundo.
+              </div>
             </div>
           </div>
         </div>

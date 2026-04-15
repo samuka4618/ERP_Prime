@@ -1,5 +1,8 @@
 # Documentação da API - Sistema de Chamados Financeiro
 
+> **Nota (2026):** a API cresceu para além de chamados (cadastros, compras, descarregamento, permissões, etc.). Este ficheiro continua útil para endpoints detalhados de chamados e recursos core. Para **prefixos e módulos atuais**, use o **[MANUAL_COMPLETO_ERP_PRIME.md](./MANUAL_COMPLETO_ERP_PRIME.md)** e `GET /api` no servidor em desenvolvimento (JSON de descoberta).  
+> Formato de respostas: [API_RESPONSE_STANDARD.md](./API_RESPONSE_STANDARD.md).
+
 **Versão da API:** 1.0.0  
 **Base URL:** `http://localhost:3000/api`  
 **Formato de Dados:** JSON  

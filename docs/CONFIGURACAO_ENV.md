@@ -2,6 +2,8 @@
 
 Este documento explica como configurar o arquivo `.env` do ERP PRIME.
 
+> **Contexto:** variáveis adicionais (satélite Railway, Postgres, etc.) estão descritas no **[MANUAL_COMPLETO_ERP_PRIME.md](./MANUAL_COMPLETO_ERP_PRIME.md)** (secção de configuração) e no ficheiro **`.env.example`** na raiz do repositório.
+
 ## 🚀 Configuração Inicial
 
 ### 1. Criar o arquivo .env
@@ -9,7 +11,7 @@ Este documento explica como configurar o arquivo `.env` do ERP PRIME.
 Se você ainda não tem um arquivo `.env`, copie o template:
 
 ```bash
-cp env.example .env
+cp .env.example .env
 ```
 
 ### 2. Atualizar Caminhos (Se já tiver .env)

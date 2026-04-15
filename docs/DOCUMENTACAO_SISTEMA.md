@@ -1,5 +1,9 @@
 # Documentação do Sistema de Chamados Financeiro
 
+> **Nota (2026):** este ficheiro foi escrito quando o produto era descrito sobretudo como sistema de **chamados** e **cadastros**. O ERP PRIME evoluiu para incluir **compras**, **descarregamento**, **satélite Railway**, permissões alargadas, etc.  
+> Para uma visão **atual e completa** do repositório, use primeiro o **[MANUAL_COMPLETO_ERP_PRIME.md](./MANUAL_COMPLETO_ERP_PRIME.md)** e o **[índice de documentação](./INDICE_DOCUMENTACAO.md)**.  
+> O conteúdo abaixo mantém-se como referência detalhada sobre chamados, fluxos e permissões na perspetiva original.
+
 **Versão:** 1.0.0  
 **Data:** 2025  
 **Autor:** Equipe de Desenvolvimento

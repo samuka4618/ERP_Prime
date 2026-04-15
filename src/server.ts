@@ -406,11 +406,24 @@ app.get('/api', (req, res) => {
           'solicitacoes-compra': '/api/solicitacoes-compra',
           'orcamentos': '/api/orcamentos',
           'aprovadores': '/api/aprovadores',
-          'compradores': '/api/compradores'
+          'compradores': '/api/compradores',
+          'compras-anexos': '/api/compras-anexos'
+        }
+      },
+      descarregamento: {
+        name: 'Módulo de Descarregamento',
+        description: 'Agendamentos, docas, fornecedores, formulários públicos, SMS e respostas de motoristas',
+        endpoints: {
+          fornecedores: '/api/descarregamento/fornecedores',
+          agendamentos: '/api/descarregamento/agendamentos',
+          docas: '/api/descarregamento/docas',
+          formularios: '/api/descarregamento/formularios',
+          'form-responses': '/api/descarregamento/form-responses',
+          'sms-templates': '/api/descarregamento/sms-templates'
         }
       }
     },
-    documentation: 'https://github.com/seu-repo/documentacao'
+    documentation: 'Ver docs/MANUAL_COMPLETO_ERP_PRIME.md e docs/INDICE_DOCUMENTACAO.md no repositório'
   });
 });
 

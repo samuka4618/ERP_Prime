@@ -1,147 +1,128 @@
-# Estrutura do Projeto ERP PRIME
+# Estrutura do projeto ERP PRIME
 
-Este documento descreve a organização completa do projeto ERP PRIME.
+Este documento descreve a **organização de diretórios** do repositório. Para arquitetura funcional, módulos e fluxos, veja o **[MANUAL_COMPLETO_ERP_PRIME.md](./MANUAL_COMPLETO_ERP_PRIME.md)** e o **[índice de documentação](./INDICE_DOCUMENTACAO.md)**.
 
-## 📁 Estrutura de Diretórios
+---
+
+## Árvore de diretórios (visão atual)
 
 ```
-erp-prime/
+ERP_Prime/
+├── src/                          # Backend TypeScript (entry: server.ts)
+│   ├── config/                   # database.ts, sqlserver.ts (env)
+│   ├── core/                     # auth, users, permissions, system, database, audit, backup
+│   ├── modules/
+│   │   ├── chamados/             # tickets, categorias, anexos, relatórios, realtime
+│   │   ├── cadastros/            # client-registrations, client-config, analise-credito
+│   │   ├── compras/              # solicitações, orçamentos, aprovadores, compradores, anexos
+│   │   └── descarregamento/      # agendamentos, fornecedores, docas, formulários, SMS, satélite
+│   ├── shared/                   # middleware, utils, types
+│   ├── database/                 # migrate.ts (script npm run migrate na raiz)
+│   └── server.ts               # Express, /api, estáticos, WS, pollers
 │
-├── src/                          # Código-fonte do backend
-│   ├── modules/                  # Módulos do ERP
-│   │   ├── chamados/            # Módulo de gerenciamento de chamados
-│   │   └── cadastros/           # Módulo de cadastros de clientes
-│   ├── core/                     # Funcionalidades core do sistema
-│   │   ├── auth/                # Autenticação e autorização
-│   │   ├── users/               # Gerenciamento de usuários
-│   │   ├── system/               # Configurações do sistema
-│   │   └── database/            # Configuração e migrações do banco
-│   ├── shared/                   # Recursos compartilhados
-│   │   ├── middleware/          # Middlewares compartilhados
-│   │   ├── utils/               # Utilitários
-│   │   └── types/               # Tipos TypeScript
-│   ├── config/                   # Arquivos de configuração
-│   └── server.ts                # Ponto de entrada do servidor
-│
-├── frontend/                     # Aplicação frontend React
+├── frontend/                     # SPA React (Vite)
 │   ├── src/
-│   │   ├── components/          # Componentes React reutilizáveis
-│   │   ├── pages/               # Páginas da aplicação
-│   │   ├── contexts/            # Contextos React
-│   │   ├── services/             # Serviços de API
-│   │   └── types/                # Tipos TypeScript
-│   └── dist/                     # Build de produção
+│   │   ├── components/
+│   │   ├── contexts/
+│   │   ├── hooks/
+│   │   ├── pages/                # Chamados, Cadastros, Compras/, Descarregamento/, admin...
+│   │   ├── services/             # api.ts
+│   │   ├── types/
+│   │   └── utils/
+│   ├── dist/                     # Build de produção (npm run build)
+│   ├── MODULOS.md
+│   └── FRONTEND_BEST_PRACTICES.md
 │
-├── data/                         # Dados do sistema
-│   ├── database/                 # Bancos de dados SQLite
-│   │   ├── chamados.db          # Banco principal
-│   │   └── *.db-shm             # Arquivos de shared memory
-│   │   └── *.db-wal             # Write-ahead log
-│   └── backups/                  # Backups do banco de dados
+├── RailwaySatellite/             # Serviço público (Railway): API + web/ (React motorista)
+│   ├── src/
+│   └── web/
 │
-├── storage/                      # Armazenamento de arquivos
-│   ├── uploads/                  # Arquivos enviados pelos usuários
-│   └── images/                   # Imagens (cadastros, etc)
+├── data/                         # SQLite local (DB_PATH), backups
+├── storage/                      # uploads, images, avatars (paths por env)
+├── logs/                         # Logs da aplicação / PM2 (se usados)
+├── scripts/                      # nginx, PM2, SSL, copy-schema, reset-db, create-user...
+├── nginx/                        # Exemplos de configuração proxy
+├── docs/                         # Documentação (manual completo, deploy, API...)
+├── tests/                        # Jest (ex.: tests/auth, tests/schemas)
+├── tools/
+│   └── cadastros-legacy/         # Ferramentas / integrações legadas
+├── sistema/                      # Árvore legada/paralela (não é o entrypoint do package.json raiz)
 │
-├── logs/                         # Logs do sistema
-│   ├── *.log                     # Logs diários
-│   └── pm2-*.log                 # Logs do PM2
-│
-├── scripts/                      # Scripts de automação
-│   ├── pm2-*.js                  # Configurações PM2
-│   ├── pm2-*.bat                 # Scripts batch PM2
-│   ├── test-*.js                 # Scripts de teste
-│   └── ecosystem.config.js      # Configuração do PM2
-│
-├── docs/                         # Documentação
-│   ├── ESTRUTURA_PROJETO.md      # Este arquivo
-│   ├── DOCUMENTACAO_API.md      # Documentação da API
-│   └── DOCUMENTACAO_SISTEMA.md   # Documentação do sistema
-│
-├── tools/                        # Ferramentas auxiliares
-│   └── cadastros-legacy/         # Sistema de cadastros legado
-│
-├── tests/                        # Testes automatizados
-│   ├── unit/                     # Testes unitários
-│   ├── integration/              # Testes de integração
-│   └── e2e/                      # Testes end-to-end
-│
-├── .gitignore                    # Arquivos ignorados pelo Git
-├── package.json                  # Dependências e scripts
-├── tsconfig.json                 # Configuração TypeScript
-└── README.md                     # Documentação principal
+├── docker-compose.postgres.yml
+├── package.json
+├── tsconfig.json
+├── vercel.json
+├── .env.example
+└── README.md
 ```
 
-## 📂 Descrição das Pastas Principais
+---
+
+## Descrição das pastas principais
 
 ### `src/`
-Contém todo o código-fonte do backend, organizado de forma modular:
-- **modules/**: Módulos independentes do ERP (chamados, cadastros, etc)
-- **core/**: Funcionalidades essenciais (auth, users, system, database)
-- **shared/**: Recursos compartilhados entre módulos
-- **config/**: Arquivos de configuração
 
-### `data/`
-Armazena dados persistentes do sistema:
-- **database/**: Bancos de dados SQLite e arquivos relacionados
-- **backups/**: Backups automáticos do banco de dados
+Backend modular: cada pasta em `modules/` regista as suas rotas no `apiRouter` a partir de `server.ts`. O núcleo transversal fica em `core/`.
 
-### `storage/`
-Armazena arquivos enviados pelos usuários:
-- **uploads/**: Documentos e anexos
-- **images/**: Imagens de cadastros e outros
+### `frontend/`
 
-### `logs/`
-Centraliza todos os logs do sistema:
-- Logs diários por data
-- Logs do PM2 (backend e frontend)
-- Logs de serviços específicos
+Interface única do ERP para utilizadores autenticados e rotas públicas selecionadas (ex.: formulário de descarregamento).
 
-### `scripts/`
-Scripts de automação e deploy:
-- Configurações PM2
-- Scripts de teste
-- Scripts de backup
+### `RailwaySatellite/`
+
+Microserviço opcional: Postgres dedicado, rotas `/internal` (ERP) e `/api/public` + UI em `/d/:slug` e `/t/:token`.
+
+### `data/` e `storage/`
+
+- **data/** — persistência SQLite quando não se usa Postgres no ERP.
+- **storage/** — ficheiros submetidos pelos utilizadores (deve entrar nos backups).
+
+### `scripts/` e `nginx/`
+
+Automação de arranque (Node + Nginx opcional), PM2, certificados e tarefas de manutenção.
 
 ### `docs/`
-Documentação completa do projeto:
-- Estrutura do projeto
-- Documentação da API
-- Documentação do sistema
 
-### `tools/`
-Ferramentas auxiliares e sistemas legados:
-- Sistema de cadastros legado (em migração)
+Documentação Markdown; o ficheiro central de produto é `MANUAL_COMPLETO_ERP_PRIME.md`.
 
 ### `tests/`
-Testes automatizados organizados por tipo:
-- **unit/**: Testes unitários de funções e classes
-- **integration/**: Testes de integração entre módulos
-- **e2e/**: Testes end-to-end da aplicação completa
 
-## 🔄 Migração de Estrutura Antiga
+Testes Jest (estrutura pode crescer; atualmente inclui testes de auth e schemas).
 
-A estrutura foi reorganizada para seguir padrões profissionais de ERP. As principais mudanças foram:
+### `tools/cadastros-legacy/`
 
-1. **Databases**: Movidos de `database/` para `data/database/`
-2. **Logs**: Centralizados em `logs/` (antes espalhados)
-3. **Uploads**: Movidos de `uploads/` para `storage/uploads/`
-4. **Imagens**: Movidas de `imgCadastros/` para `storage/images/`
-5. **Scripts**: Movidos para `scripts/`
-6. **Documentação**: Movida para `docs/`
-7. **Cadastros**: Movido para `tools/cadastros-legacy/`
+Código e scripts históricos de cadastros — não confundir com `src/modules/cadastros/`.
 
-## 📝 Convenções
+### `sistema/`
 
-- **Nomes de pastas**: minúsculas, separadas por hífen quando necessário
-- **Arquivos de código**: camelCase para TypeScript/JavaScript
-- **Arquivos de configuração**: kebab-case
-- **Logs**: Formato `YYYY-MM-DD.log` ou `servico-tipo.log`
+Projeto ou monorepo antigo em paralelo. **Não** substitui `src/` + `frontend/` para o comando `npm run dev` da raiz.
 
-## 🚀 Próximos Passos
+---
 
-- [ ] Migrar completamente o sistema de cadastros legado para o módulo
-- [ ] Implementar sistema de backups automáticos
-- [ ] Adicionar mais testes automatizados
-- [ ] Melhorar documentação da API
+## Migração de estrutura antiga (histórico)
 
+Alterações já consolidadas no layout atual:
+
+1. Bases SQLite em `data/database/`
+2. Logs centralizados em `logs/` (quando aplicável)
+3. Uploads em `storage/uploads/` e imagens em `storage/images/`
+4. Scripts operacionais em `scripts/`
+5. Documentação em `docs/`
+6. Cadastros de negócio no módulo `src/modules/cadastros/`; legado em `tools/cadastros-legacy/`
+
+---
+
+## Convenções
+
+- **Pastas:** minúsculas; hífen quando fizer sentido (`category-assignments` na API é kebab-case).
+- **Código TypeScript:** camelCase para variáveis/funções; PascalCase para classes/componentes React.
+- **Permissões:** `modulo.recurso.acao` (ex.: `descarregamento.agendamentos.view`).
+
+---
+
+## Manutenção
+
+Ao criar um novo módulo ou pasta de topo:
+
+1. Atualizar a árvore acima e o [MANUAL_COMPLETO_ERP_PRIME.md](./MANUAL_COMPLETO_ERP_PRIME.md).
+2. Se for módulo de API, registar em `src/server.ts` e documentar o prefixo `/api/...`.

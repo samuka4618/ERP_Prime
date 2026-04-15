@@ -2,6 +2,13 @@
 
 Sistema completo de gestão empresarial (ERP) modular desenvolvido com **Node.js**, **Express**, **TypeScript**, **React** (Vite) e **SQLite** ou **PostgreSQL** (configurável via `USE_POSTGRES` e `DATABASE_URL`).
 
+### Documentação
+
+| Recurso | Descrição |
+|---------|-----------|
+| **[docs/MANUAL_COMPLETO_ERP_PRIME.md](docs/MANUAL_COMPLETO_ERP_PRIME.md)** | Manual único de produto e engenharia: arquitetura, todas as pastas, módulos, fluxos, satélite Railway, permissões e decisões técnicas. |
+| **[docs/INDICE_DOCUMENTACAO.md](docs/INDICE_DOCUMENTACAO.md)** | Índice de toda a documentação Markdown do repositório (deploy, API, diagnóstico, etc.). |
+
 ---
 
 ## 🏢 Sobre o ERP PRIME

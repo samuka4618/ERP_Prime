@@ -26,6 +26,8 @@ frontend/node_modules/
 
 # Railway Satellite (app separada na raiz do repo)
 RailwaySatellite/dist/
+RailwaySatellite/web/dist/
+RailwaySatellite/web/node_modules/
 
 # Mobile (React Native / Expo)
 mobile/node_modules/

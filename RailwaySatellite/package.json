@@ -8,9 +8,11 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:web && tsc",
+    "build:web": "npm install --prefix web --no-audit --no-fund && npm run build --prefix web",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev:web": "npm run dev --prefix web"
   },
   "dependencies": {
     "dotenv": "^16.3.1",

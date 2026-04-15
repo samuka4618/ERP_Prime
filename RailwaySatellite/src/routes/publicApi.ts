@@ -98,6 +98,14 @@ router.get('/tracking/:trackingToken', async (req: Request, res: Response) => {
     return;
   }
   const row = r.rows[0];
+  const schema = (row.schema_json || {}) as { fornecedores?: Array<{ id: number; name: string; category: string }> };
+  const fid = row.fornecedor_id as number;
+  let fornecedor: { id: number; name: string; category: string } | undefined;
+  if (schema.fornecedores && Array.isArray(schema.fornecedores)) {
+    const hit = schema.fornecedores.find((x) => Number(x.id) === Number(fid));
+    if (hit) fornecedor = { id: hit.id, name: hit.name, category: hit.category };
+  }
+
   res.json({
     data: {
       response: {
@@ -105,6 +113,7 @@ router.get('/tracking/:trackingToken', async (req: Request, res: Response) => {
         driver_name: row.driver_name,
         phone_number: row.phone,
         fornecedor_id: row.fornecedor_id,
+        fornecedor,
         responses: row.responses,
         submitted_at: row.created_at,
         tracking_code: row.tracking_token,

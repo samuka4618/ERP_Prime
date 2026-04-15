@@ -1,6 +1,8 @@
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import fs from 'fs';
 import { config } from './config';
 import { getPool, runMigrations } from './db';
 import internalRoutes from './routes/internal';
@@ -43,8 +45,22 @@ async function main(): Promise<void> {
   app.use('/internal', internalRoutes);
   app.use('/api/public', publicLimiter, publicApiRoutes);
 
-  app.get('/d/:publicSlug', publicLimiter, renderFormPage);
-  app.get('/t/:trackingToken', publicLimiter, renderTrackingPage);
+  const webDist = path.resolve(__dirname, '../web/dist');
+  const webIndex = path.join(webDist, 'index.html');
+  if (fs.existsSync(webIndex)) {
+    app.use(express.static(webDist));
+    app.get('/d/:publicSlug', publicLimiter, (_req, res) => {
+      res.sendFile(webIndex);
+    });
+    app.get('/t/:trackingToken', publicLimiter, (_req, res) => {
+      res.sendFile(webIndex);
+    });
+    console.log('✅ UI motorista (React) servida de web/dist');
+  } else {
+    console.warn('⚠️  web/dist não encontrado — UI legado HTML. Execute: npm run build:web');
+    app.get('/d/:publicSlug', publicLimiter, renderFormPage);
+    app.get('/t/:trackingToken', publicLimiter, renderTrackingPage);
+  }
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Não encontrado' });

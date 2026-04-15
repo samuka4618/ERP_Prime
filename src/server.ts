@@ -19,6 +19,7 @@ import { registerCadastrosRoutes } from './modules/cadastros';
 import { registerComprasRoutes } from './modules/compras';
 import { registerDescarregamentoRoutes } from './modules/descarregamento';
 import { SatelliteInboundPoller } from './modules/descarregamento/services/SatelliteInboundPoller';
+import { SatelliteSyncService } from './modules/descarregamento/services/SatelliteSyncService';
 import { initializeWebSocket } from './modules/chamados/services/WebSocketService';
 import { ReportController } from './modules/chamados/controllers/ReportController';
 
@@ -501,6 +502,11 @@ async function startServer() {
       console.log(`❤️  Health: http://${localIP}:${PORT}/health`);
       console.log(`🔌 WebSocket: ws://${localIP}:${PORT}/ws`);
       SatelliteInboundPoller.start();
+      setTimeout(() => {
+        SatelliteSyncService.pushAllPublishedSnapshots().catch((err) => {
+          console.error('SatelliteSyncService.pushAllPublishedSnapshots:', err);
+        });
+      }, 5000);
     });
 
     // Inicializar WebSocket

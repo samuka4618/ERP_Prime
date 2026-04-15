@@ -26,7 +26,14 @@ export function renderFormPage(req: Request, res: Response): void {
     const app = document.getElementById('app');
     async function load() {
       const r = await fetch('${base}/api/public/form/' + encodeURIComponent(slug));
-      if (!r.ok) { app.innerHTML = '<p class="err">Formulário não encontrado.</p>'; return; }
+      if (!r.ok) {
+        let detail = '';
+        try { const j = await r.clone().json(); if (j && j.error) detail = String(j.error); } catch (e) {}
+        const idHint = slug.indexOf('fd-') === 0 ? slug.replace(/^fd-/, '') : slug;
+        app.innerHTML = '<p class="err">Não foi possível carregar o formulário' + (r.status ? ' (HTTP ' + r.status + ')' : '') + (detail ? ': ' + escape(detail) : '') + '.</p>' +
+          '<p class="muted">O slug <code>' + escape(slug) + '</code> corresponde ao formulário de id <strong>' + escape(idHint) + '</strong> no ERP. Precisa estar <strong>publicado</strong> e o ERP precisa ter enviado o snapshot ao satélite (reinicie o backend após ~5s ou grave de novo o formulário).</p>';
+        return;
+      }
       const j = await r.json();
       const f = j.data.formulario;
       const forns = j.data.fornecedores || [];

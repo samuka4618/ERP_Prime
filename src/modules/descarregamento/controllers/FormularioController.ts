@@ -52,8 +52,12 @@ export class FormularioController {
     const formulario = await FormularioModel.create(userId, value);
 
     if (formulario.is_published) {
-      SatelliteSyncService.pushFormSnapshot(formulario).catch((err) =>
-        console.error('SatelliteSyncService.pushFormSnapshot (create):', err)
+      SatelliteSyncService.pushFormSnapshot(formulario).catch((err: any) =>
+        console.error(
+          'SatelliteSyncService.pushFormSnapshot (create):',
+          err?.response?.status,
+          err?.response?.data ?? err?.message
+        )
       );
     }
 
@@ -209,12 +213,20 @@ export class FormularioController {
     }
 
     if (formulario.is_published) {
-      SatelliteSyncService.pushFormSnapshot(formulario).catch((err) =>
-        console.error('SatelliteSyncService.pushFormSnapshot (update):', err)
+      SatelliteSyncService.pushFormSnapshot(formulario).catch((err: any) =>
+        console.error(
+          'SatelliteSyncService.pushFormSnapshot (update):',
+          err?.response?.status,
+          err?.response?.data ?? err?.message
+        )
       );
     } else {
-      SatelliteSyncService.deleteSnapshotBySlug(formulario.id).catch((err) =>
-        console.error('SatelliteSyncService.deleteSnapshotBySlug:', err)
+      SatelliteSyncService.deleteSnapshotBySlug(formulario.id).catch((err: any) =>
+        console.error(
+          'SatelliteSyncService.deleteSnapshotBySlug:',
+          err?.response?.status,
+          err?.response?.data ?? err?.message
+        )
       );
     }
 
@@ -247,8 +259,12 @@ export class FormularioController {
 
     await FormularioModel.delete(formularioId);
 
-    SatelliteSyncService.deleteSnapshotBySlug(formularioId).catch((err) =>
-      console.error('SatelliteSyncService.deleteSnapshotBySlug (delete):', err)
+    SatelliteSyncService.deleteSnapshotBySlug(formularioId).catch((err: any) =>
+      console.error(
+        'SatelliteSyncService.deleteSnapshotBySlug (delete):',
+        err?.response?.status,
+        err?.response?.data ?? err?.message
+      )
     );
 
     res.json({

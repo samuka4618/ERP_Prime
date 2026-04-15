@@ -66,6 +66,30 @@ export class SatelliteSyncService {
     });
   }
 
+  /** Envia ao satélite todos os formulários publicados (útil após configurar env ou reiniciar o Postgres do Railway). */
+  static async pushAllPublishedSnapshots(): Promise<void> {
+    if (!this.isEnabled()) return;
+    const { FormularioModel } = await import('../models/Formulario');
+    const forms = await FormularioModel.findPublished();
+    if (forms.length === 0) {
+      console.log('🛰️  Satélite: nenhum formulário publicado para sincronizar.');
+      return;
+    }
+    for (const f of forms) {
+      try {
+        await this.pushFormSnapshot(f);
+        console.log(`🛰️  Satélite: snapshot OK (form id=${f.id}, slug=fd-${f.id})`);
+      } catch (e: any) {
+        const st = e?.response?.status;
+        const body = e?.response?.data;
+        console.error(
+          `🛰️  Satélite: falha ao enviar form ${f.id} (HTTP ${st ?? '—'}):`,
+          body ?? e?.message ?? e
+        );
+      }
+    }
+  }
+
   static async deleteSnapshotBySlug(formId: number): Promise<void> {
     const c = client();
     if (!c) return;

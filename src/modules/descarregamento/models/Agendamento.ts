@@ -33,7 +33,7 @@ export interface Agendamento {
 export interface CreateAgendamentoRequest {
   fornecedor_id: number;
   scheduled_date: string;
-  scheduled_time: string;
+  scheduled_time?: string;
   dock: string;
   notes?: string;
 }
@@ -73,13 +73,15 @@ export class AgendamentoModel {
       throw new Error(`Doca ${data.dock} não encontrada ou inativa`);
     }
 
+    const scheduledTime = data.scheduled_time != null && data.scheduled_time !== '' ? data.scheduled_time : '';
+
     await dbRun(
       `INSERT INTO agendamentos_descarga (fornecedor_id, scheduled_date, scheduled_time, dock, status, notes, created_by)
        VALUES (?, ?, ?, ?, 'pendente', ?, ?)`,
       [
         data.fornecedor_id,
         data.scheduled_date,
-        data.scheduled_time,
+        scheduledTime,
         data.dock,
         data.notes || null,
         userId
@@ -90,7 +92,7 @@ export class AgendamentoModel {
       `SELECT * FROM agendamentos_descarga 
        WHERE fornecedor_id = ? AND scheduled_date = ? AND scheduled_time = ? 
        ORDER BY id DESC LIMIT 1`,
-      [data.fornecedor_id, data.scheduled_date, data.scheduled_time]
+      [data.fornecedor_id, data.scheduled_date, scheduledTime]
     ) as any;
 
     // Registrar histórico inicial
@@ -290,9 +292,9 @@ export class AgendamentoModel {
       fields.push('scheduled_date = ?');
       values.push(data.scheduled_date);
     }
-    if (data.scheduled_time) {
+    if (data.scheduled_time !== undefined) {
       fields.push('scheduled_time = ?');
-      values.push(data.scheduled_time);
+      values.push(data.scheduled_time && data.scheduled_time !== '' ? data.scheduled_time : '');
     }
     if (data.dock) {
       fields.push('dock = ?');

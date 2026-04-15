@@ -139,7 +139,6 @@ const NovoAgendamento: React.FC = () => {
     const err: typeof fieldErrors = {};
     if (!formData.fornecedor_id) err.fornecedor_id = 'Selecione o fornecedor';
     if (!formData.scheduled_date) err.scheduled_date = 'Data é obrigatória';
-    if (!formData.scheduled_time) err.scheduled_time = 'Hora é obrigatória';
     if (!formData.dock?.trim()) err.dock = 'Selecione a doca';
     setFieldErrors(err);
     if (Object.keys(err).length > 0) {
@@ -165,7 +164,7 @@ const NovoAgendamento: React.FC = () => {
         body: JSON.stringify({
           fornecedor_id: parseInt(formData.fornecedor_id),
           scheduled_date: formData.scheduled_date,
-          scheduled_time: formData.scheduled_time,
+          scheduled_time: formData.scheduled_time || '',
           dock: formData.dock,
           notes: formData.notes || undefined
         })
@@ -295,7 +294,7 @@ const NovoAgendamento: React.FC = () => {
             <div>
               <label htmlFor="agendamento-scheduled_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <Clock className="inline w-4 h-4 mr-2" />
-                Hora do Agendamento *
+                Hora do Agendamento <span className="font-normal text-gray-500 dark:text-gray-400">(opcional)</span>
               </label>
               <input
                 id="agendamento-scheduled_time"
@@ -303,7 +302,6 @@ const NovoAgendamento: React.FC = () => {
                 name="scheduled_time"
                 value={formData.scheduled_time}
                 onChange={handleChange}
-                required
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
                   fieldErrors.scheduled_time ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}

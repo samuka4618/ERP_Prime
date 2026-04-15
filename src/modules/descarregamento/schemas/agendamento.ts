@@ -3,7 +3,12 @@ import Joi from 'joi';
 export const createAgendamentoSchema = Joi.object({
   fornecedor_id: Joi.number().integer().positive().required(),
   scheduled_date: Joi.string().required().pattern(/^\d{4}-\d{2}-\d{2}$/),
-  scheduled_time: Joi.string().required().pattern(/^\d{2}:\d{2}$/),
+  scheduled_time: Joi.string()
+    .allow('', null)
+    .empty([null])
+    .optional()
+    .default('')
+    .pattern(/^(\d{2}:\d{2})?$/, { name: 'hora HH:MM ou vazio' }),
   dock: Joi.string().required().min(1).max(10),
   notes: Joi.string().optional().allow(null, '').max(1000)
 });
@@ -11,7 +16,11 @@ export const createAgendamentoSchema = Joi.object({
 export const updateAgendamentoSchema = Joi.object({
   fornecedor_id: Joi.number().integer().positive().optional(),
   scheduled_date: Joi.string().optional().pattern(/^\d{4}-\d{2}-\d{2}$/),
-  scheduled_time: Joi.string().optional().pattern(/^\d{2}:\d{2}$/),
+  scheduled_time: Joi.string()
+    .allow('', null)
+    .empty([null])
+    .optional()
+    .pattern(/^(\d{2}:\d{2})?$/, { name: 'hora HH:MM ou vazio' }),
   dock: Joi.string().optional().min(1).max(10),
   status: Joi.string().valid('pendente', 'motorista_pronto', 'em_andamento', 'concluido').optional(),
   notes: Joi.string().optional().allow(null, '').max(1000)

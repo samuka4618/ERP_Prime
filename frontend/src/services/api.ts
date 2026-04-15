@@ -1088,7 +1088,7 @@ class ApiService {
     const response = await this.api.get<ApiResponse<{ agendamento: any }>>(`/descarregamento/agendamentos/${id}`);
     return response.data.data.agendamento;
   }
-  async createAgendamentoDescarregamento(data: { fornecedor_id: number; scheduled_date: string; scheduled_time: string; dock: string; notes?: string }) {
+  async createAgendamentoDescarregamento(data: { fornecedor_id: number; scheduled_date: string; scheduled_time?: string; dock: string; notes?: string }) {
     const response = await this.api.post<ApiResponse<{ agendamento: any }>>('/descarregamento/agendamentos', data);
     return response.data.data.agendamento;
   }

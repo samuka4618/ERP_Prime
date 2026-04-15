@@ -3,6 +3,17 @@ import { FornecedorModel } from '../models/Fornecedor';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
 import { log as auditLog } from '../../../core/audit/AuditService';
 import { createFornecedorSchema, updateFornecedorSchema, fornecedorQuerySchema } from '../schemas/fornecedor';
+import { SatelliteSyncService } from '../services/SatelliteSyncService';
+
+function syncSatelliteFornecedoresCatalog(): void {
+  SatelliteSyncService.pushAllPublishedSnapshots().catch((err: any) =>
+    console.error(
+      'SatelliteSyncService.pushAllPublishedSnapshots (fornecedor):',
+      err?.response?.status,
+      err?.response?.data ?? err?.message
+    )
+  );
+}
 
 export class FornecedorController {
   static create = asyncHandler(async (req: Request, res: Response) => {
@@ -13,6 +24,8 @@ export class FornecedorController {
     }
 
     const fornecedor = await FornecedorModel.create(value);
+
+    syncSatelliteFornecedoresCatalog();
 
     res.status(201).json({
       message: 'Fornecedor criado com sucesso',
@@ -77,6 +90,8 @@ export class FornecedorController {
       return;
     }
 
+    syncSatelliteFornecedoresCatalog();
+
     res.json({
       message: 'Fornecedor atualizado com sucesso',
       data: { fornecedor }
@@ -99,6 +114,7 @@ export class FornecedorController {
     }
 
     await FornecedorModel.delete(fornecedorId);
+    syncSatelliteFornecedoresCatalog();
     auditLog({
       userId: req.user?.id,
       userName: req.user?.name,

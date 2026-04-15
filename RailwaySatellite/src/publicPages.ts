@@ -42,7 +42,7 @@ export function renderFormPage(req: Request, res: Response): void {
       html += '<form id="f">';
       html += '<label>Nome do motorista *</label><input name="driver_name" required />';
       html += '<label>Telefone</label><input name="phone_number" />';
-      html += '<label>Fornecedor *</label><select name="fornecedor_id" required><option value="">Selecione</option>';
+      html += '<label>Fornecedor *</label><select id="fornecedor_id_select" name="fornecedor_id" required><option value="">Selecione</option>';
       forns.forEach(function(x) {
         html += '<option value="' + x.id + '">' + escape(x.name) + ' (' + escape(x.category) + ')</option>';
       });
@@ -92,6 +92,25 @@ export function renderFormPage(req: Request, res: Response): void {
         if (tok) location.href = '/t/' + encodeURIComponent(tok);
         else alert('Registrado.');
       };
+      if (window.__fornecedorPoll) clearInterval(window.__fornecedorPoll);
+      window.__fornecedorPoll = setInterval(async function() {
+        const formEl = document.getElementById('f');
+        const sel = document.getElementById('fornecedor_id_select');
+        if (!formEl || !sel) return;
+        try {
+          const pr = await fetch('${base}/api/public/form/' + encodeURIComponent(slug));
+          if (!pr.ok) return;
+          const pj = await pr.json();
+          const list = (pj.data && pj.data.fornecedores) ? pj.data.fornecedores : [];
+          const cur = sel.value;
+          let opts = '<option value="">Selecione</option>';
+          list.forEach(function(x) {
+            opts += '<option value="' + x.id + '">' + escape(x.name) + ' (' + escape(x.category) + ')</option>';
+          });
+          sel.innerHTML = opts;
+          if (cur && list.some(function(x) { return String(x.id) === cur; })) sel.value = cur;
+        } catch (e) { /* silencioso */ }
+      }, 20000);
     }
     function escape(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
     function escAttr(s) { return String(s).replace(/"/g, '&quot;'); }

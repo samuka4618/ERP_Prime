@@ -15,6 +15,16 @@ export class QRCodeService {
   static async getPublicFormUrl(formularioId: number): Promise<string> {
     const path = `/descarregamento/formulario/${formularioId}`;
 
+    const satBase = (process.env.SATELLITE_PUBLIC_URL || process.env.SATELLITE_BASE_URL || '').trim();
+    const satToken = (process.env.SATELLITE_AUTH_TOKEN || '').trim();
+    if (satBase && satToken) {
+      let base = satBase.replace(/\/+$/, '');
+      if (!/^https?:\/\//i.test(base)) {
+        base = `https://${base}`;
+      }
+      return `${base}/d/fd-${formularioId}`;
+    }
+
     // Quando o front está em outro domínio (ex.: Railway) e a API no túnel (api.ssnas.com.br),
     // o link do formulário deve abrir no front (Railway), não na API.
     const clientUrl = (process.env.CLIENT_URL || process.env.FRONTEND_URL || '').trim();

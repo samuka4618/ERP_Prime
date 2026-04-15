@@ -12,6 +12,8 @@ export interface FormResponse {
   is_in_yard: boolean;
   submitted_at: Date | string;
   checked_out_at?: Date | string;
+  /** Id da submissão no satélite Railway (quando a chegada veio do satélite). */
+  satellite_submission_id?: string;
   tracking_code?: string;
   /** Preenchido quando o operador inicia a liberação para doca (status "realizando descarga") */
   discharge_started_at?: Date | string;
@@ -30,6 +32,9 @@ export interface CreateFormResponseRequest {
   driver_name: string;
   phone_number?: string;
   fornecedor_id: number;
+  /** Se definido (ex.: importação do satélite), usa este código em vez de gerar um novo. */
+  tracking_code?: string;
+  satellite_submission_id?: string;
 }
 
 export class FormResponseModel {
@@ -52,15 +57,11 @@ export class FormResponseModel {
       }
     }
 
-    // Gerar código de rastreamento único
-    let trackingCode = this.generateTrackingCode();
-    
-    // Garantir que o código é único
+    let trackingCode = (data.tracking_code || '').trim() || this.generateTrackingCode();
     let exists = await dbGet(
       'SELECT id FROM form_responses_descarga WHERE tracking_code = ?',
       [trackingCode]
     );
-    
     while (exists) {
       trackingCode = this.generateTrackingCode();
       exists = await dbGet(
@@ -98,8 +99,8 @@ export class FormResponseModel {
 
     await dbRun(
       `INSERT INTO form_responses_descarga 
-       (form_id, responses, driver_name, phone_number, fornecedor_id, agendamento_id, is_in_yard, tracking_code)
-       VALUES (?, ?, ?, ?, ?, ?, ${sqlBooleanTrue()}, ?)`,
+       (form_id, responses, driver_name, phone_number, fornecedor_id, agendamento_id, is_in_yard, tracking_code, satellite_submission_id)
+       VALUES (?, ?, ?, ?, ?, ?, ${sqlBooleanTrue()}, ?, ?)`,
       [
         formId || null,
         JSON.stringify(data.responses),
@@ -107,7 +108,8 @@ export class FormResponseModel {
         data.phone_number || null,
         data.fornecedor_id,
         agendamento?.id || null,
-        trackingCode
+        trackingCode,
+        data.satellite_submission_id || null
       ]
     );
 
@@ -149,6 +151,7 @@ export class FormResponseModel {
       is_in_yard: Boolean(response.is_in_yard),
       submitted_at: response.submitted_at,
       checked_out_at: response.checked_out_at || undefined,
+      satellite_submission_id: response.satellite_submission_id || undefined,
       tracking_code: response.tracking_code || undefined,
       discharge_started_at: response.discharge_started_at || undefined,
       discharge_duration_minutes: response.discharge_duration_minutes != null ? response.discharge_duration_minutes : undefined,
@@ -158,6 +161,18 @@ export class FormResponseModel {
         category: response.fornecedor_category
       } : undefined
     };
+  }
+
+  static async findBySatelliteSubmissionId(satelliteId: string): Promise<FormResponse | null> {
+    const response = await dbGet(
+      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category
+       FROM form_responses_descarga r
+       LEFT JOIN fornecedores_descarga f ON r.fornecedor_id = f.id
+       WHERE r.satellite_submission_id = ?`,
+      [satelliteId]
+    ) as any;
+    if (!response) return null;
+    return this.findById(response.id);
   }
 
   static async findByTrackingCode(trackingCode: string): Promise<FormResponse | null> {
@@ -182,6 +197,7 @@ export class FormResponseModel {
       is_in_yard: Boolean(response.is_in_yard),
       submitted_at: response.submitted_at,
       checked_out_at: response.checked_out_at || undefined,
+      satellite_submission_id: response.satellite_submission_id || undefined,
       tracking_code: response.tracking_code || undefined,
       discharge_started_at: response.discharge_started_at || undefined,
       discharge_duration_minutes: response.discharge_duration_minutes != null ? response.discharge_duration_minutes : undefined,
@@ -217,6 +233,7 @@ export class FormResponseModel {
         tracking_code: r.tracking_code || undefined,
         discharge_started_at: r.discharge_started_at || undefined,
         discharge_duration_minutes: r.discharge_duration_minutes != null ? r.discharge_duration_minutes : undefined,
+        satellite_submission_id: r.satellite_submission_id || undefined,
         fornecedor: r.fornecedor_id ? {
           id: r.fornecedor_id,
           name: r.fornecedor_name,
@@ -381,6 +398,7 @@ export class FormResponseModel {
         tracking_code: r.tracking_code || undefined,
         discharge_started_at: r.discharge_started_at || undefined,
         discharge_duration_minutes: r.discharge_duration_minutes != null ? r.discharge_duration_minutes : undefined,
+        satellite_submission_id: r.satellite_submission_id || undefined,
         fornecedor: r.fornecedor_id ? {
           id: r.fornecedor_id,
           name: r.fornecedor_name,

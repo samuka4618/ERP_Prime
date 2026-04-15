@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { FormResponseModel } from '../models/FormResponse';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
 import { createFormResponseSchema, formResponseQuerySchema } from '../schemas/formResponse';
+import { SatelliteSyncService } from '../services/SatelliteSyncService';
 
 export class FormResponseController {
   // Rota pública para registro de chegada (sem autenticação)
@@ -105,6 +106,14 @@ export class FormResponseController {
 
     const updatedResponse = await FormResponseModel.checkout(responseId);
 
+    if (updatedResponse?.satellite_submission_id) {
+      SatelliteSyncService.pushDriverState(
+        updatedResponse.satellite_submission_id,
+        'completed',
+        'Descarga concluída. Obrigado!'
+      ).catch((err) => console.error('Satellite pushDriverState (checkout):', err));
+    }
+
     res.json({
       message: 'Motorista liberado com sucesso',
       data: { response: updatedResponse }
@@ -137,6 +146,14 @@ export class FormResponseController {
     if (!updatedResponse) {
       res.status(400).json({ error: 'Não foi possível iniciar a descarga' });
       return;
+    }
+
+    if (updatedResponse.satellite_submission_id) {
+      SatelliteSyncService.pushDriverState(
+        updatedResponse.satellite_submission_id,
+        'dock_released',
+        'Liberado para descarregamento na doca.'
+      ).catch((err) => console.error('Satellite pushDriverState (dock):', err));
     }
 
     res.json({

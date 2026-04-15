@@ -3,6 +3,7 @@ import { FormularioModel } from '../models/Formulario';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
 import { QRCodeService } from '../services/QRCodeService';
 import { NgrokService } from '../services/NgrokService';
+import { SatelliteSyncService } from '../services/SatelliteSyncService';
 import Joi from 'joi';
 
 const formFieldSchema = Joi.object({
@@ -49,6 +50,12 @@ export class FormularioController {
     }
 
     const formulario = await FormularioModel.create(userId, value);
+
+    if (formulario.is_published) {
+      SatelliteSyncService.pushFormSnapshot(formulario).catch((err) =>
+        console.error('SatelliteSyncService.pushFormSnapshot (create):', err)
+      );
+    }
 
     // Se estiver publicado, incluir URL pública
     const publicUrl = formulario.is_published ? await QRCodeService.getPublicFormUrl(formulario.id) : null;
@@ -201,6 +208,16 @@ export class FormularioController {
       return;
     }
 
+    if (formulario.is_published) {
+      SatelliteSyncService.pushFormSnapshot(formulario).catch((err) =>
+        console.error('SatelliteSyncService.pushFormSnapshot (update):', err)
+      );
+    } else {
+      SatelliteSyncService.deleteSnapshotBySlug(formulario.id).catch((err) =>
+        console.error('SatelliteSyncService.deleteSnapshotBySlug:', err)
+      );
+    }
+
     // Se estiver publicado, incluir URL pública
     const publicUrl = formulario.is_published ? await QRCodeService.getPublicFormUrl(formulario.id) : null;
 
@@ -229,6 +246,10 @@ export class FormularioController {
     }
 
     await FormularioModel.delete(formularioId);
+
+    SatelliteSyncService.deleteSnapshotBySlug(formularioId).catch((err) =>
+      console.error('SatelliteSyncService.deleteSnapshotBySlug (delete):', err)
+    );
 
     res.json({
       message: 'Formulário excluído com sucesso'

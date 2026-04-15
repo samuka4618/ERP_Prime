@@ -335,6 +335,14 @@ async function runSchemaMigrations(): Promise<void> {
       await dbRun('ALTER TABLE form_responses_descarga ADD COLUMN discharge_duration_minutes INTEGER');
       console.log('Migração: coluna discharge_duration_minutes adicionada');
     }
+    const formRespColsSat = await dbAll('PRAGMA table_info(form_responses_descarga)') as { name: string }[];
+    if (!formRespColsSat.some((c) => c.name === 'satellite_submission_id')) {
+      await dbRun('ALTER TABLE form_responses_descarga ADD COLUMN satellite_submission_id TEXT');
+      await dbRun(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_form_responses_descarga_satellite ON form_responses_descarga(satellite_submission_id) WHERE satellite_submission_id IS NOT NULL'
+      );
+      console.log('Migração: coluna satellite_submission_id adicionada em form_responses_descarga');
+    }
     const smsTemplatesDescarga = await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sms_templates_descarga'");
     if (!smsTemplatesDescarga) {
       await dbRun(`

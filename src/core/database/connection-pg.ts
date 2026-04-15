@@ -256,6 +256,13 @@ async function runSchemaMigrationsPostgres(): Promise<void> {
       await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity TIMESTAMP');
       console.log('Migração Postgres: coluna last_activity em users');
     }
+    await client.query(
+      'ALTER TABLE form_responses_descarga ADD COLUMN IF NOT EXISTS satellite_submission_id VARCHAR(80)'
+    );
+    await client.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_form_responses_descarga_satellite
+       ON form_responses_descarga(satellite_submission_id) WHERE satellite_submission_id IS NOT NULL`
+    );
   } finally {
     client.release();
   }

@@ -24,6 +24,9 @@ out/
 frontend/dist/
 frontend/node_modules/
 
+# Railway Satellite (app separada na raiz do repo)
+RailwaySatellite/dist/
+
 # Mobile (React Native / Expo)
 mobile/node_modules/
 mobile/.expo/

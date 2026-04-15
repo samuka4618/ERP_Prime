@@ -446,7 +446,8 @@ CREATE TABLE IF NOT EXISTS form_responses_descarga (
     checked_out_at TIMESTAMP,
     tracking_code VARCHAR(50) UNIQUE,
     discharge_started_at TIMESTAMP,
-    discharge_duration_minutes INTEGER
+    discharge_duration_minutes INTEGER,
+    satellite_submission_id VARCHAR(80) UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS sms_templates_descarga (

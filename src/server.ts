@@ -18,6 +18,7 @@ import { registerChamadosRoutes } from './modules/chamados';
 import { registerCadastrosRoutes } from './modules/cadastros';
 import { registerComprasRoutes } from './modules/compras';
 import { registerDescarregamentoRoutes } from './modules/descarregamento';
+import { SatelliteInboundPoller } from './modules/descarregamento/services/SatelliteInboundPoller';
 import { initializeWebSocket } from './modules/chamados/services/WebSocketService';
 import { ReportController } from './modules/chamados/controllers/ReportController';
 
@@ -499,6 +500,7 @@ async function startServer() {
       console.log(`📚 API: http://${localIP}:${PORT}/api`);
       console.log(`❤️  Health: http://${localIP}:${PORT}/health`);
       console.log(`🔌 WebSocket: ws://${localIP}:${PORT}/ws`);
+      SatelliteInboundPoller.start();
     });
 
     // Inicializar WebSocket

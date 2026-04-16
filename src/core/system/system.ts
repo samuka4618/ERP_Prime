@@ -9,7 +9,13 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { log as auditLog } from '../audit/AuditService';
-import { createBackup, restoreBackup } from '../backup/BackupService';
+import {
+  createBackup,
+  restoreBackup,
+  runPostRestoreChecklist,
+  validateBackupBuffer
+} from '../backup/BackupService';
+import { BackupAutomationService } from '../backup/BackupAutomationService';
 import { NotificationService } from '../../modules/chamados/services/NotificationService';
 import { NotificationTemplateModel } from './NotificationTemplateModel';
 import { NOTIFICATION_TEMPLATE_DEFINITIONS } from './notificationTemplateCatalog';
@@ -305,9 +311,20 @@ router.get('/backup', async (req, res) => {
   }
 });
 
-// Restore: upload ZIP (max 500 MB)
+// Restore/Validate: upload ZIP em disco (max 500 MB) para reduzir pressão de memória
+const restoreUploadDir = path.join(process.cwd(), 'data', 'backups', 'uploads');
+if (!fs.existsSync(restoreUploadDir)) {
+  fs.mkdirSync(restoreUploadDir, { recursive: true });
+}
+
 const restoreUpload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, restoreUploadDir),
+    filename: (_req, file, cb) => {
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      cb(null, `${Date.now()}-${safeName}`);
+    }
+  }),
   limits: { fileSize: 500 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ok = file.mimetype === 'application/zip' || file.originalname?.toLowerCase().endsWith('.zip');
@@ -315,13 +332,62 @@ const restoreUpload = multer({
   }
 });
 
-router.post('/restore', restoreUpload.single('file'), async (req, res) => {
+router.post('/backup/validate', restoreUpload.single('file'), async (req, res) => {
   try {
-    if (!req.file || !req.file.buffer) {
+    if (!req.file?.path) {
       res.status(400).json({ error: 'Envie um arquivo ZIP de backup (campo: file).' });
       return;
     }
-    const result = await restoreBackup(req.file.buffer);
+    const zipBuffer = fs.readFileSync(req.file.path);
+    const validation = await validateBackupBuffer(zipBuffer);
+    res.json({
+      message: validation.valid ? 'Backup válido para restauração.' : 'Backup com alertas de integridade.',
+      data: validation
+    });
+  } catch (error: any) {
+    console.error('Erro ao validar backup:', error);
+    res.status(400).json({ error: error.message || 'Erro ao validar backup' });
+  } finally {
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.rmSync(req.file.path, { force: true });
+    }
+  }
+});
+
+router.get('/backup/health', async (_req, res) => {
+  try {
+    const health = BackupAutomationService.getHealth();
+    res.json({ message: 'Saúde do subsistema de backup', data: health });
+  } catch (error: any) {
+    console.error('Erro ao obter saúde do backup:', error);
+    res.status(500).json({ error: error.message || 'Erro ao obter saúde do backup' });
+  }
+});
+
+router.get('/backup/post-restore-checks', async (_req, res) => {
+  try {
+    const report = await runPostRestoreChecklist();
+    res.json({
+      message:
+        report.summary.failed > 0
+          ? 'Checklist pós-restore executado com alertas.'
+          : 'Checklist pós-restore executado com sucesso.',
+      data: report
+    });
+  } catch (error: any) {
+    console.error('Erro ao executar checklist pós-restore:', error);
+    res.status(500).json({ error: error.message || 'Erro ao executar checklist pós-restore' });
+  }
+});
+
+router.post('/restore', restoreUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file?.path) {
+      res.status(400).json({ error: 'Envie um arquivo ZIP de backup (campo: file).' });
+      return;
+    }
+    const zipBuffer = fs.readFileSync(req.file.path);
+    const result = await restoreBackup(zipBuffer);
     auditLog({
       userId: (req as any).user?.id,
       userName: (req as any).user?.name,
@@ -337,12 +403,18 @@ router.post('/restore', restoreUpload.single('file'), async (req, res) => {
         backupVersion: result.backupVersion,
         appVersion: result.appVersion,
         backupCreatedAt: result.createdAt,
+        warnings: result.warnings,
+        checks: result.checks,
         restartRequired: true
       }
     });
   } catch (error: any) {
     console.error('Erro ao restaurar backup:', error);
     res.status(400).json({ error: error.message || 'Erro ao restaurar backup' });
+  } finally {
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.rmSync(req.file.path, { force: true });
+    }
   }
 });
 

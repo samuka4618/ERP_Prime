@@ -1,77 +1,73 @@
 # Backup e Restore do Sistema
 
-O ERP Prime permite gerar um **arquivo único de backup** (ZIP) contendo o banco de dados SQLite e todo o storage (uploads, imagens, logo). Esse arquivo pode ser usado para recuperar o sistema após falhas ou para realizar uma nova instalação com os mesmos dados.
+O ERP Prime possui backup/restore unificado para **SQLite e PostgreSQL**, com catálogo versionado, validação pré-restore e assinatura de integridade via HMAC.
 
 ## O que entra no backup
 
-- **Banco de dados**: `data/database/chamados.db` (usuários, chamados, relatórios, compras, descarregamento, configurações do sistema, templates de e-mail, auditoria, permissões).
-- **Storage**: `storage/uploads` (anexos, logo do sistema) e `storage/images` (imagens de cadastros).
+- **Banco principal**
+  - SQLite: `database/chamados.db`
+  - PostgreSQL: `database/postgres.dump` (gerado com `pg_dump -Fc`)
+- **Storage completo**
+  - `storage/uploads`
+  - `storage/images`
+  - `storage/avatars`
+- **Configuração operacional**
+  - `config/environment.snapshot.json` ou `config/environment.snapshot.enc` (se `BACKUP_ENCRYPTION_KEY` estiver configurada)
+- **Logs de aplicação (opcional)**
+  - `logs/*` quando `BACKUP_INCLUDE_LOGS=true` (padrão)
+- **Metadados**
+  - `manifest.json` com `items`, checksums, engine e assinatura (`integrity.manifestHmac`) quando `BACKUP_HMAC_KEY` estiver configurada
 
-## O que NÃO entra no backup
+## Endpoints principais
 
-- **Arquivo `.env`**: nunca é incluído (segredos: JWT, SMTP, Infobip, etc.). Em nova instalação, configure o `.env` a partir do `env.example` (copie para `.env` e preencha).
-- **Dados do módulo Cadastros (SQL Server)**: ficam em banco externo. Para backup dos cadastros, use as ferramentas nativas do SQL Server (BACKUP DATABASE, bcp ou solução do provedor).
+- `GET /api/system/backup`
+  - Gera e baixa o ZIP de backup
+- `POST /api/system/backup/validate`
+  - Valida o arquivo (estrutura, manifest, assinatura, limites) sem aplicar restore
+  - Body: `multipart/form-data` com campo `file`
+- `POST /api/system/restore`
+  - Executa restore completo
+  - Body: `multipart/form-data` com campo `file`
+  - Limite: 500 MB
+- `GET /api/system/backup/health`
+  - Estado operacional do agendamento de backup (última execução, último erro, retenção, execução em andamento)
+- `GET /api/system/backup/post-restore-checks`
+  - Executa checklist técnico de verificação pós-restore sob demanda
 
-## Gerar backup
+## Restore: comportamento
 
-**Requisito**: usuário administrador (ou permissão `system.backup.create`).
+- Valida ZIP e `manifest.json` antes de aplicar
+- Rejeita restore com engine diferente do ambiente atual
+- Aplica restore de banco via adapter:
+  - SQLite: cria `chamados.db.restored` para aplicação no restart
+  - PostgreSQL: executa `pg_restore --single-transaction --clean --if-exists`
+- Restaura storage (`uploads/images/avatars`) com estratégia de rollback por diretório
+- Salva snapshot de configuração em `data/backups/.env.restore.suggested` (não aplicado automaticamente)
+- Retorna checklist pós-restore no payload (`data.checks`) com resumo de itens aprovados/falhos
 
-- **Pela API**: `GET /api/system/backup`  
-  - Retorna o arquivo ZIP para download (nome no formato `erp-backup-YYYYMMDDTHHmmss.zip`).
-- **Pela interface**: acesse a área de Administração > Backup e Restore (se disponível) e clique em "Gerar backup".
+## Segurança e integridade
 
-O backup é gerado em tempo real (stream). Antes de compactar, o sistema executa um checkpoint WAL no SQLite para garantir que o arquivo do banco esteja consistente.
+- **HMAC do manifest**: configure `BACKUP_HMAC_KEY` para assinar e validar backup
+- **Snapshot de configuração criptografado**: configure `BACKUP_ENCRYPTION_KEY`
+- **Validação pré-restore** disponível para reduzir risco operacional
+- **Audit log** de criação/restauração permanece ativo
 
-## Restaurar backup
+## Automação e retenção
 
-**Requisito**: usuário administrador (ou permissão `system.backup.restore`).
+Automação opcional via variáveis:
 
-- **Pela API**: `POST /api/system/restore`  
-  - Body: `multipart/form-data` com campo **`file`** contendo o arquivo ZIP.  
-  - Tamanho máximo: 500 MB.
+- `BACKUP_AUTO_ENABLED=true`
+- `BACKUP_AUTO_EVERY_MINUTES=720` (default: 12h)
+- `BACKUP_RETENTION_COUNT=30`
+- `BACKUP_OFFSITE_PATH=/caminho/offsite` (opcional)
+- `BACKUP_OFFSITE_RETENTION_COUNT=30` (opcional)
 
-Após a restauração:
+Backups automáticos ficam em `data/backups/archives/`.
 
-1. O banco de dados em `data/database/chamados.db` é substituído pelo do backup.
-2. As pastas `storage/uploads` e `storage/images` são sobrescritas com o conteúdo do backup.
-3. **Reinicie o servidor** para que a aplicação utilize o banco restaurado.
+## Requisitos de PostgreSQL
 
-## Estrutura do arquivo ZIP
+Em ambientes PostgreSQL, o host precisa ter `pg_dump` e `pg_restore` disponíveis no PATH.
 
-```
-erp-backup-YYYYMMDDTHHmmss.zip
-├── manifest.json          # Versão do backup, data, versão da aplicação, lista de itens
-├── database/
-│   └── chamados.db
-├── storage/
-│   ├── uploads/
-│   └── images/
-```
+## Itens fora do escopo automático
 
-O `manifest.json` contém:
-
-- `backupVersion`: versão do formato do backup (compatibilidade futura).
-- `appVersion`: versão da aplicação que gerou o backup.
-- `createdAt`: data/hora de criação (ISO 8601).
-- `contents`: lista de paths incluídos no backup.
-
-## Nova instalação usando o backup
-
-1. Instale as dependências e faça o build do projeto.
-2. Crie as pastas necessárias: `data/database/`, `storage/uploads/`, `storage/images/`.
-3. Configure o `.env` a partir do `.env.example` (não copie o `.env` do ambiente antigo com senhas).
-4. Inicie o servidor uma vez (para criar o banco vazio e migrações, se aplicável) ou restaure antes do primeiro start.
-5. Restaure o backup:
-   - **Opção A**: após o primeiro start, faça login como admin (se existir usuário seed) e chame `POST /api/system/restore` com o ZIP; depois reinicie o servidor.
-   - **Opção B**: use um script que extraia o ZIP e coloque `database/chamados.db` em `data/database/` e `storage/*` em `storage/`; na primeira subida a aplicação usará esse banco.
-
-## Segurança e auditoria
-
-- Apenas administradores (ou perfis com as permissões de backup) podem gerar e restaurar backup.
-- As ações **Gerar backup** e **Restaurar backup** são registradas na auditoria do sistema (`system.backup.create`, `system.backup.restore`), com usuário, data/hora e IP.
-
-## Limites e boas práticas
-
-- **Tamanho**: o backup pode ficar grande se houver muitos anexos. O limite de upload para restore é 500 MB.
-- **Frequência**: recomenda-se gerar backups periódicos (diário/semanal) e armazená-los em local seguro (outro servidor ou nuvem).
-- **Cadastros (SQL Server)**: faça backup separado do banco de cadastros conforme a política do seu ambiente.
+- Bancos externos do módulo Cadastros (ex.: SQL Server) devem seguir política de backup própria do respectivo banco.

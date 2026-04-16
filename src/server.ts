@@ -22,6 +22,7 @@ import { SatelliteInboundPoller } from './modules/descarregamento/services/Satel
 import { SatelliteSyncService } from './modules/descarregamento/services/SatelliteSyncService';
 import { initializeWebSocket } from './modules/chamados/services/WebSocketService';
 import { ReportController } from './modules/chamados/controllers/ReportController';
+import { BackupAutomationService } from './core/backup/BackupAutomationService';
 
 const app = express();
 
@@ -501,6 +502,7 @@ async function startServer() {
     }, 60 * 1000);
     // Executar uma vez após 30s (dar tempo do servidor subir)
     setTimeout(() => ReportController.processScheduledReports().catch(() => {}), 30 * 1000);
+    BackupAutomationService.start();
 
     // Iniciar servidor
     const PORT = Number(config.port);

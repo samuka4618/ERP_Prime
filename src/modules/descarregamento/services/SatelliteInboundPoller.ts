@@ -112,8 +112,18 @@ export class SatelliteInboundPoller {
             `🛰️  [satellite poll] importada chegada: id_satélite=${s.id} motorista=${s.driver_name} form=${s.source_form_id} tracking=${s.tracking_token}`
           );
         }
-      } catch (err) {
-        console.error(`SatelliteInboundPoller: falha ao importar ${s.id}:`, err);
+      } catch (err: any) {
+        const message = err?.message || String(err);
+        if (message.includes('Não foi encontrado agendamento para este fornecedor')) {
+          console.warn(
+            `🛰️  [satellite poll] submissão pendente sem agendamento local (id_satélite=${s.id}, fornecedor_id=${s.fornecedor_id}, form=${s.source_form_id}, tracking=${s.tracking_token}).`
+          );
+          continue;
+        }
+        console.error(
+          `SatelliteInboundPoller: falha ao importar ${s.id} (fornecedor_id=${s.fornecedor_id}, form=${s.source_form_id}, tracking=${s.tracking_token}):`,
+          err
+        );
       }
     }
 

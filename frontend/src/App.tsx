@@ -45,6 +45,7 @@ import DescarregamentoConfig from './pages/Descarregamento/DescarregamentoConfig
 import GradeDescarregamento from './pages/Descarregamento/GradeDescarregamento';
 import Docas from './pages/Descarregamento/Docas';
 import MotoristasPatio from './pages/Descarregamento/MotoristasPatio';
+import HistoricoDescarregamento from './pages/Descarregamento/HistoricoDescarregamento';
 import NovoAgendamento from './pages/Descarregamento/NovoAgendamento';
 import NovoFornecedor from './pages/Descarregamento/NovoFornecedor';
 import PublicForm from './pages/Descarregamento/PublicForm';
@@ -142,6 +143,7 @@ const AppRoutes: React.FC = () => {
         <Route path="descarregamento/grade" element={<GradeDescarregamento />} />
         <Route path="descarregamento/docas" element={<Docas />} />
         <Route path="descarregamento/motoristas-patio" element={<MotoristasPatio />} />
+        <Route path="descarregamento/historico" element={<HistoricoDescarregamento />} />
         <Route path="descarregamento-config" element={<DescarregamentoConfig />} />
         <Route path="users" element={<Users />} />
         <Route path="permissions" element={<PermissionsPage />} />

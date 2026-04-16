@@ -1,6 +1,16 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
 import { sqlBooleanTrue, sqlOrderByDateProximity, sqlOrderByTodayFirstThenPastThenFuture, sqlMinutesDiffFromNow } from '../../../core/database/sql-dialect';
 
+/** Dados do agendamento vinculado à chegada (quando existe registro em `agendamentos_descarga`). */
+export interface FormResponseAgendamentoSnapshot {
+  id: number;
+  scheduled_date: string;
+  scheduled_time: string;
+  dock: string;
+  status: 'pendente' | 'motorista_pronto' | 'em_andamento' | 'concluido';
+  notes?: string;
+}
+
 export interface FormResponse {
   id: number;
   form_id?: number;
@@ -23,6 +33,64 @@ export interface FormResponse {
     id: number;
     name: string;
     category: string;
+  };
+  agendamento?: FormResponseAgendamentoSnapshot;
+}
+
+const FORM_RESPONSE_AGENDAMENTO_SELECT = `
+  a.id AS ag_join_id,
+  a.scheduled_date AS ag_scheduled_date,
+  a.scheduled_time AS ag_scheduled_time,
+  a.dock AS ag_dock,
+  a.status AS ag_status,
+  a.notes AS ag_notes
+`;
+
+function mapFormResponseRow(r: any): FormResponse {
+  let responses: any = {};
+  try {
+    responses = typeof r.responses === 'string' ? JSON.parse(r.responses) : r.responses ?? {};
+  } catch {
+    responses = {};
+  }
+
+  const agJoinId = r.ag_join_id;
+  const agendamento: FormResponseAgendamentoSnapshot | undefined =
+    agJoinId != null && agJoinId !== ''
+      ? {
+          id: Number(agJoinId),
+          scheduled_date: r.ag_scheduled_date,
+          scheduled_time: r.ag_scheduled_time ?? '',
+          dock: r.ag_dock ?? '',
+          status: r.ag_status,
+          notes: r.ag_notes || undefined
+        }
+      : undefined;
+
+  return {
+    id: r.id,
+    form_id: r.form_id || undefined,
+    responses,
+    driver_name: r.driver_name,
+    phone_number: r.phone_number || undefined,
+    fornecedor_id: r.fornecedor_id || undefined,
+    agendamento_id: r.agendamento_id || undefined,
+    is_in_yard: Boolean(r.is_in_yard),
+    submitted_at: r.submitted_at,
+    checked_out_at: r.checked_out_at || undefined,
+    satellite_submission_id: r.satellite_submission_id || undefined,
+    tracking_code: r.tracking_code || undefined,
+    discharge_started_at: r.discharge_started_at || undefined,
+    discharge_duration_minutes:
+      r.discharge_duration_minutes != null ? r.discharge_duration_minutes : undefined,
+    fornecedor: r.fornecedor_id
+      ? {
+          id: r.fornecedor_id,
+          name: r.fornecedor_name,
+          category: r.fornecedor_category
+        }
+      : undefined,
+    agendamento
   };
 }
 
@@ -131,43 +199,24 @@ export class FormResponseModel {
 
   static async findById(id: number): Promise<FormResponse | null> {
     const response = await dbGet(
-      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category
+      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category,
+              ${FORM_RESPONSE_AGENDAMENTO_SELECT}
        FROM form_responses_descarga r
        LEFT JOIN fornecedores_descarga f ON r.fornecedor_id = f.id
+       LEFT JOIN agendamentos_descarga a ON r.agendamento_id = a.id
        WHERE r.id = ?`,
       [id]
     ) as any;
 
     if (!response) return null;
 
-    return {
-      id: response.id,
-      form_id: response.form_id || undefined,
-      responses: JSON.parse(response.responses),
-      driver_name: response.driver_name,
-      phone_number: response.phone_number || undefined,
-      fornecedor_id: response.fornecedor_id || undefined,
-      agendamento_id: response.agendamento_id || undefined,
-      is_in_yard: Boolean(response.is_in_yard),
-      submitted_at: response.submitted_at,
-      checked_out_at: response.checked_out_at || undefined,
-      satellite_submission_id: response.satellite_submission_id || undefined,
-      tracking_code: response.tracking_code || undefined,
-      discharge_started_at: response.discharge_started_at || undefined,
-      discharge_duration_minutes: response.discharge_duration_minutes != null ? response.discharge_duration_minutes : undefined,
-      fornecedor: response.fornecedor_id ? {
-        id: response.fornecedor_id,
-        name: response.fornecedor_name,
-        category: response.fornecedor_category
-      } : undefined
-    };
+    return mapFormResponseRow(response);
   }
 
   static async findBySatelliteSubmissionId(satelliteId: string): Promise<FormResponse | null> {
     const response = await dbGet(
-      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category
+      `SELECT r.id
        FROM form_responses_descarga r
-       LEFT JOIN fornecedores_descarga f ON r.fornecedor_id = f.id
        WHERE r.satellite_submission_id = ?`,
       [satelliteId]
     ) as any;
@@ -177,36 +226,18 @@ export class FormResponseModel {
 
   static async findByTrackingCode(trackingCode: string): Promise<FormResponse | null> {
     const response = await dbGet(
-      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category
+      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category,
+              ${FORM_RESPONSE_AGENDAMENTO_SELECT}
        FROM form_responses_descarga r
        LEFT JOIN fornecedores_descarga f ON r.fornecedor_id = f.id
+       LEFT JOIN agendamentos_descarga a ON r.agendamento_id = a.id
        WHERE r.tracking_code = ?`,
       [trackingCode]
     ) as any;
 
     if (!response) return null;
 
-    return {
-      id: response.id,
-      form_id: response.form_id || undefined,
-      responses: JSON.parse(response.responses),
-      driver_name: response.driver_name,
-      phone_number: response.phone_number || undefined,
-      fornecedor_id: response.fornecedor_id || undefined,
-      agendamento_id: response.agendamento_id || undefined,
-      is_in_yard: Boolean(response.is_in_yard),
-      submitted_at: response.submitted_at,
-      checked_out_at: response.checked_out_at || undefined,
-      satellite_submission_id: response.satellite_submission_id || undefined,
-      tracking_code: response.tracking_code || undefined,
-      discharge_started_at: response.discharge_started_at || undefined,
-      discharge_duration_minutes: response.discharge_duration_minutes != null ? response.discharge_duration_minutes : undefined,
-      fornecedor: response.fornecedor_id ? {
-        id: response.fornecedor_id,
-        name: response.fornecedor_name,
-        category: response.fornecedor_category
-      } : undefined
-    };
+    return mapFormResponseRow(response);
   }
 
   static async findInYard(): Promise<FormResponse[]> {
@@ -325,7 +356,7 @@ export class FormResponseModel {
     start_date?: string;
     end_date?: string;
     fornecedor_id?: number;
-    is_in_yard?: boolean;
+    is_in_yard?: boolean | string;
     search?: string;
   }): Promise<{
     data: FormResponse[];
@@ -337,6 +368,13 @@ export class FormResponseModel {
     const page = params.page || 1;
     const limit = params.limit || 20;
     const offset = (page - 1) * limit;
+
+    const yardFilter =
+      params.is_in_yard === undefined || params.is_in_yard === ''
+        ? undefined
+        : typeof params.is_in_yard === 'string'
+          ? params.is_in_yard === 'true' || params.is_in_yard === '1'
+          : Boolean(params.is_in_yard);
 
     let whereClause = 'WHERE 1=1';
     const queryParams: any[] = [];
@@ -356,9 +394,9 @@ export class FormResponseModel {
       queryParams.push(params.fornecedor_id);
     }
 
-    if (params.is_in_yard !== undefined) {
+    if (yardFilter !== undefined) {
       whereClause += ' AND r.is_in_yard = ?';
-      queryParams.push(params.is_in_yard ? 1 : 0);
+      queryParams.push(yardFilter ? 1 : 0);
     }
 
     if (params.search) {
@@ -367,9 +405,11 @@ export class FormResponseModel {
     }
 
     const responses = await dbAll(
-      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category
+      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category,
+              ${FORM_RESPONSE_AGENDAMENTO_SELECT}
        FROM form_responses_descarga r
        LEFT JOIN fornecedores_descarga f ON r.fornecedor_id = f.id
+       LEFT JOIN agendamentos_descarga a ON r.agendamento_id = a.id
        ${whereClause}
        ORDER BY r.submitted_at DESC
        LIMIT ? OFFSET ?`,
@@ -383,29 +423,7 @@ export class FormResponseModel {
       queryParams
     ) as { count: number };
 
-    const data = await Promise.all(
-      responses.map(async (r) => ({
-        id: r.id,
-        form_id: r.form_id || undefined,
-        responses: JSON.parse(r.responses),
-        driver_name: r.driver_name,
-        phone_number: r.phone_number || undefined,
-        fornecedor_id: r.fornecedor_id || undefined,
-        agendamento_id: r.agendamento_id || undefined,
-        is_in_yard: Boolean(r.is_in_yard),
-        submitted_at: r.submitted_at, // Retornar data ISO original para cálculos no frontend
-        checked_out_at: r.checked_out_at || undefined,
-        tracking_code: r.tracking_code || undefined,
-        discharge_started_at: r.discharge_started_at || undefined,
-        discharge_duration_minutes: r.discharge_duration_minutes != null ? r.discharge_duration_minutes : undefined,
-        satellite_submission_id: r.satellite_submission_id || undefined,
-        fornecedor: r.fornecedor_id ? {
-          id: r.fornecedor_id,
-          name: r.fornecedor_name,
-          category: r.fornecedor_category
-        } : undefined
-      }))
-    );
+    const data = responses.map((r) => mapFormResponseRow(r));
 
     return {
       data,

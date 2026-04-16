@@ -14,6 +14,9 @@ export const formResponseQuerySchema = Joi.object({
   start_date: Joi.string().optional().pattern(/^\d{4}-\d{2}-\d{2}$/),
   end_date: Joi.string().optional().pattern(/^\d{4}-\d{2}-\d{2}$/),
   fornecedor_id: Joi.number().integer().positive().optional(),
-  is_in_yard: Joi.boolean().optional(),
+  /** Query string envia string; aceita também boolean. */
+  is_in_yard: Joi.alternatives()
+    .try(Joi.boolean(), Joi.string().valid('true', 'false', '1', '0'))
+    .optional(),
   search: Joi.string().optional().allow('')
 });

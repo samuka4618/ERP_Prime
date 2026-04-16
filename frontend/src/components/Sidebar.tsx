@@ -27,7 +27,8 @@ import {
   Truck,
   Calendar,
   Warehouse,
-  Database
+  Database,
+  History
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
@@ -130,7 +131,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             { name: 'Grade', href: '/descarregamento/grade', icon: Calendar },
             { name: 'Fornecedores', href: '/descarregamento/fornecedores', icon: Building2 },
             { name: 'Docas', href: '/descarregamento/docas', icon: Warehouse },
-            { name: 'Motoristas no Pátio', href: '/descarregamento/motoristas-patio', icon: Users }
+            { name: 'Motoristas no Pátio', href: '/descarregamento/motoristas-patio', icon: Users },
+            { name: 'Histórico', href: '/descarregamento/historico', icon: History }
           ]
         }
       ],

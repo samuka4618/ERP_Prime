@@ -242,46 +242,49 @@ export class FormResponseModel {
 
   static async findInYard(): Promise<FormResponse[]> {
     const responses = await dbAll(
-      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category
+      `SELECT r.*, f.name as fornecedor_name, f.category as fornecedor_category,
+              ${FORM_RESPONSE_AGENDAMENTO_SELECT}
        FROM form_responses_descarga r
        LEFT JOIN fornecedores_descarga f ON r.fornecedor_id = f.id
+       LEFT JOIN agendamentos_descarga a ON r.agendamento_id = a.id
        WHERE r.is_in_yard = ${sqlBooleanTrue()}
        ORDER BY r.submitted_at ASC`
     ) as any[];
 
-    return Promise.all(
-      responses.map(async (r: any) => ({
-        id: r.id,
-        form_id: r.form_id || undefined,
-        responses: JSON.parse(r.responses),
-        driver_name: r.driver_name,
-        phone_number: r.phone_number || undefined,
-        fornecedor_id: r.fornecedor_id || undefined,
-        agendamento_id: r.agendamento_id || undefined,
-        is_in_yard: Boolean(r.is_in_yard),
-        submitted_at: r.submitted_at,
-        checked_out_at: r.checked_out_at || undefined,
-        tracking_code: r.tracking_code || undefined,
-        discharge_started_at: r.discharge_started_at || undefined,
-        discharge_duration_minutes: r.discharge_duration_minutes != null ? r.discharge_duration_minutes : undefined,
-        satellite_submission_id: r.satellite_submission_id || undefined,
-        fornecedor: r.fornecedor_id ? {
-          id: r.fornecedor_id,
-          name: r.fornecedor_name,
-          category: r.fornecedor_category
-        } : undefined
-      }))
-    );
+    return responses.map((r: any) => mapFormResponseRow(r));
   }
 
-  /** Marca início da descarga (status "realizando descarga"). Só aplica se is_in_yard = 1. */
-  static async startDischarge(id: number): Promise<FormResponse | null> {
-    const row = await dbGet(
-      'SELECT id, is_in_yard, discharge_started_at FROM form_responses_descarga WHERE id = ?',
-      [id]
-    ) as any;
-    if (!row || !(row.is_in_yard === 1 || row.is_in_yard === true)) return null;
-    if (row.discharge_started_at) return this.findById(id); // já em descarga
+  /**
+   * Marca início da descarga (status "realizando descarga"). Só aplica se is_in_yard = 1.
+   * @param dockFromOperator Número da doca (docas_config.numero). Obrigatório quando o agendamento vinculado ainda não tem doca.
+   */
+  static async startDischarge(id: number, dockFromOperator?: string | null): Promise<FormResponse | null> {
+    const existing = await this.findById(id);
+    if (!existing || !existing.is_in_yard) return null;
+    if (existing.discharge_started_at) return existing;
+
+    const currentDock = (existing.agendamento?.dock ?? '').trim();
+    const incoming = (dockFromOperator ?? '').trim();
+    const resolvedDock = incoming || currentDock;
+
+    if (existing.agendamento_id && !resolvedDock) {
+      throw new Error('DOCK_REQUIRED');
+    }
+
+    if (incoming && existing.agendamento_id) {
+      const doca = await dbGet(
+        `SELECT id FROM docas_config WHERE numero = ? AND is_active = ${sqlBooleanTrue()}`,
+        [incoming]
+      ) as any;
+      if (!doca) {
+        throw new Error('DOCK_INVALID');
+      }
+      await dbRun(
+        'UPDATE agendamentos_descarga SET dock = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [incoming, existing.agendamento_id]
+      );
+    }
+
     await dbRun(
       `UPDATE form_responses_descarga SET discharge_started_at = CURRENT_TIMESTAMP WHERE id = ? AND is_in_yard = ${sqlBooleanTrue()}`,
       [id]

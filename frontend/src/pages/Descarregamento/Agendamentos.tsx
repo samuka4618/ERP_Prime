@@ -5,6 +5,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { apiUrl } from '../../utils/apiUrl';
+import { localTodayYmd } from '../../utils/dateUtils';
 
 interface Agendamento {
   id: number;
@@ -58,17 +59,16 @@ const Agendamentos: React.FC = () => {
     try {
       setLoading(true);
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      
-      // Se não houver filtro de data, buscar próximos 30 dias
+
+      // Se não houver filtro de data, buscar próximos 30 dias (datas no fuso local, não UTC)
       let startDate = dateFilter;
       let endDate = dateFilter;
-      
+
       if (!dateFilter) {
-        startDate = todayStr;
+        startDate = localTodayYmd();
         const futureDate = new Date(today);
         futureDate.setDate(futureDate.getDate() + 30);
-        endDate = futureDate.toISOString().split('T')[0];
+        endDate = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`;
       }
       
       const params = new URLSearchParams({
@@ -375,7 +375,9 @@ const Agendamentos: React.FC = () => {
                                 year: 'numeric'
                               })}
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">{agendamento.scheduled_time}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {agendamento.scheduled_time?.trim() || '—'}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -396,7 +398,7 @@ const Agendamentos: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                          Doca {agendamento.dock}
+                          {(agendamento.dock || '').trim() ? `Doca ${agendamento.dock}` : 'A definir na liberação'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

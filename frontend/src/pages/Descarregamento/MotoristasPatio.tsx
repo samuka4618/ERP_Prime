@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import FormattedDate from '../../components/FormattedDate';
 import { apiUrl } from '../../utils/apiUrl';
+import LiberarParaDocaModal, { DocaOption } from '../../components/descarregamento/LiberarParaDocaModal';
 
 interface FormResponse {
   id: number;
@@ -18,6 +19,13 @@ interface FormResponse {
   submitted_at: string;
   tracking_code?: string;
   discharge_started_at?: string;
+  agendamento?: {
+    id: number;
+    dock: string;
+    scheduled_date: string;
+    scheduled_time: string;
+    status: string;
+  };
 }
 
 const MotoristasPatio: React.FC = () => {
@@ -25,6 +33,30 @@ const MotoristasPatio: React.FC = () => {
   const [motoristas, setMotoristas] = useState<FormResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [docas, setDocas] = useState<DocaOption[]>([]);
+  const [loadingDocas, setLoadingDocas] = useState(false);
+  const [liberarModal, setLiberarModal] = useState<{ id: number; name: string; defaultDock: string } | null>(null);
+  const [liberarSubmitting, setLiberarSubmitting] = useState(false);
+
+  useEffect(() => {
+    const loadDocas = async () => {
+      try {
+        setLoadingDocas(true);
+        const response = await fetch(apiUrl('descarregamento/docas?activeOnly=true'), {
+          credentials: 'include',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        setDocas(data.data?.docas || []);
+      } catch {
+        /* silencioso: modal avisa se lista vazia */
+      } finally {
+        setLoadingDocas(false);
+      }
+    };
+    loadDocas();
+  }, []);
 
   useEffect(() => {
     fetchMotoristas();
@@ -58,21 +90,35 @@ const MotoristasPatio: React.FC = () => {
     }
   };
 
-  const handleStartDischarge = async (motoristaId: number) => {
+  const openLiberarModal = (m: FormResponse) => {
+    const defaultDock = (m.agendamento?.dock || '').trim();
+    setLiberarModal({ id: m.id, name: m.driver_name, defaultDock });
+  };
+
+  const handleConfirmLiberar = async (dockNumero: string) => {
+    if (!liberarModal) return;
     try {
-      const res = await fetch(apiUrl(`descarregamento/form-responses/${motoristaId}/start-discharge`), {
+      setLiberarSubmitting(true);
+      const res = await fetch(apiUrl(`descarregamento/form-responses/${liberarModal.id}/start-discharge`), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ dock: dockNumero })
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Erro ao iniciar descarga');
       }
       toast.success('Liberado para doca. Confirme a conclusão quando o motorista terminar.');
+      setLiberarModal(null);
       fetchMotoristas();
     } catch (error: any) {
       toast.error(error.message || 'Erro ao iniciar descarga');
+    } finally {
+      setLiberarSubmitting(false);
     }
   };
 
@@ -145,6 +191,16 @@ const MotoristasPatio: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      <LiberarParaDocaModal
+        open={!!liberarModal}
+        driverName={liberarModal?.name || ''}
+        defaultDockNumero={liberarModal?.defaultDock}
+        docas={docas}
+        loadingDocas={loadingDocas}
+        submitting={liberarSubmitting}
+        onCancel={() => !liberarSubmitting && setLiberarModal(null)}
+        onConfirm={handleConfirmLiberar}
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -293,7 +349,8 @@ const MotoristasPatio: React.FC = () => {
                   <div className="flex flex-col gap-2">
                     {!realizando ? (
                       <button
-                        onClick={() => handleStartDischarge(motorista.id)}
+                        type="button"
+                        onClick={() => openLiberarModal(motorista)}
                         className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-semibold"
                       >
                         <LogIn className="w-5 h-5" />

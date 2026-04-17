@@ -3,6 +3,22 @@ import { sqlBooleanTrue } from '../../../core/database/sql-dialect';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 import { Fornecedor } from './Fornecedor';
 
+/** Garante scheduled_date como YYYY-MM-DD na API (drivers podem devolver Date ou ISO com hora). */
+function normalizeSqlDateToYmd(value: unknown): string {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') {
+    const m = value.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : '';
+  }
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    const y = value.getUTCFullYear();
+    const mo = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(value.getUTCDate()).padStart(2, '0');
+    return `${y}-${mo}-${d}`;
+  }
+  return '';
+}
+
 export type AgendamentoStatus = 'pendente' | 'motorista_pronto' | 'em_andamento' | 'concluido';
 
 export interface Agendamento {
@@ -34,7 +50,8 @@ export interface CreateAgendamentoRequest {
   fornecedor_id: number;
   scheduled_date: string;
   scheduled_time?: string;
-  dock: string;
+  /** Opcional na criação; definido ao liberar o motorista para a doca. */
+  dock?: string;
   notes?: string;
 }
 
@@ -63,37 +80,39 @@ export interface AgendamentoStatusHistory {
 
 export class AgendamentoModel {
   static async create(userId: number, data: CreateAgendamentoRequest): Promise<Agendamento> {
-    // Validar se a doca existe e está ativa
-    const doca = await dbGet(
-      `SELECT id FROM docas_config WHERE numero = ? AND is_active = ${sqlBooleanTrue()}`,
-      [data.dock]
-    ) as any;
+    const dock = (data.dock ?? '').trim();
 
-    if (!doca) {
-      throw new Error(`Doca ${data.dock} não encontrada ou inativa`);
+    if (dock) {
+      const doca = await dbGet(
+        `SELECT id FROM docas_config WHERE numero = ? AND is_active = ${sqlBooleanTrue()}`,
+        [dock]
+      ) as any;
+
+      if (!doca) {
+        throw new Error(`Doca ${dock} não encontrada ou inativa`);
+      }
     }
 
     const scheduledTime = data.scheduled_time != null && data.scheduled_time !== '' ? data.scheduled_time : '';
 
-    await dbRun(
+    const { lastID } = await dbRun(
       `INSERT INTO agendamentos_descarga (fornecedor_id, scheduled_date, scheduled_time, dock, status, notes, created_by)
        VALUES (?, ?, ?, ?, 'pendente', ?, ?)`,
       [
         data.fornecedor_id,
         data.scheduled_date,
         scheduledTime,
-        data.dock,
+        dock,
         data.notes || null,
         userId
       ]
     );
 
-    const agendamento = await dbGet(
-      `SELECT * FROM agendamentos_descarga 
-       WHERE fornecedor_id = ? AND scheduled_date = ? AND scheduled_time = ? 
-       ORDER BY id DESC LIMIT 1`,
-      [data.fornecedor_id, data.scheduled_date, scheduledTime]
-    ) as any;
+    if (!lastID) {
+      throw new Error('Erro ao criar agendamento: id não retornado');
+    }
+
+    const agendamento = await dbGet('SELECT * FROM agendamentos_descarga WHERE id = ?', [lastID]) as any;
 
     // Registrar histórico inicial
     await dbRun(
@@ -128,7 +147,7 @@ export class AgendamentoModel {
     return {
       id: agendamento.id,
       fornecedor_id: agendamento.fornecedor_id,
-      scheduled_date: agendamento.scheduled_date,
+      scheduled_date: normalizeSqlDateToYmd(agendamento.scheduled_date),
       scheduled_time: agendamento.scheduled_time,
       dock: agendamento.dock,
       status: agendamento.status,
@@ -237,7 +256,7 @@ export class AgendamentoModel {
       agendamentos.map(async (a) => ({
         id: a.id,
         fornecedor_id: a.fornecedor_id,
-        scheduled_date: a.scheduled_date,
+        scheduled_date: normalizeSqlDateToYmd(a.scheduled_date),
         scheduled_time: a.scheduled_time,
         dock: a.dock,
         status: a.status,
@@ -296,9 +315,19 @@ export class AgendamentoModel {
       fields.push('scheduled_time = ?');
       values.push(data.scheduled_time && data.scheduled_time !== '' ? data.scheduled_time : '');
     }
-    if (data.dock) {
+    if (data.dock !== undefined) {
+      const dockVal = (data.dock || '').trim();
+      if (dockVal) {
+        const doca = await dbGet(
+          `SELECT id FROM docas_config WHERE numero = ? AND is_active = ${sqlBooleanTrue()}`,
+          [dockVal]
+        ) as any;
+        if (!doca) {
+          throw new Error(`Doca ${dockVal} não encontrada ou inativa`);
+        }
+      }
       fields.push('dock = ?');
-      values.push(data.dock);
+      values.push(dockVal);
     }
     if (data.status) {
       fields.push('status = ?');
@@ -391,7 +420,7 @@ export class AgendamentoModel {
       agendamentos.map(async (a) => ({
         id: a.id,
         fornecedor_id: a.fornecedor_id,
-        scheduled_date: a.scheduled_date,
+        scheduled_date: normalizeSqlDateToYmd(a.scheduled_date),
         scheduled_time: a.scheduled_time,
         dock: a.dock,
         status: a.status,

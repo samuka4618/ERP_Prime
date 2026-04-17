@@ -126,3 +126,26 @@ export const isValidDate = (dateString: string | Date | null | undefined): boole
     return false;
   }
 };
+
+/**
+ * Converte data de agendamento/calendário (YYYY-MM-DD ou ISO com hora) para chave YYYY-MM-DD.
+ * Usar ao comparar com datas locais da UI (evita grade vazia quando a API retorna ISO completo).
+ */
+export function toYyyyMmDd(value: string | Date | null | undefined): string {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') {
+    const m = value.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : '';
+  }
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return '';
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+  }
+  return '';
+}
+
+/** Data de hoje no fuso local (YYYY-MM-DD), sem usar UTC como toISOString(). */
+export function localTodayYmd(): string {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}

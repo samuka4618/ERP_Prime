@@ -158,6 +158,17 @@ export function sqlDateGteMinus(column: string, interval: string): string {
   return `${column} >= ${bound}`;
 }
 
+/**
+ * ORDER BY: strings só com dígitos primeiro (ordem numérica), depois as demais (ordem lexicográfica).
+ * Necessário no Postgres porque CAST(col AS INTEGER) com valor como "Doca B" gera erro; no SQLite o CAST não falha, mas o GLOB mantém o mesmo critério.
+ */
+export function sqlOrderNumericStringColumn(column: string): string {
+  if (isPostgres) {
+    return `CASE WHEN ${column} ~ '^[0-9]+$' THEN 0 ELSE 1 END, CASE WHEN ${column} ~ '^[0-9]+$' THEN CAST(${column} AS INTEGER) ELSE 0 END, ${column}`;
+  }
+  return `CASE WHEN NOT (${column} GLOB '*[^0-9]*') AND length(${column}) > 0 THEN 0 ELSE 1 END, CASE WHEN NOT (${column} GLOB '*[^0-9]*') AND length(${column}) > 0 THEN CAST(${column} AS INTEGER) ELSE 0 END, ${column}`;
+}
+
 export const sqlDialect = {
   isPostgres,
   sqlNow,
@@ -178,5 +189,6 @@ export const sqlDialect = {
   sqlOrderByDateProximity,
   sqlOrderByTodayFirstThenPastThenFuture,
   sqlDateEqualsToday,
-  sqlDateGteMinus
+  sqlDateGteMinus,
+  sqlOrderNumericStringColumn
 };

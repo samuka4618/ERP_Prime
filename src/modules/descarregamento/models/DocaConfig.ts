@@ -1,5 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
-import { sqlBooleanTrue } from '../../../core/database/sql-dialect';
+import { sqlBooleanTrue, sqlOrderNumericStringColumn } from '../../../core/database/sql-dialect';
 import { formatSystemDate } from '../../../shared/utils/dateUtils';
 
 export interface DocaConfig {
@@ -72,7 +72,7 @@ export class DocaConfigModel {
       query += ` WHERE is_active = ${sqlBooleanTrue()}`;
     }
 
-    query += ' ORDER BY CAST(numero AS INTEGER), numero';
+    query += ` ORDER BY ${sqlOrderNumericStringColumn('numero')}`;
 
     const docas = await dbAll(query, params) as any[];
 

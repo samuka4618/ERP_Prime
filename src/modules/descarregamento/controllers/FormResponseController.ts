@@ -1,8 +1,13 @@
 import { Request, Response } from 'express';
+import Joi from 'joi';
 import { FormResponseModel } from '../models/FormResponse';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
 import { createFormResponseSchema, formResponseQuerySchema } from '../schemas/formResponse';
 import { SatelliteSyncService } from '../services/SatelliteSyncService';
+
+const startDischargeBodySchema = Joi.object({
+  dock: Joi.string().allow('', null).max(50).optional()
+});
 
 export class FormResponseController {
   // Rota pública para registro de chegada (sem autenticação)
@@ -141,7 +146,27 @@ export class FormResponseController {
       return;
     }
 
-    const updatedResponse = await FormResponseModel.startDischarge(responseId);
+    const { error: bodyErr, value: bodyValue } = startDischargeBodySchema.validate(req.body || {});
+    if (bodyErr) {
+      res.status(400).json({ error: 'Dados inválidos', details: bodyErr.details.map((d) => d.message) });
+      return;
+    }
+
+    let updatedResponse: Awaited<ReturnType<typeof FormResponseModel.startDischarge>>;
+    try {
+      updatedResponse = await FormResponseModel.startDischarge(responseId, bodyValue.dock);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '';
+      if (msg === 'DOCK_REQUIRED') {
+        res.status(400).json({ error: 'Informe a doca para liberar o motorista.' });
+        return;
+      }
+      if (msg === 'DOCK_INVALID') {
+        res.status(400).json({ error: 'Doca informada não encontrada ou inativa.' });
+        return;
+      }
+      throw e;
+    }
 
     if (!updatedResponse) {
       res.status(400).json({ error: 'Não foi possível iniciar a descarga' });

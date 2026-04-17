@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Calendar, Clock, Truck, MapPin, FileText } from 'lucide-react';
+import { ArrowLeft, Save, Calendar, Clock, Truck, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { apiUrl } from '../../utils/apiUrl';
@@ -18,22 +18,18 @@ const NovoAgendamento: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
   const [loadingFornecedores, setLoadingFornecedores] = useState(true);
-  const [loadingDocas, setLoadingDocas] = useState(true);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
-  const [docas, setDocas] = useState<{ id: number; numero: string; nome?: string }[]>([]);
-  
+
   const [formData, setFormData] = useState({
     fornecedor_id: '',
     scheduled_date: '',
     scheduled_time: '',
-    dock: '',
     notes: ''
   });
-  const [fieldErrors, setFieldErrors] = useState<{ fornecedor_id?: string; scheduled_date?: string; scheduled_time?: string; dock?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ fornecedor_id?: string; scheduled_date?: string; scheduled_time?: string }>({});
 
   useEffect(() => {
     fetchFornecedores();
-    fetchDocas();
     if (isEditing && id) {
       fetchAgendamento(parseInt(id));
     }
@@ -56,11 +52,10 @@ const NovoAgendamento: React.FC = () => {
 
       const data = await response.json();
       console.log('Resposta da API de fornecedores:', data);
-      
-      // A API retorna { message: "...", data: { data: [...], total: ... } }
+
       const fornecedoresList = data.data?.data || data.data || [];
       setFornecedores(fornecedoresList);
-      
+
       if (fornecedoresList.length === 0) {
         toast.error('Nenhum fornecedor cadastrado. Crie um fornecedor primeiro.', {
           duration: 5000
@@ -71,36 +66,6 @@ const NovoAgendamento: React.FC = () => {
       toast.error(error.message || 'Erro ao carregar fornecedores. Verifique se há fornecedores cadastrados.');
     } finally {
       setLoadingFornecedores(false);
-    }
-  };
-
-  const fetchDocas = async () => {
-    try {
-      setLoadingDocas(true);
-      const response = await fetch(apiUrl('descarregamento/docas?activeOnly=true'), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao carregar docas');
-      }
-
-      const data = await response.json();
-      setDocas(data.data?.docas || []);
-      
-      if (data.data?.docas?.length === 0) {
-        toast.error('Nenhuma doca configurada. Configure as docas primeiro.', {
-          duration: 5000
-        });
-      }
-    } catch (error: any) {
-      console.error('Erro ao carregar docas:', error);
-      toast.error('Erro ao carregar docas. Verifique as configurações.');
-    } finally {
-      setLoadingDocas(false);
     }
   };
 
@@ -118,12 +83,11 @@ const NovoAgendamento: React.FC = () => {
 
       const data = await response.json();
       const agendamento = data.data.agendamento;
-      
+
       setFormData({
         fornecedor_id: agendamento.fornecedor_id.toString(),
         scheduled_date: agendamento.scheduled_date,
-        scheduled_time: agendamento.scheduled_time,
-        dock: agendamento.dock,
+        scheduled_time: agendamento.scheduled_time || '',
         notes: agendamento.notes || ''
       });
     } catch (error) {
@@ -139,7 +103,6 @@ const NovoAgendamento: React.FC = () => {
     const err: typeof fieldErrors = {};
     if (!formData.fornecedor_id) err.fornecedor_id = 'Selecione o fornecedor';
     if (!formData.scheduled_date) err.scheduled_date = 'Data é obrigatória';
-    if (!formData.dock?.trim()) err.dock = 'Selecione a doca';
     setFieldErrors(err);
     if (Object.keys(err).length > 0) {
       toast.error('Preencha todos os campos obrigatórios');
@@ -148,11 +111,21 @@ const NovoAgendamento: React.FC = () => {
 
     try {
       setLoading(true);
-      const url = isEditing 
+      const url = isEditing
         ? apiUrl(`descarregamento/agendamentos/${id}`)
         : apiUrl('descarregamento/agendamentos');
-      
+
       const method = isEditing ? 'PUT' : 'POST';
+
+      const body: Record<string, unknown> = {
+        fornecedor_id: parseInt(formData.fornecedor_id),
+        scheduled_date: formData.scheduled_date,
+        scheduled_time: formData.scheduled_time?.trim() || '',
+        notes: formData.notes || undefined
+      };
+      if (!isEditing) {
+        body.dock = '';
+      }
 
       const response = await fetch(url, {
         method,
@@ -161,13 +134,7 @@ const NovoAgendamento: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({
-          fornecedor_id: parseInt(formData.fornecedor_id),
-          scheduled_date: formData.scheduled_date,
-          scheduled_time: formData.scheduled_time || '',
-          dock: formData.dock,
-          notes: formData.notes || undefined
-        })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
@@ -198,7 +165,6 @@ const NovoAgendamento: React.FC = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link
           to="/descarregamento/agendamentos"
@@ -216,10 +182,8 @@ const NovoAgendamento: React.FC = () => {
         </div>
       </div>
 
-      {/* Formulário */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Fornecedor */}
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
           <div>
             <label htmlFor="agendamento-fornecedor_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <Truck className="inline w-4 h-4 mr-2" />
@@ -243,7 +207,7 @@ const NovoAgendamento: React.FC = () => {
                   }`}
                 >
                   <option value="">
-                    {fornecedores.length === 0 
+                    {fornecedores.length === 0
                       ? 'Nenhum fornecedor cadastrado - Cadastre um fornecedor primeiro'
                       : 'Selecione um fornecedor'}
                   </option>
@@ -269,7 +233,6 @@ const NovoAgendamento: React.FC = () => {
             )}
           </div>
 
-          {/* Data e Hora */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="agendamento-scheduled_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -312,57 +275,6 @@ const NovoAgendamento: React.FC = () => {
             </div>
           </div>
 
-          {/* Doca */}
-          <div>
-            <label htmlFor="agendamento-dock" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <MapPin className="inline w-4 h-4 mr-2" />
-              Doca *
-            </label>
-            {loadingDocas ? (
-              <div className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-                Carregando docas...
-              </div>
-            ) : (
-              <>
-                <select
-                  id="agendamento-dock"
-                  name="dock"
-                  value={formData.dock}
-                  onChange={handleChange}
-                  required
-                  disabled={docas.length === 0}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed ${
-                    fieldErrors.dock ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                >
-                  <option value="">
-                    {docas.length === 0 
-                      ? 'Nenhuma doca configurada - Configure as docas primeiro'
-                      : 'Selecione a doca'}
-                  </option>
-                  {docas.map(doca => (
-                    <option key={doca.id} value={doca.numero}>
-                      {doca.nome || `Doca ${doca.numero}`}
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.dock && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.dock}</p>
-                )}
-                {docas.length === 0 && (
-                  <p className="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
-                    ⚠️ Nenhuma doca configurada. Por favor,{' '}
-                    <Link to="/descarregamento/config" className="underline font-medium">
-                      configure as docas primeiro
-                    </Link>
-                    .
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Observações */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <FileText className="inline w-4 h-4 mr-2" />
@@ -378,7 +290,6 @@ const NovoAgendamento: React.FC = () => {
             />
           </div>
 
-          {/* Botões */}
           <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Link
               to="/descarregamento/agendamentos"

@@ -5,6 +5,8 @@ import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { apiUrl } from '../../utils/apiUrl';
+import { toYyyyMmDd } from '../../utils/dateUtils';
+import LiberarParaDocaModal, { DocaOption } from '../../components/descarregamento/LiberarParaDocaModal';
 
 interface Agendamento {
   id: number;
@@ -38,6 +40,13 @@ interface Motorista {
     name: string;
     category: string;
   };
+  agendamento?: {
+    id: number;
+    dock: string;
+    scheduled_date: string;
+    scheduled_time: string;
+    status: string;
+  };
 }
 
 type ViewMode = 'dia' | 'semana';
@@ -56,6 +65,30 @@ const GradeDescarregamento: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const hasLoadedOnce = useRef(false);
+  const [docas, setDocas] = useState<DocaOption[]>([]);
+  const [loadingDocas, setLoadingDocas] = useState(false);
+  const [liberarModal, setLiberarModal] = useState<{ id: number; name: string; defaultDock: string } | null>(null);
+  const [liberarSubmitting, setLiberarSubmitting] = useState(false);
+
+  useEffect(() => {
+    const loadDocas = async () => {
+      try {
+        setLoadingDocas(true);
+        const response = await fetch(apiUrl('descarregamento/docas?activeOnly=true'), {
+          credentials: 'include',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        setDocas(data.data?.docas || []);
+      } catch {
+        /* vazio */
+      } finally {
+        setLoadingDocas(false);
+      }
+    };
+    loadDocas();
+  }, []);
 
   useEffect(() => {
     fetchData(true);
@@ -202,7 +235,7 @@ const GradeDescarregamento: React.FC = () => {
 
   const getAgendamentosDoDia = (date: Date) => {
     const dateStr = formatDateToYYYYMMDD(date);
-    return agendamentos.filter(a => a.scheduled_date === dateStr);
+    return agendamentos.filter((a) => toYyyyMmDd(a.scheduled_date) === dateStr);
   };
 
   const getWeekDates = () => {
@@ -239,23 +272,36 @@ const GradeDescarregamento: React.FC = () => {
     return `${start.getDate()}/${start.getMonth() + 1} a ${end.getDate()}/${end.getMonth() + 1}/${end.getFullYear()}`;
   };
 
-  const handleStartDischarge = async (m: Motorista) => {
-    setActionLoadingId(m.id);
+  const openLiberarModal = (m: Motorista) => {
+    const defaultDock = (m.agendamento?.dock || '').trim();
+    setLiberarModal({ id: m.id, name: m.driver_name, defaultDock });
+  };
+
+  const handleConfirmLiberar = async (dockNumero: string) => {
+    if (!liberarModal) return;
+    setActionLoadingId(liberarModal.id);
+    setLiberarSubmitting(true);
     try {
-      const res = await fetch(apiUrl(`descarregamento/form-responses/${m.id}/start-discharge`), {
+      const res = await fetch(apiUrl(`descarregamento/form-responses/${liberarModal.id}/start-discharge`), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ dock: dockNumero })
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Erro ao iniciar descarga');
       }
       toast.success('Liberado para doca. Confirme a conclusão quando terminar.');
+      setLiberarModal(null);
       fetchData(false);
     } catch (e: any) {
       toast.error(e.message || 'Erro ao iniciar descarga');
     } finally {
+      setLiberarSubmitting(false);
       setActionLoadingId(null);
     }
   };
@@ -284,6 +330,16 @@ const GradeDescarregamento: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      <LiberarParaDocaModal
+        open={!!liberarModal}
+        driverName={liberarModal?.name || ''}
+        defaultDockNumero={liberarModal?.defaultDock}
+        docas={docas}
+        loadingDocas={loadingDocas}
+        submitting={liberarSubmitting}
+        onCancel={() => !liberarSubmitting && setLiberarModal(null)}
+        onConfirm={handleConfirmLiberar}
+      />
       {loadError && (
         <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 flex flex-wrap items-center justify-between gap-3">
           <span>{loadError}</span>
@@ -451,7 +507,7 @@ const GradeDescarregamento: React.FC = () => {
                           {!realizando ? (
                             <button
                               type="button"
-                              onClick={() => handleStartDischarge(motorista)}
+                              onClick={() => openLiberarModal(motorista)}
                               disabled={loading}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50"
                             >
@@ -520,8 +576,13 @@ const GradeDescarregamento: React.FC = () => {
                               </div>
                               <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{agendamento.fornecedor?.category || ''}</div>
                               <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-2">
-                                <span>🕐 {agendamento.scheduled_time}</span>
-                                <span>📍 Doca {agendamento.dock}</span>
+                                <span>🕐 {agendamento.scheduled_time?.trim() || '—'}</span>
+                                <span>
+                                  📍{' '}
+                                  {(agendamento.dock || '').trim()
+                                    ? `Doca ${agendamento.dock}`
+                                    : 'Doca a definir'}
+                                </span>
                               </div>
                               {agendamento.motorista && (
                                 <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
@@ -583,7 +644,10 @@ const GradeDescarregamento: React.FC = () => {
                                 style={{ borderLeftColor: statusConfig.hexColor }}
                               >
                                 <div className="font-semibold text-gray-900 dark:text-white truncate" title={agendamento.fornecedor?.name}>{agendamento.fornecedor?.name}</div>
-                                <div className="text-gray-500 dark:text-gray-400">{agendamento.scheduled_time} · Doca {agendamento.dock}</div>
+                                <div className="text-gray-500 dark:text-gray-400">
+                                  {agendamento.scheduled_time?.trim() || '—'} ·{' '}
+                                  {(agendamento.dock || '').trim() ? `Doca ${agendamento.dock}` : 'doca a definir'}
+                                </div>
                                 {agendamento.motorista && (
                                   <div className="mt-0.5 pt-0.5 border-t border-gray-100 dark:border-gray-600 flex items-center gap-0.5 text-blue-600 dark:text-blue-400">
                                     <Users className="w-3 h-3 flex-shrink-0" />

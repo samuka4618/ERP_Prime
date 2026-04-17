@@ -9,7 +9,7 @@ export const createAgendamentoSchema = Joi.object({
     .optional()
     .default('')
     .pattern(/^(\d{2}:\d{2})?$/, { name: 'hora HH:MM ou vazio' }),
-  dock: Joi.string().required().min(1).max(10),
+  dock: Joi.string().allow('', null).optional().max(50).default(''),
   notes: Joi.string().optional().allow(null, '').max(1000)
 });
 
@@ -21,7 +21,7 @@ export const updateAgendamentoSchema = Joi.object({
     .empty([null])
     .optional()
     .pattern(/^(\d{2}:\d{2})?$/, { name: 'hora HH:MM ou vazio' }),
-  dock: Joi.string().optional().min(1).max(10),
+  dock: Joi.string().allow('', null).optional().max(50),
   status: Joi.string().valid('pendente', 'motorista_pronto', 'em_andamento', 'concluido').optional(),
   notes: Joi.string().optional().allow(null, '').max(1000)
 });

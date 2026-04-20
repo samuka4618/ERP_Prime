@@ -24,8 +24,10 @@ import FormattedDate from '../components/FormattedDate';
 import axios from 'axios';
 import clsx from 'clsx';
 import { getApiBaseUrl } from '../utils/apiUrl';
+import { useNavigate } from 'react-router-dom';
 
 const Profile: React.FC = () => {
+  const navigate = useNavigate();
   const { user, refreshUser, updateUserDirectly } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -758,6 +760,13 @@ const Profile: React.FC = () => {
               <li>• Faça logout ao sair do sistema</li>
               <li>• Mantenha seus dados atualizados</li>
             </ul>
+            <button
+              type="button"
+              onClick={() => navigate('/sessions')}
+              className="btn btn-outline mt-4 w-full"
+            >
+              Gerenciar Sessões Ativas
+            </button>
           </div>
         </div>
       </div>

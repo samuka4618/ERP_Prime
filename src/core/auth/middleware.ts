@@ -11,8 +11,14 @@ declare global {
   namespace Express {
     interface Request {
       user?: Omit<User, 'password'>;
+      authSessionId?: string;
     }
   }
+}
+
+function extractSessionIdFromToken(token: string): string | undefined {
+  const decoded = jwt.decode(token) as { sid?: unknown } | null;
+  return typeof decoded?.sid === 'string' ? decoded.sid : undefined;
 }
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -54,6 +60,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         created_at: new Date(),
         updated_at: new Date()
       };
+      req.authSessionId = extractSessionIdFromToken(token);
       logger.success('Autenticação via cache bem-sucedida', {
         requestId,
         userId: cachedUser.userId,
@@ -65,7 +72,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     
     // Se não estiver no cache, verificar JWT
     logger.debug('Token não encontrado no cache, verificando JWT', { requestId }, 'AUTH');
-    const decoded = jwt.verify(token, config.jwt.secret) as { userId: number; role?: string };
+    const decoded = jwt.verify(token, config.jwt.secret) as { userId: number; role?: string; sid?: string };
     logger.debug('JWT decodificado com sucesso', { requestId, userId: decoded.userId }, 'AUTH');
     
     const user = await UserModel.findById(decoded.userId);
@@ -93,6 +100,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     
     const { password, ...userWithoutPassword } = user;
     req.user = userWithoutPassword;
+    req.authSessionId = typeof decoded.sid === 'string' ? decoded.sid : undefined;
     
     logger.success('Autenticação bem-sucedida', {
       requestId,
@@ -178,16 +186,18 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         created_at: new Date(),
         updated_at: new Date()
       };
+      req.authSessionId = extractSessionIdFromToken(token);
       next();
       return;
     }
     
-    const decoded = jwt.verify(token, config.jwt.secret) as { userId: number; role?: string };
+    const decoded = jwt.verify(token, config.jwt.secret) as { userId: number; role?: string; sid?: string };
     const user = await UserModel.findById(decoded.userId);
     
     if (user && user.is_active) {
       const { password, ...userWithoutPassword } = user;
       req.user = userWithoutPassword;
+      req.authSessionId = typeof decoded.sid === 'string' ? decoded.sid : undefined;
     }
     
     next();

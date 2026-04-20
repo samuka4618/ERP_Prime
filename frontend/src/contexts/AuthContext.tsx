@@ -7,6 +7,30 @@ import { User, LoginRequest } from '../types';
 import { apiService } from '../services/api';
 import { logger } from '../utils/logger';
 
+const REMEMBER_ME_KEY = 'auth.rememberMe';
+const USER_STORAGE_KEY = 'user';
+const TOKEN_STORAGE_KEY = 'token';
+
+const isRememberMeEnabled = (): boolean => localStorage.getItem(REMEMBER_ME_KEY) === '1';
+
+const saveAuthUser = (user: User, rememberMe: boolean): void => {
+  if (rememberMe) {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    sessionStorage.removeItem(USER_STORAGE_KEY);
+  } else {
+    sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    localStorage.removeItem(USER_STORAGE_KEY);
+  }
+};
+
+const clearAuthStorage = (): void => {
+  localStorage.removeItem(USER_STORAGE_KEY);
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(REMEMBER_ME_KEY);
+  sessionStorage.removeItem(USER_STORAGE_KEY);
+  sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+};
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
@@ -47,11 +71,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const microsoft = params.get('microsoft');
       if (urlToken && microsoft === '1') {
         try {
-          localStorage.setItem('token', urlToken);
+          localStorage.setItem(TOKEN_STORAGE_KEY, urlToken);
           const profile = await apiService.getProfile();
           setUser(profile);
           setToken('cookie');
-          localStorage.setItem('user', JSON.stringify(profile));
+          // No login Microsoft, manter persistência longa por padrão.
+          localStorage.setItem(REMEMBER_ME_KEY, '1');
+          saveAuthUser(profile, true);
           logger.success('Login Microsoft concluído (token da URL)', { userId: profile.id }, 'AUTH');
           if (typeof window !== 'undefined' && window.history.replaceState) {
             window.history.replaceState({}, '', window.location.pathname || '/');
@@ -59,8 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch {
           setUser(null);
           setToken(null);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          clearAuthStorage();
           if (typeof window !== 'undefined' && window.history.replaceState) {
             window.history.replaceState({}, '', `${window.location.pathname || '/'}?error=${encodeURIComponent('Falha ao validar token')}`);
           }
@@ -73,13 +98,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const profile = await apiService.getProfile();
         setUser(profile);
         setToken('cookie');
-        localStorage.setItem('user', JSON.stringify(profile));
+        saveAuthUser(profile, isRememberMeEnabled());
         logger.success('Sessão validada via cookie', { userId: profile.id }, 'AUTH');
       } catch {
         setUser(null);
         setToken(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        clearAuthStorage();
         logger.debug('Sem sessão válida (cookie)', {}, 'AUTH');
       }
       setLoading(false);
@@ -93,10 +117,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     try {
       const response = await apiService.login(credentials);
+      const rememberMe = Boolean(credentials.rememberMe);
       setToken('cookie');
       setUser(response.user);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      if (response.token) localStorage.setItem('token', response.token);
+      localStorage.setItem(REMEMBER_ME_KEY, rememberMe ? '1' : '0');
+      saveAuthUser(response.user, rememberMe);
+      // Login padrão usa cookie httpOnly; evita persistir JWT em storage.
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      sessionStorage.removeItem(TOKEN_STORAGE_KEY);
       
       logger.success('Login concluído (cookie httpOnly)', { 
         userId: response.user.id,
@@ -117,11 +145,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const loginWithToken = async (token: string) => {
     logger.info('Login com token (ex.: callback Microsoft)', {}, 'AUTH');
     try {
-      localStorage.setItem('token', token);
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
       const profile = await apiService.getProfile();
       setUser(profile);
       setToken('cookie');
-      localStorage.setItem('user', JSON.stringify(profile));
+      localStorage.setItem(REMEMBER_ME_KEY, '1');
+      saveAuthUser(profile, true);
       logger.success('Login com token concluído', { userId: profile.id }, 'AUTH');
       try {
         await apiService.trackActivity(profile.id, 'login');
@@ -130,7 +159,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       logger.error('Falha ao validar token', { error: error instanceof Error ? error.message : 'Unknown' }, 'AUTH');
-      localStorage.removeItem('token');
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
       throw error;
     }
   };
@@ -147,8 +176,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setToken(null);
       setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuthStorage();
       logger.success('Logout concluído no contexto', {}, 'AUTH');
     }
   };
@@ -159,7 +187,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const updatedUser = await apiService.getProfile();
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      saveAuthUser(updatedUser, isRememberMeEnabled());
       logger.debug('Dados do usuário atualizados', { userId: updatedUser.id }, 'AUTH');
     } catch (error) {
       logger.warn('Erro ao atualizar dados do usuário', { 
@@ -171,7 +199,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Função para atualizar o usuário diretamente (sem fazer nova requisição)
   const updateUserDirectly = (updatedUser: User) => {
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    saveAuthUser(updatedUser, isRememberMeEnabled());
     logger.debug('Dados do usuário atualizados diretamente', { userId: updatedUser.id }, 'AUTH');
   };
 

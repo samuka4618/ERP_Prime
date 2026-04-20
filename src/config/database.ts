@@ -26,7 +26,15 @@ export const config = {
   },
   jwt: {
     secret: jwtSecret || 'sua_chave_secreta_jwt_aqui',
-    expiresIn: process.env.JWT_EXPIRES_IN || '24h'
+    expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+    // Access token curto (cookie "token")
+    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+    // Refresh token (cookie "refresh_token")
+    refreshExpiresInSession: process.env.JWT_REFRESH_EXPIRES_IN_SESSION || '12h',
+    refreshExpiresInRemember: process.env.JWT_REFRESH_EXPIRES_IN_REMEMBER || '30d',
+    // Compatibilidade com fluxos legados
+    expiresInSession: process.env.JWT_EXPIRES_IN_SESSION || '12h',
+    expiresInRemember: process.env.JWT_EXPIRES_IN_REMEMBER || '30d'
   },
   email: {
     host: process.env.SMTP_HOST || 'smtp.gmail.com',

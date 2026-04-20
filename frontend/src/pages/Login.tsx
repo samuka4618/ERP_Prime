@@ -11,7 +11,8 @@ const Login: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    rememberMe: false
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -69,10 +70,14 @@ const Login: React.FC = () => {
   const showLogoImg = logoUrl && !logoError;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value, checked } = e.target;
+    if (name === 'rememberMe') {
+      setFormData((prev) => ({ ...prev, rememberMe: checked }));
+      return;
+    }
+    if (name === 'email' || name === 'password') {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -194,8 +199,10 @@ const Login: React.FC = () => {
               <label className="flex items-center gap-3 cursor-pointer group py-2 -ml-1 pl-1 pr-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors w-fit">
                 <input
                   id="remember-me"
-                  name="remember-me"
+                  name="rememberMe"
                   type="checkbox"
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
                   className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 flex-shrink-0"
                 />
                 <span className="text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors select-none">

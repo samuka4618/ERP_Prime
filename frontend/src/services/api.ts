@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import {
   LoginRequest,
   LoginResponse,
+  AuthSession,
   User,
   Ticket,
   TicketHistory,
@@ -70,6 +71,7 @@ export interface EntraUserListItem {
 
 class ApiService {
   private api: AxiosInstance;
+  private refreshPromise: Promise<void> | null = null;
 
   constructor() {
     // Usar VITE_API_URL em produção (ex.: Vercel + Render); em dev usa /api ou hostname:port
@@ -133,7 +135,7 @@ class ApiService {
         
         return response;
       },
-      (error) => {
+      async (error) => {
         const startTime = (error.config as any)?.startTime;
         const responseTime = startTime ? Date.now() - startTime : 0;
         
@@ -146,20 +148,32 @@ class ApiService {
         );
         
         if (error.response?.status === 401) {
-          // Não redirecionar se já estiver na página de login ou se for uma requisição de configuração do sistema
-          const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/register';
-          const isSystemConfig = error.config?.url?.includes('/system/config');
-          
-          if (!isLoginPage && !isSystemConfig) {
-            logger.warn('Token expirado ou inválido, redirecionando para login', { 
-              url: error.config?.url 
-            }, 'AUTH');
-            
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+          const originalRequest = error.config as any;
+          const requestUrl = String(originalRequest?.url || '');
+          const isRefreshRequest = requestUrl.includes('/auth/refresh');
+          const isPublicAuthRoute = requestUrl.includes('/auth/login')
+            || requestUrl.includes('/auth/register')
+            || requestUrl.includes('/auth/registration-open')
+            || requestUrl.includes('/auth/providers');
+          const isSystemConfig = requestUrl.includes('/system/config');
+
+          if (!originalRequest?._retry && !isRefreshRequest && !isPublicAuthRoute && !isSystemConfig) {
+            originalRequest._retry = true;
+
+            try {
+              if (!this.refreshPromise) {
+                this.refreshPromise = this.refreshSession();
+              }
+              await this.refreshPromise;
+              return this.api(originalRequest);
+            } catch (_refreshError) {
+              this.handleAuthFailure(requestUrl);
+            } finally {
+              this.refreshPromise = null;
+            }
+          } else if (isRefreshRequest || isPublicAuthRoute) {
+            this.handleAuthFailure(requestUrl);
           } else if (isSystemConfig) {
-            // Para requisições de config do sistema, apenas logar sem redirecionar
             logger.debug('Requisição de configuração do sistema sem autenticação, usando valores padrão', {}, 'API');
           }
         }
@@ -206,14 +220,47 @@ class ApiService {
       }, 'AUTH');
     }
     // Limpar localStorage APÓS tentar fazer logout no servidor
+    this.clearLocalAuthData();
+    logger.info('Dados locais limpos', {}, 'AUTH');
+  }
+
+  async refreshSession(): Promise<void> {
+    await this.api.post('/auth/refresh');
+  }
+
+  private clearLocalAuthData(): void {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    logger.info('Dados locais limpos', {}, 'AUTH');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+  }
+
+  private handleAuthFailure(url?: string): void {
+    const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/register';
+    this.clearLocalAuthData();
+    if (!isLoginPage) {
+      logger.warn('Sessão expirada. Redirecionando para login', { url }, 'AUTH');
+      window.location.href = '/login';
+    }
   }
 
   async getProfile(): Promise<User> {
     const response = await this.api.get<ApiResponse<{ user: User }>>('/auth/profile');
     return response.data.data.user;
+  }
+
+  async getAuthSessions(): Promise<AuthSession[]> {
+    const response = await this.api.get<ApiResponse<{ sessions: AuthSession[] }>>('/auth/sessions');
+    return response.data.data.sessions || [];
+  }
+
+  async revokeAuthSession(sessionId: string): Promise<void> {
+    await this.api.delete(`/auth/sessions/${encodeURIComponent(sessionId)}`);
+  }
+
+  async revokeOtherAuthSessions(): Promise<number> {
+    const response = await this.api.delete<ApiResponse<{ revokedCount: number }>>('/auth/sessions');
+    return response.data.data.revokedCount ?? 0;
   }
 
   /** Provedores de login disponíveis (ex.: Microsoft Entra ID). */

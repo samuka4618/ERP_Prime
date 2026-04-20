@@ -161,11 +161,24 @@ export interface AssignmentSummary {
 export interface LoginRequest {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface LoginResponse {
   token: string;
   user: User;
+}
+
+export interface AuthSession {
+  sessionId: string;
+  current: boolean;
+  rememberMe: boolean;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
 }
 
 export interface CreateTicketRequest {

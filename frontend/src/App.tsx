@@ -14,6 +14,7 @@ import CreateTicket from './pages/CreateTicket';
 import TicketDetail from './pages/TicketDetail';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
+import Sessions from './pages/Sessions';
 import NotificationsPage from './pages/Notifications';
 import SystemConfig from './pages/SystemConfig';
 import SystemSettings from './pages/SystemSettings';
@@ -148,6 +149,7 @@ const AppRoutes: React.FC = () => {
         <Route path="users" element={<Users />} />
         <Route path="permissions" element={<PermissionsPage />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="sessions" element={<Sessions />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="system-config" element={<SystemConfig />} />
         <Route path="system-settings" element={<SystemSettings />} />

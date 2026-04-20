@@ -7,27 +7,73 @@ import { tokenCacheService } from './TokenCacheService';
 import { config } from '../../config/database';
 import { logger } from '../../shared/utils/logger';
 import { log as auditLog } from '../audit/AuditService';
+import AuthSessionModel from './AuthSessionModel';
 import jwt from 'jsonwebtoken';
 import Joi from 'joi';
 
-const AUTH_COOKIE_NAME = 'token';
+const ACCESS_COOKIE_NAME = 'token';
+const REFRESH_COOKIE_NAME = 'refresh_token';
 
-function getCookieOptions() {
+function getBaseCookieOptions() {
   const isProduction = config.nodeEnv === 'production';
-  const maxAgeMs = 24 * 60 * 60 * 1000; // 24h em ms
   return {
     httpOnly: true,
     secure: isProduction,
     sameSite: 'lax' as const,
-    maxAge: maxAgeMs,
     path: '/',
   };
+}
+
+function getAccessCookieOptions() {
+  const maxAgeMs = AuthSessionModel.parseDurationToMs(config.jwt.accessExpiresIn);
+  return { ...getBaseCookieOptions(), maxAge: maxAgeMs };
+}
+
+function getRefreshCookieOptions(rememberMe: boolean, maxAgeMs: number) {
+  const baseOptions = getBaseCookieOptions();
+  // rememberMe=true: cookie persistente; false: cookie de sessão (sem maxAge)
+  return rememberMe ? { ...baseOptions, maxAge: maxAgeMs } : baseOptions;
+}
+
+function getClientMetadata(req: Request) {
+  const rawForwarded = req.headers['x-forwarded-for'];
+  const forwardedIp = Array.isArray(rawForwarded)
+    ? rawForwarded[0]
+    : (rawForwarded?.split(',')[0] || '').trim();
+
+  return {
+    userAgent: req.get('user-agent') || 'unknown',
+    ipAddress: forwardedIp || req.ip || undefined
+  };
+}
+
+function issueAccessToken(user: { id: number; role: string; name: string; email: string }, sessionId: string): string {
+  const token = (jwt.sign as any)(
+    { userId: user.id, role: user.role, sid: sessionId, type: 'access' },
+    config.jwt.secret,
+    { expiresIn: config.jwt.accessExpiresIn }
+  );
+
+  tokenCacheService.addActiveToken(token, {
+    userId: user.id,
+    userRole: user.role,
+    userName: user.name,
+    userEmail: user.email
+  });
+
+  return token;
+}
+
+function clearAuthCookies(res: Response): void {
+  res.clearCookie(ACCESS_COOKIE_NAME, { path: '/' });
+  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/' });
 }
 
 
 const loginSchema = Joi.object({
   email: Joi.string().email().required().trim(),
-  password: Joi.string().min(6).required().trim()
+  password: Joi.string().min(6).required().trim(),
+  rememberMe: Joi.boolean().optional().default(false)
 });
 
 const registerSchema = Joi.object({
@@ -71,15 +117,25 @@ export class AuthController {
     }
 
     const credentials = value as LoginRequest;
+    const rememberMe = Boolean(credentials.rememberMe);
     
     try {
-      const result = await AuthService.login(credentials);
+      const user = await AuthService.validateCredentials(credentials);
+      const metadata = getClientMetadata(req);
+      const session = await AuthSessionModel.createSession(user.id, rememberMe, metadata);
+      const accessToken = issueAccessToken(user, session.sessionId);
+      const refreshMaxAgeMs = Math.max(1, session.refreshExpiresAt.getTime() - Date.now());
+      const result = {
+        user,
+        token: accessToken
+      };
       
       logger.success('Login realizado com sucesso', { 
         requestId, 
         userId: result.user.id, 
         email: result.user.email, 
         role: result.user.role,
+        rememberMe,
         responseTime: Date.now() - startTime
       }, 'AUTH');
       auditLog({
@@ -88,7 +144,12 @@ export class AuthController {
         action: 'login.success',
         ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined
       });
-      res.cookie(AUTH_COOKIE_NAME, result.token, getCookieOptions());
+      res.cookie(ACCESS_COOKIE_NAME, result.token, getAccessCookieOptions());
+      res.cookie(
+        REFRESH_COOKIE_NAME,
+        session.refreshToken,
+        getRefreshCookieOptions(rememberMe, refreshMaxAgeMs)
+      );
       res.json({
         message: 'Login realizado com sucesso',
         data: result
@@ -146,7 +207,15 @@ export class AuthController {
       }, 'AUTH');
 
       try {
-        const result = await AuthService.register(userData);
+        const registerResult = await AuthService.register(userData);
+        const metadata = getClientMetadata(req);
+        const session = await AuthSessionModel.createSession(registerResult.user.id, true, metadata);
+        const accessToken = issueAccessToken(registerResult.user, session.sessionId);
+        const refreshMaxAgeMs = Math.max(1, session.refreshExpiresAt.getTime() - Date.now());
+        const result = {
+          user: registerResult.user,
+          token: accessToken
+        };
         
         logger.success('Registro realizado com sucesso', { 
           requestId: (req as any).requestId,
@@ -155,7 +224,12 @@ export class AuthController {
           role: result.user.role
         }, 'AUTH');
         
-        res.cookie(AUTH_COOKIE_NAME, result.token, getCookieOptions());
+        res.cookie(ACCESS_COOKIE_NAME, result.token, getAccessCookieOptions());
+        res.cookie(
+          REFRESH_COOKIE_NAME,
+          session.refreshToken,
+          getRefreshCookieOptions(true, refreshMaxAgeMs)
+        );
         res.status(201).json({
           message: 'Usuário criado com sucesso',
           data: result
@@ -176,24 +250,19 @@ export class AuthController {
               userId: existingUser.id 
             }, 'AUTH');
             
-            // Gerar token para o usuário existente
-            const token = (jwt.sign as any)(
-              { userId: existingUser.id, role: existingUser.role },
-              config.jwt.secret,
-              { expiresIn: config.jwt.expiresIn }
-            );
-
-            // Adicionar token ao cache
-            tokenCacheService.addActiveToken(token, {
-              userId: existingUser.id,
-              userRole: existingUser.role,
-              userName: existingUser.name,
-              userEmail: existingUser.email
-            });
+            const metadata = getClientMetadata(req);
+            const session = await AuthSessionModel.createSession(existingUser.id, true, metadata);
+            const token = issueAccessToken(existingUser, session.sessionId);
+            const refreshMaxAgeMs = Math.max(1, session.refreshExpiresAt.getTime() - Date.now());
 
             const { password, ...userWithoutPassword } = existingUser;
 
-            res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions());
+            res.cookie(ACCESS_COOKIE_NAME, token, getAccessCookieOptions());
+            res.cookie(
+              REFRESH_COOKIE_NAME,
+              session.refreshToken,
+              getRefreshCookieOptions(true, refreshMaxAgeMs)
+            );
             res.status(200).json({
               message: 'Usuário já existe, login realizado',
               data: {
@@ -226,34 +295,59 @@ export class AuthController {
   });
 
   static refreshToken = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.id;
-    if (!userId) {
-      res.status(401).json({ error: 'Usuário não autenticado' });
+    const refreshToken = (req as any).cookies?.[REFRESH_COOKIE_NAME];
+    if (!refreshToken) {
+      res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' });
       return;
     }
 
-    const token = await AuthService.refreshToken(userId);
-    res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions());
+    const metadata = getClientMetadata(req);
+    const rotated = await AuthSessionModel.rotateRefreshToken(refreshToken, metadata);
+    if (!rotated) {
+      clearAuthCookies(res);
+      res.status(401).json({ error: 'Refresh token inválido ou expirado' });
+      return;
+    }
+
+    const user = await UserModel.findById(rotated.userId);
+    if (!user || !user.is_active) {
+      clearAuthCookies(res);
+      res.status(401).json({ error: 'Usuário não encontrado' });
+      return;
+    }
+
+    const { password, ...userWithoutPassword } = user;
+    const accessToken = issueAccessToken(userWithoutPassword, rotated.sessionId);
+    const refreshMaxAgeMs = Math.max(1, rotated.refreshExpiresAt.getTime() - Date.now());
+    res.cookie(ACCESS_COOKIE_NAME, accessToken, getAccessCookieOptions());
+    res.cookie(
+      REFRESH_COOKIE_NAME,
+      rotated.newRefreshToken,
+      getRefreshCookieOptions(rotated.rememberMe, refreshMaxAgeMs)
+    );
     res.json({
       message: 'Token renovado com sucesso',
-      data: { token }
+      data: {
+        token: accessToken,
+        user: userWithoutPassword
+      }
     });
   });
 
   static logout = asyncHandler(async (req: Request, res: Response) => {
-    const token = (req as any).cookies?.[AUTH_COOKIE_NAME] || req.header('Authorization')?.replace('Bearer ', '');
+    const accessToken = (req as any).cookies?.[ACCESS_COOKIE_NAME] || req.header('Authorization')?.replace('Bearer ', '');
+    const refreshToken = (req as any).cookies?.[REFRESH_COOKIE_NAME];
     
-    if (token) {
-      const tokenInfo = tokenCacheService.getUserByToken(token);
+    if (accessToken) {
+      const tokenInfo = tokenCacheService.getUserByToken(accessToken);
       if (tokenInfo) {
-        tokenCacheService.removeUserTokens(tokenInfo.userId);
-        tokenCacheService.invalidateToken(token);
+        tokenCacheService.removeToken(accessToken);
+        tokenCacheService.invalidateToken(accessToken);
         logger.info(`Logout realizado para usuário ${tokenInfo.userName} (ID: ${tokenInfo.userId})`);
       } else {
         try {
-          const decoded = jwt.verify(token, config.jwt.secret) as { userId: number; role?: string };
-          tokenCacheService.removeUserTokens(decoded.userId);
-          tokenCacheService.invalidateToken(token);
+          const decoded = jwt.verify(accessToken, config.jwt.secret) as { userId: number; role?: string };
+          tokenCacheService.invalidateToken(accessToken);
           logger.info(`Logout realizado para usuário ID ${decoded.userId} (via JWT)`);
         } catch (error) {
           logger.warn('Token inválido durante logout:', error);
@@ -261,9 +355,67 @@ export class AuthController {
       }
     }
 
-    res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
+    if (refreshToken) {
+      await AuthSessionModel.revokeSessionByRefreshToken(refreshToken);
+    }
+
+    clearAuthCookies(res);
     res.json({
       message: 'Logout realizado com sucesso'
+    });
+  });
+
+  static listSessions = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+
+    const sessions = await AuthSessionModel.listUserSessions(userId, req.authSessionId);
+    res.json({
+      message: 'Sessões obtidas com sucesso',
+      data: { sessions }
+    });
+  });
+
+  static revokeSession = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    const sessionId = req.params.sessionId;
+    if (!userId) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+
+    if (!sessionId) {
+      res.status(400).json({ error: 'sessionId é obrigatório' });
+      return;
+    }
+
+    const revoked = await AuthSessionModel.revokeSessionById(userId, sessionId);
+    if (!revoked) {
+      res.status(404).json({ error: 'Sessão não encontrada ou já revogada' });
+      return;
+    }
+
+    if (sessionId === req.authSessionId) {
+      clearAuthCookies(res);
+    }
+
+    res.json({ message: 'Sessão revogada com sucesso' });
+  });
+
+  static revokeOtherSessions = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+
+    const revokedCount = await AuthSessionModel.revokeAllUserSessions(userId, req.authSessionId);
+    res.json({
+      message: 'Sessões revogadas com sucesso',
+      data: { revokedCount }
     });
   });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Bell, User, LogOut, Bug } from 'lucide-react';
+import { Menu, Bell, User, LogOut, Bug, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -123,6 +123,16 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               >
                 <User className="w-4 h-4 mr-3" />
                 Meu Perfil
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/sessions');
+                  setShowUserMenu(false);
+                }}
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <ShieldCheck className="w-4 h-4 mr-3" />
+                Sessões Ativas
               </button>
               <button
                 onClick={handleLogout}

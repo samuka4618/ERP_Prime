@@ -20,7 +20,7 @@ function generateToken(payload: any, secret: string, expiresIn: string): string 
 }
 
 export class AuthService {
-  static async login(credentials: LoginRequest): Promise<AuthResponse> {
+  static async validateCredentials(credentials: LoginRequest): Promise<Omit<User, 'password'>> {
     logger.debug('Buscando usuário por email', { email: credentials.email }, 'AUTH');
     const user = await UserModel.findByEmail(credentials.email);
     
@@ -53,21 +53,27 @@ export class AuthService {
     
     logger.debug('Senha verificada com sucesso', { userId: user.id }, 'AUTH');
 
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  }
+
+  static async login(credentials: LoginRequest): Promise<AuthResponse> {
+    const userWithoutPassword = await this.validateCredentials(credentials);
+    const tokenTtl = credentials.rememberMe
+      ? config.jwt.expiresInRemember
+      : config.jwt.expiresInSession;
     const token = generateToken(
-      { userId: user.id, role: user.role },
+      { userId: userWithoutPassword.id, role: userWithoutPassword.role },
       config.jwt.secret,
-      config.jwt.expiresIn
+      tokenTtl
     );
 
-    // Adicionar token ao cache (usuário ficou online)
     tokenCacheService.addActiveToken(token, {
-      userId: user.id,
-      userRole: user.role,
-      userName: user.name,
-      userEmail: user.email
+      userId: userWithoutPassword.id,
+      userRole: userWithoutPassword.role,
+      userName: userWithoutPassword.name,
+      userEmail: userWithoutPassword.email
     });
-
-    const { password, ...userWithoutPassword } = user;
 
     return {
       user: userWithoutPassword,

@@ -122,7 +122,6 @@ Você pode **importar o .env inteiro** ou **adicionar variáveis uma a uma**.
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `DB_SERVER`                                             | Se o SQL Server estiver na sua rede local (ex.: `192.168.14.1`), o Render **não** conseguirá acessar. Remova ou use um servidor acessível pela internet (VPN/túnel).                                                     |
 | `ATAK_BASE_URL`                                         | Se for `http://192.168.14.13:9010`, o Render não acessa. Ajuste para uma URL pública do Atak, se houver.                                                                                                                 |
-| `USE_NGROK`                                             | Defina como `false` no Render (Ngrok é para expor ambiente local).                                                                                                                                                       |
 | `DB_PATH`, `UPLOAD_PATH`, `IMAGES_PATH`, `UPLOADS_PATH` | No plano Free podem ficar como estão (ex.: `./data/...`); os dados não persistem. Se ativar [Render Disk](#6-persistência-de-dados-render-disk), troque para `/data/database/chamados.db`, `/data/storage/uploads`, etc. |
 
 
@@ -535,7 +534,6 @@ Todas as variáveis que o backend pode usar, com indicação de uso em produçã
 | **Outros**                                              |                               |                                                                                                           |
 | `LOG_PATH`                                              | Não                           | Ex.: `./logs`.                                                                                            |
 | `SYSTEM_NAME`                                           | Não                           | Nome do sistema em e-mails. Ex.: `ERP PRIME`.                                                             |
-| `USE_NGROK`                                             | Não                           | Em produção no Render normalmente `false`.                                                                |
 | `DISABLE_RATE_LIMIT`                                    | Não                           | Em produção deixe `false`.                                                                                |
 | `DEBUG`                                                 | Não                           | Em produção deixe `false`.                                                                                |
 

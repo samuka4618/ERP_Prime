@@ -33,11 +33,6 @@ app.use((req, res, next) => {
   const host = (req.headers.host || '').toLowerCase();
 
   if (isHttps && config.nodeEnv === 'development') {
-    // Não redirecionar quando acessando via ngrok: o túnel já é HTTPS para o usuário.
-    // Redirecionar para HTTP aqui causaria loop (ngrok/browser voltam para HTTPS).
-    if (host.includes('ngrok')) {
-      return next();
-    }
     // Não redirecionar quando a requisição vier do host definido em PUBLIC_URL (ex.: Cloudflare Tunnel).
     // Assim, quem usa túnel (Cloudflare ou outro) define PUBLIC_URL e o backend não força HTTP.
     if (process.env.PUBLIC_URL && process.env.PUBLIC_URL.trim()) {

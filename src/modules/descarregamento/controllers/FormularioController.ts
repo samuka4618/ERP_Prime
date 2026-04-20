@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { FormularioModel } from '../models/Formulario';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
 import { QRCodeService } from '../services/QRCodeService';
-import { NgrokService } from '../services/NgrokService';
 import { SatelliteSyncService } from '../services/SatelliteSyncService';
 import Joi from 'joi';
 
@@ -161,7 +160,7 @@ export class FormularioController {
     });
   });
 
-  /** Regenera o link público (limpa cache do ngrok e obtém a URL atual). Útil quando o ngrok reinicia e a URL muda. */
+  /** Regenera o link público com as configurações atuais de URL pública. */
   static regeneratePublicUrl = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const formularioId = parseInt(id);
@@ -182,7 +181,6 @@ export class FormularioController {
       return;
     }
 
-    NgrokService.clearCache();
     const publicUrl = await QRCodeService.getPublicFormUrl(formularioId);
 
     res.json({

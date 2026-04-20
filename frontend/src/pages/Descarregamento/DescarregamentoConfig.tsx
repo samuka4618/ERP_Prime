@@ -329,7 +329,7 @@ const DescarregamentoConfig: React.FC = () => {
         toast.success('Link regenerado com sucesso! O QR code foi atualizado.');
       } else {
         await fetchFormularios();
-        toast.success('Link atualizado. Se o ngrok estiver rodando, a nova URL já está em uso.');
+        toast.success('Link atualizado com sucesso.');
       }
     } catch (err: any) {
       console.error('Erro ao regenerar link:', err);
@@ -776,7 +776,7 @@ const DescarregamentoConfig: React.FC = () => {
                               <button
                                 onClick={() => regenerateLink(formulario.id)}
                                 className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
-                                title="Regenerar link (atualiza a URL quando o ngrok reinicia)"
+                                title="Regenerar link"
                               >
                                 <RefreshCw className="w-5 h-5" />
                               </button>
@@ -828,7 +828,7 @@ const DescarregamentoConfig: React.FC = () => {
                               <button
                                 onClick={() => regenerateLink(formulario.id)}
                                 className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg flex items-center gap-1.5 text-sm"
-                                title="Atualizar link (ex.: após reiniciar o ngrok)"
+                                title="Atualizar link"
                               >
                                 <RefreshCw className="w-4 h-4" />
                                 Regenerar
@@ -851,7 +851,7 @@ const DescarregamentoConfig: React.FC = () => {
                               </button>
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                              Escaneie o QR Code com o celular para acessar o formulário público. Se o ngrok reiniciar, use &quot;Regenerar&quot; para atualizar o link.
+                              Escaneie o QR Code com o celular para acessar o formulário público. Se mudar a configuração da URL pública, use &quot;Regenerar&quot; para atualizar o link.
                             </p>
                           </div>
                         </div>

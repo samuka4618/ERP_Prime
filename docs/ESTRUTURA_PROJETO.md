@@ -40,13 +40,11 @@ ERP_Prime/
 ├── data/                         # SQLite local (DB_PATH), backups
 ├── storage/                      # uploads, images, avatars (paths por env)
 ├── logs/                         # Logs da aplicação / PM2 (se usados)
-├── scripts/                      # nginx, PM2, SSL, copy-schema, reset-db, create-user...
-├── nginx/                        # Exemplos de configuração proxy
+├── scripts/                      # PM2, copy-schema, reset-db, create-user...
 ├── docs/                         # Documentação (manual completo, deploy, API...)
 ├── tests/                        # Jest (ex.: tests/auth, tests/schemas)
 ├── tools/
 │   └── cadastros-legacy/         # Ferramentas / integrações legadas
-├── sistema/                      # Árvore legada/paralela (não é o entrypoint do package.json raiz)
 │
 ├── docker-compose.postgres.yml
 ├── package.json
@@ -77,9 +75,9 @@ Microserviço opcional: Postgres dedicado, rotas `/internal` (ERP) e `/api/publi
 - **data/** — persistência SQLite quando não se usa Postgres no ERP.
 - **storage/** — ficheiros submetidos pelos utilizadores (deve entrar nos backups).
 
-### `scripts/` e `nginx/`
+### `scripts/`
 
-Automação de arranque (Node + Nginx opcional), PM2, certificados e tarefas de manutenção.
+Automação de arranque (Node), PM2 e tarefas de manutenção.
 
 ### `docs/`
 
@@ -92,12 +90,6 @@ Testes Jest (estrutura pode crescer; atualmente inclui testes de auth e schemas)
 ### `tools/cadastros-legacy/`
 
 Código e scripts históricos de cadastros — não confundir com `src/modules/cadastros/`.
-
-### `sistema/`
-
-Projeto ou monorepo antigo em paralelo. **Não** substitui `src/` + `frontend/` para o comando `npm run dev` da raiz.
-
----
 
 ## Migração de estrutura antiga (histórico)
 

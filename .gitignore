@@ -49,7 +49,6 @@ mobile/android/.gradle/
 # Certificados SSL (gerados por generate:ssl-cert)
 # =========================
 certs/
-nginx/ssl-cert.conf
 
 # =========================
 # Variáveis de ambiente e segredos
@@ -164,10 +163,6 @@ tools/cadastros-legacy/node_modules/
 tools/cadastros-legacy/dist/
 tools/cadastros-legacy/logs/
 tools/cadastros-legacy/.env
-sistema/cadastros/node_modules/
-sistema/cadastros/dist/
-sistema/electron/node_modules/
-sistema/electron/dist/
 
 # =========================
 # Arquivos acidentais (raiz)

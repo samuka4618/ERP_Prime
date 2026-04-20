@@ -1,7 +1,6 @@
 import QRCode from 'qrcode';
 import { config } from '../../../config/database';
 import os from 'os';
-import { NgrokService } from './NgrokService';
 
 /**
  * Serviço para gerar QR codes de formulários publicados
@@ -34,12 +33,6 @@ export class QRCodeService {
         base = `https://${base}`;
       }
       return `${base}${path}`;
-    }
-
-    // Ngrok ativo (dev): normalmente tunela o app inteiro
-    const ngrokUrl = await NgrokService.getNgrokUrl();
-    if (ngrokUrl) {
-      return `${ngrokUrl}${path}`;
     }
 
     // PUBLIC_URL (ex.: Cloudflare Tunnel) quando front e back estão no mesmo túnel

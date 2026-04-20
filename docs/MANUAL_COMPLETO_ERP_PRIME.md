@@ -27,7 +27,7 @@ Este manual descreve **o que o sistema faz**, **como está organizado**, **como 
 16. [Serviço RailwaySatellite](#16-serviço-railwaysatellite)
 17. [Segurança, CORS, limites e produção](#17-segurança-cors-limites-e-produção)
 18. [Ficheiros estáticos, uploads e imagens](#18-ficheiros-estáticos-uploads-e-imagens)
-19. [Deploy, nginx, PM2 e backups](#19-deploy-nginx-pm2-e-backups)
+19. [Deploy, PM2 e backups](#19-deploy-pm2-e-backups)
 20. [Testes e qualidade](#20-testes-e-qualidade)
 21. [Permissões por módulo (referência)](#21-permissões-por-módulo-referência)
 22. [Glossário](#22-glossário)
@@ -60,7 +60,6 @@ O `package.json` da **raiz** aponta o arranque para `src/server.ts` (dev) ou `di
 
 ### Pastas paralelas (contexto histórico / legado)
 
-- **`sistema/`** — árvore antiga ou paralela (backend, frontend, cadastros, electron). **Não** é o entrypoint do `npm run dev` da raiz. Documente no vosso processo interno se ainda usam builds desta pasta.
 - **`tools/cadastros-legacy/`** — scripts e integrações legadas (CNPJ, Atak, etc.).
 
 **Recomendação:** para novos desenvolvimentos e documentação operacional, tratar **`src/` + `frontend/` + `RailwaySatellite/`** como fonte de verdade.
@@ -132,8 +131,7 @@ flowchart TB
 | **`RailwaySatellite/`** | Serviço Node separado: `src/index.ts`, rotas `internal`, `publicApi`, UI em `web/`. |
 | **`data/`** | Dados locais (ex.: ficheiro SQLite em `data/database/`). |
 | **`storage/`** | Uploads, imagens, avatares (caminhos configuráveis por env). |
-| **`scripts/`** | Arranque com nginx, PM2, SSL, cópia de schema no build, reset BD, criação de utilizadores. |
-| **`nginx/`** | Exemplos de configuração reverse proxy. |
+| **`scripts/`** | PM2, cópia de schema no build, reset BD, criação de utilizadores. |
 | **`tests/`** | Testes Jest (auth, schemas, etc.). |
 | **`docs/`** | Documentação Markdown (este manual, deploy, API, diagnósticos). |
 
@@ -173,7 +171,7 @@ flowchart TB
 
 ### Produção (resumo)
 
-O servidor pode servir **`frontend/dist`** como ficheiros estáticos e usar **catch-all** para `index.html` (SPA). Ver [DEPLOY.md](./DEPLOY.md) e scripts em `scripts/start-with-nginx.js`.
+O servidor pode servir **`frontend/dist`** como ficheiros estáticos e usar **catch-all** para `index.html` (SPA). Ver [DEPLOY.md](./DEPLOY.md).
 
 ---
 
@@ -456,7 +454,7 @@ Se **`web/dist`** não existir, o servidor usa HTML legado (`publicPages.ts`) co
 - **Helmet** com CSP desativada (compatibilidade com front); HSTS configurável (`DISABLE_HSTS`).
 - **CORS:** em produção com `ALLOWED_ORIGINS`, lista explícita; suporte a previews Vercel quando configurado.
 - **Rate limiting:** global, login e upload em produção.
-- **HTTPS em desenvolvimento:** middleware especial evita loops com ngrok/Cloudflare Tunnel quando `PUBLIC_URL` está definida (ver comentários em `server.ts`).
+- **HTTPS em desenvolvimento:** middleware especial evita loops quando `PUBLIC_URL` está definida (ver comentários em `server.ts`).
 
 **Porque tantos middlewares em `server.ts`?** Há cenários mistos (HTTP local, HTTPS atrás de túnel, PWA/mobile) — o código tenta equilibrar segurança em produção com DX em desenvolvimento.
 
@@ -471,11 +469,9 @@ Se **`web/dist`** não existir, o servidor usa HTML legado (`publicPages.ts`) co
 
 ---
 
-## 19. Deploy, nginx, PM2 e backups
+## 19. Deploy, PM2 e backups
 
-- **nginx:** exemplos em `nginx/`.
 - **PM2:** scripts em `scripts/pm2-*.js` e `.bat`.
-- **SSL:** `scripts/generate-ssl-cert.js`.
 - **Deploy geral:** [DEPLOY.md](./DEPLOY.md).
 - **Túnel Cloudflare:** [CLOUDFLARE_TUNNEL_RAILWAY_FRONTEND.md](./CLOUDFLARE_TUNNEL_RAILWAY_FRONTEND.md).
 

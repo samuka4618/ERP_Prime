@@ -3,6 +3,7 @@
 > **Nota (2026):** este ficheiro foi escrito quando o produto era descrito sobretudo como sistema de **chamados** e **cadastros**. O ERP PRIME evoluiu para incluir **compras**, **descarregamento**, **satélite Railway**, permissões alargadas, etc.  
 > Para uma visão **atual e completa** do repositório, use primeiro o **[MANUAL_COMPLETO_ERP_PRIME.md](./MANUAL_COMPLETO_ERP_PRIME.md)** e o **[índice de documentação](./INDICE_DOCUMENTACAO.md)**.  
 > O conteúdo abaixo mantém-se como referência detalhada sobre chamados, fluxos e permissões na perspetiva original.
+> A antiga pasta `sistema/` foi removida; para operação atual use os fluxos da raiz do repositório.
 
 **Versão:** 1.0.0  
 **Data:** 2025  
@@ -83,7 +84,7 @@ O **Sistema de Chamados Financeiro** é uma plataforma completa de gerenciamento
 ### Estrutura de Diretórios
 
 ```
-sistema/
+ERP_Prime/
 ├── src/                          # Código fonte do backend
 │   ├── controllers/              # Controladores (lógica de negócio)
 │   ├── models/                   # Modelos de dados
@@ -708,7 +709,7 @@ O sistema utiliza WebSocket para comunicação bidirecional:
 
 ```bash
 git clone <url-do-repositorio>
-cd sistema
+cd ERP_Prime
 ```
 
 #### 2. Instalar Dependências

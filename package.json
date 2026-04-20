@@ -7,7 +7,7 @@
     "test-sql": "ts-node scripts/test-sql-connection.ts",
     "build": "tsc && node scripts/copy-schema.js",
     "build:render": "npm ci --include=dev && npm run build",
-    "start": "node scripts/start-with-nginx.js",
+    "start": "node dist/src/server.js",
     "start:server": "node dist/src/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "dev:frontend": "cd frontend && npm run dev",
@@ -25,10 +25,7 @@
     "migrate:custom-fields": "ts-node src/core/database/run-custom-fields-migration.ts",
     "check-user": "ts-node scripts/check-user.ts",
     "create-user": "node dist/scripts/create-user.js",
-    "db:reset": "node scripts/reset-db.js",
-    "install:nginx:linux": "bash scripts/install-nginx.sh",
-    "install:nginx:win": "powershell -ExecutionPolicy Bypass -File scripts/install-nginx.ps1",
-    "generate:ssl-cert": "node scripts/generate-ssl-cert.js"
+    "db:reset": "node scripts/reset-db.js"
   },
   "keywords": [
     "erp",

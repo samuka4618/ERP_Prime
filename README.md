@@ -137,8 +137,8 @@ As portas padrão podem ser alteradas no `.env` da raiz: `PORT` (backend), `FRON
 
 | Script | Descrição |
 |--------|-----------|
-| `npm start` | Inicia Ngrok (se ativo), Nginx (se instalado) e o servidor Node |
-| `npm run start:server` | Apenas o servidor Node (sem Ngrok/Nginx) |
+| `npm start` | Inicia o servidor Node compilado |
+| `npm run start:server` | Alias para iniciar o servidor Node compilado |
 
 ### Usuário e verificação
 
@@ -147,18 +147,10 @@ As portas padrão podem ser alteradas no `.env` da raiz: `PORT` (backend), `FRON
 | `npm run create-user` | Cria ou atualiza usuário admin (requer `npm run build` antes) |
 | `npm run check-user` | Verifica usuário no banco |
 
-### Nginx
-
-| Script | Descrição |
-|--------|-----------|
-| `npm run install:nginx:linux` | Instala o Nginx no Linux (Debian/Ubuntu/RHEL) |
-| `npm run install:nginx:win` | Instala o Nginx no Windows (winget ou Chocolatey) |
-
 ### Outros
 
 | Script | Descrição |
 |--------|-----------|
-| `npm run generate:ssl-cert` | Gera certificado SSL para Nginx |
 | `npm run test` | Executa testes (Jest) |
 
 ---
@@ -194,52 +186,8 @@ Copie `env.example` para `.env` e preencha os valores. Principais variáveis:
 - **SQL Server (Cadastros):** `DB_SERVER`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, etc.
 - **SMS (Infobip):** `INFOBIP_BASE_URL`, `INFOBIP_API_KEY`, `INFOBIP_SENDER`
 - **Atak (Cadastros):** `ATAK_BASE_URL`, `ATAK_USERNAME`, `ATAK_PASSWORD` (ou `ATAK_TOKEN`)
-- **Ngrok:** `USE_NGROK=true|false`, `NGROK_PORT` (porta exposta)
-- **Nginx:** `USE_NGINX=true|false`
 
 Referência completa de variáveis: **[DEPLOY.md](DEPLOY.md)** (seção Variáveis de ambiente).
-
----
-
-## 🌐 Nginx (proxy reverso)
-
-O `npm start` pode iniciar o **Nginx** (se instalado e `USE_NGINX` não for `false`) como proxy na **porta 80** e o Node na porta definida em `PORT`. Quem acessar `http://localhost` ou `http://[IP]` é atendido pelo Nginx, que repassa ao Node.
-
-### Instalar Nginx
-
-- **Linux (Debian/Ubuntu):** `npm run install:nginx:linux`  
-  Para usar como serviço: copiar `nginx/erp-prime.conf` para `/etc/nginx/sites-available/`, ativar e recarregar o Nginx.
-- **Windows:** `npm run install:nginx:win` ou baixar em [nginx.org](https://nginx.org/en/download.html) e colocar no PATH.
-- **macOS:** `brew install nginx`
-
-No `.env`, use `PORT=3000` (ou a porta que o Nginx usa). Os arquivos em `nginx/` fazem proxy para `http://127.0.0.1:PORT`.  
-Para desativar o Nginx ao rodar `npm start`: `USE_NGINX=false`.
-
----
-
-## 🌐 Formulários públicos e túneis (Ngrok / Cloudflare Tunnel)
-
-Para que **formulários** (ex.: descarregamento) sejam acessíveis **fora da rede** (por link ou QR code), o projeto pode usar túnel (Ngrok ou Cloudflare Tunnel).
-
-### Comportamento com `npm start`
-
-1. **Ngrok** (se `USE_NGROK` não for `false`): expõe a porta do Node em uma URL pública (ex.: `https://xxxx.ngrok-free.app`). O sistema detecta a URL e usa nos **QR codes**.
-2. **Nginx** (se instalado e `USE_NGINX` não for `false`).
-3. **Servidor Node.**
-
-Requisitos para Ngrok: instalar e deixar no PATH ([ngrok.com/download](https://ngrok.com/download)). No `.env`: `USE_NGROK=true` (padrão) ou `USE_NGROK=false`; `NGROK_PORT` opcional (padrão: valor de `PORT`).
-
-Se o Ngrok não estiver instalado ou no PATH, o script apenas exibe aviso. Os formulários continuam acessíveis na rede local (IP + porta ou `PUBLIC_URL`/`PUBLIC_HOSTNAME`).
-
-### Cloudflare Tunnel (ou outro túnel)
-
-Se você usar **Cloudflare Tunnel** em vez do Ngrok (ex.: frontend no Railway e backend local), defina no `.env` do backend:
-
-- **`PUBLIC_URL`** — URL pública do túnel (ex.: `https://seu-backend.trycloudflare.com`).
-
-O sistema usará essa URL nos QR codes dos formulários e **não** redirecionará HTTPS para HTTP quando as requisições vierem desse host. Sem `PUBLIC_URL`, o comportamento permanece o atual (Ngrok automático ou hostname/rede local).
-
-Passo a passo completo (backend local + frontend no Railway + Cloudflare Tunnel): **[docs/CLOUDFLARE_TUNNEL_RAILWAY_FRONTEND.md](docs/CLOUDFLARE_TUNNEL_RAILWAY_FRONTEND.md)**.
 
 ---
 
@@ -328,8 +276,7 @@ ERP_Prime/
 ├── data/                          # Dados (database, backups)
 ├── storage/                       # uploads, images
 ├── logs/
-├── scripts/                       # start-with-nginx, create-user, etc.
-├── nginx/                         # Configurações Nginx
+├── scripts/                       # create-user, reset-db, etc.
 ├── docs/                          # Documentação (ex.: RAILWAY_POSTGRES_PASSO_A_PASSO.md)
 ├── tools/                         # Ferramentas auxiliares
 └── package.json
@@ -376,7 +323,7 @@ ERP_Prime/
 - Formulários públicos (links e QR codes)
 - Docas e agendamentos
 - Notificações por SMS (Infobip)
-- Integração com túneis (Ngrok, PUBLIC_URL para Cloudflare Tunnel)
+- Suporte a URL pública via configuração (`CLIENT_URL`/`PUBLIC_URL`)
 
 ---
 

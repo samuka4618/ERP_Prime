@@ -30,7 +30,7 @@ function formatDate(dateValue: string): string {
 
 const Sessions: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [sessions, setSessions] = useState<AuthSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioningSessionId, setActioningSessionId] = useState<string | null>(null);
@@ -147,55 +147,87 @@ const Sessions: React.FC = () => {
         ) : activeSessions.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">Nenhuma sessão ativa encontrada.</p>
         ) : (
-          <div className="space-y-3">
-            {activeSessions.map((session) => {
-              const isMobile = getDeviceLabel(session.userAgent) === 'Dispositivo móvel';
-              const isActioning = actioningSessionId === session.sessionId;
-              return (
-                <div
-                  key={session.sessionId}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      {isMobile ? (
-                        <Smartphone className="w-4 h-4 text-gray-500" />
-                      ) : (
-                        <Laptop className="w-4 h-4 text-gray-500" />
-                      )}
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {getDeviceLabel(session.userAgent)} - {getBrowserLabel(session.userAgent)}
-                      </p>
-                      {session.current && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
-                          Sessão atual
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
-                      IP: {session.ipAddress || 'não informado'} - Lembrar de mim: {session.rememberMe ? 'sim' : 'não'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Criada em {formatDate(session.createdAt)} - Último uso {formatDate(session.lastUsedAt)}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Expira em {formatDate(session.expiresAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => handleRevokeSession(session)}
-                      disabled={isActioning}
-                      className="btn btn-outline text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      {session.current ? 'Encerrar esta sessão' : 'Encerrar sessão'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Usuário</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">E-mail</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Dispositivo</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">IP</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Criada em</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Último uso</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Expira em</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Lembrar de mim</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {activeSessions.map((session) => {
+                  const isMobile = getDeviceLabel(session.userAgent) === 'Dispositivo móvel';
+                  const isActioning = actioningSessionId === session.sessionId;
+
+                  return (
+                    <tr key={session.sessionId} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white whitespace-nowrap">
+                        {user?.name || 'Usuário não identificado'}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {user?.email || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {isMobile ? (
+                            <Smartphone className="w-4 h-4 text-gray-500" />
+                          ) : (
+                            <Laptop className="w-4 h-4 text-gray-500" />
+                          )}
+                          <span>{getDeviceLabel(session.userAgent)} - {getBrowserLabel(session.userAgent)}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {session.ipAddress || 'não informado'}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {formatDate(session.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {formatDate(session.lastUsedAt)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {formatDate(session.expiresAt)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {session.rememberMe ? 'Sim' : 'Não'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {session.current ? (
+                          <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                            Sessão atual
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                            Ativa
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => handleRevokeSession(session)}
+                          disabled={isActioning}
+                          className="btn btn-outline text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          {session.current ? 'Encerrar esta sessão' : 'Encerrar sessão'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

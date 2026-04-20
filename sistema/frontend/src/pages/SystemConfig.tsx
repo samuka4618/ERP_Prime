@@ -104,8 +104,12 @@ const SystemConfig: React.FC = () => {
       setSaving(true);
       await apiService.put('/system/config', settings);
       toast.success('Configurações salvas com sucesso');
-    } catch (error) {
-      toast.error('Erro ao salvar configurações');
+    } catch (error: any) {
+      const details = error?.response?.data?.details;
+      const message = Array.isArray(details) && details.length > 0
+        ? details.join(' | ')
+        : (error?.response?.data?.error || 'Erro ao salvar configurações');
+      toast.error(message);
     } finally {
       setSaving(false);
     }

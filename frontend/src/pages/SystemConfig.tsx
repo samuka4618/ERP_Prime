@@ -178,9 +178,13 @@ const SystemConfig: React.FC = () => {
       
       // Recarregar os dados da página
       await fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar configurações:', error);
-      toast.error('Erro ao salvar configurações');
+      const details = error?.response?.data?.details;
+      const message = Array.isArray(details) && details.length > 0
+        ? details.join(' | ')
+        : (error?.response?.data?.error || 'Erro ao salvar configurações');
+      toast.error(message);
     } finally {
       setSaving(false);
     }

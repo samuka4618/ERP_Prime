@@ -25,6 +25,7 @@ router.post('/import', adminOrPermission('users.import'), uploadUserImport, User
 // Rotas que requerem permissão de admin
 router.post('/', authorize(UserRole.ADMIN), validate(createUserSchema), UserController.create);
 router.get('/', authorize(UserRole.ADMIN), validateQuery(userQuerySchema), UserController.findAll);
+router.get('/sessions-summary', authorize(UserRole.ADMIN), UserController.sessionsSummary);
 router.get('/stats', authorize(UserRole.ADMIN), UserController.getStats);
 router.get('/generate-password', authorize(UserRole.ADMIN), UserController.generatePassword);
 

@@ -13,7 +13,8 @@ import {
   Upload,
   FileCheck,
   AlertCircle,
-  Building2
+  Building2,
+  ShieldCheck
 } from 'lucide-react';
 import { User } from '../types';
 import { apiService, EntraUserListItem } from '../services/api';
@@ -30,6 +31,7 @@ const Users: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [sessionsSummary, setSessionsSummary] = useState<Record<number, number>>({});
   const [createLoading, setCreateLoading] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
@@ -153,6 +155,9 @@ const Users: React.FC = () => {
       const response = await apiService.getUsers(currentPage, 10);
       setUsers(response.data);
       setTotalPages(response.total_pages);
+      const userIds = response.data.map((item) => item.id);
+      const summary = await apiService.getUsersSessionsSummary(userIds);
+      setSessionsSummary(summary);
     } catch (error) {
       toast.error('Erro ao carregar usuários');
     } finally {
@@ -669,6 +674,9 @@ const Users: React.FC = () => {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Sessões Ativas
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Criado em
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -712,6 +720,12 @@ const Users: React.FC = () => {
                       {user.is_active ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      {sessionsSummary[user.id] || 0}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     <FormattedDate date={user.created_at} includeTime={false} />
                   </td>
@@ -736,7 +750,7 @@ const Users: React.FC = () => {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     Nenhum usuário encontrado
                   </td>
                 </tr>

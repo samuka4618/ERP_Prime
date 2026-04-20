@@ -18,7 +18,7 @@ import {
   InvalidImportRow,
   ValidatedImportRow
 } from './userImportExport';
-import { dbRun } from '../database/connection';
+import { dbAll, dbRun } from '../database/connection';
 import { config } from '../../config/database';
 
 const getIp = (req: Request) => req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
@@ -34,6 +34,60 @@ const querySchema = Joi.object({
 });
 
 export class UserController {
+  static sessionsSummary = asyncHandler(async (req: Request, res: Response) => {
+    const rawIds = String(req.query.ids || '').trim();
+    const ids = rawIds
+      .split(',')
+      .map((item) => Number(item.trim()))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (ids.length === 0) {
+      res.json({
+        message: 'Resumo de sessões obtido com sucesso',
+        data: { summary: {} as Record<number, number> }
+      });
+      return;
+    }
+
+    try {
+      const placeholders = ids.map(() => '?').join(',');
+      const rows = await dbAll(
+        `SELECT user_id, COUNT(*) as total
+           FROM auth_sessions
+          WHERE revoked_at IS NULL
+            AND expires_at > CURRENT_TIMESTAMP
+            AND user_id IN (${placeholders})
+          GROUP BY user_id`,
+        ids
+      ) as Array<{ user_id: number; total: number }>;
+
+      const summary: Record<number, number> = {};
+      rows.forEach((row) => {
+        summary[row.user_id] = Number(row.total || 0);
+      });
+
+      res.json({
+        message: 'Resumo de sessões obtido com sucesso',
+        data: { summary }
+      });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const missingTable =
+        message.includes('no such table: auth_sessions') ||
+        message.includes('relation "auth_sessions" does not exist');
+
+      if (missingTable) {
+        res.json({
+          message: 'Resumo de sessões obtido com sucesso',
+          data: { summary: {} as Record<number, number> }
+        });
+        return;
+      }
+
+      throw error;
+    }
+  });
+
   static create = asyncHandler(async (req: Request, res: Response) => {
     const userData = req.body as CreateUserRequest;
 

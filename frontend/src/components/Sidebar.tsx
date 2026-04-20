@@ -16,6 +16,7 @@ import {
   FolderOpen,
   UserCheck,
   Shield,
+  ShieldCheck,
   Tag,
   List,
   FileText,
@@ -149,6 +150,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         { name: 'Monitoramento', href: '/admin-dashboard', icon: Monitor },
         { name: 'Performance', href: '/performance', icon: Activity },
         { name: 'Auditoria', href: '/audit', icon: FileText },
+        { name: 'Sessões Ativas', href: '/sessions', icon: ShieldCheck },
         { name: 'Backup e Restore', href: '/backup', icon: Database },
         {
           name: 'Configurações',

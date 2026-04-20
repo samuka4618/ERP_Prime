@@ -275,6 +275,15 @@ class ApiService {
     return response.data.data;
   }
 
+  async getUsersSessionsSummary(userIds: number[]): Promise<Record<number, number>> {
+    if (!userIds.length) return {};
+    const ids = userIds.join(',');
+    const response = await this.api.get<ApiResponse<{ summary: Record<number, number> }>>(
+      `/users/sessions-summary?ids=${encodeURIComponent(ids)}`
+    );
+    return response.data.data.summary || {};
+  }
+
   async getUser(id: number): Promise<User> {
     const response = await this.api.get<ApiResponse<{ user: User }>>(`/users/${id}`);
     return response.data.data.user;

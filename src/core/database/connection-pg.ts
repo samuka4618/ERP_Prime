@@ -1,7 +1,7 @@
 /**
  * Adapter PostgreSQL para o ERP Prime.
  * Usado quando USE_POSTGRES=true e DATABASE_URL está definido (ex.: Railway).
- * Converte placeholders ? para $1, $2, ... e retorna lastID via RETURNING id quando aplicável.
+ * Converte placeholders ? para $1, $2, ... e retorna lastID quando a linha retornada tiver coluna id.
  */
 
 import { Pool } from 'pg';
@@ -30,7 +30,7 @@ function toPgParams(sql: string): string {
   return sql.replace(/\?/g, () => `$${++i}`);
 }
 
-/** Para INSERT sem RETURNING, adiciona RETURNING id para obter o id gerado (SERIAL ou default). */
+/** Para INSERT sem RETURNING, adiciona RETURNING * para evitar assumir coluna id. */
 function ensureReturning(sql: string): string {
   const trimmed = sql.trim();
   const upper = trimmed.toUpperCase();
@@ -43,7 +43,7 @@ function ensureReturning(sql: string): string {
   if (lastParen === -1) return sql;
   const afterValues = trimmed.slice(lastParen + 1).trim();
   if (afterValues && !afterValues.startsWith(';')) return sql;
-  return trimmed.slice(0, lastParen + 1) + ' RETURNING id' + trimmed.slice(lastParen + 1);
+  return trimmed.slice(0, lastParen + 1) + ' RETURNING *' + trimmed.slice(lastParen + 1);
 }
 
 export const dbRun = async (

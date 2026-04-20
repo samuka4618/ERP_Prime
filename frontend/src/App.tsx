@@ -24,8 +24,6 @@ import Status from './pages/Status';
 import CadastrosConfig from './pages/CadastrosConfig';
 import PermissionsPage from './pages/Permissions';
 import Reports from './pages/Reports';
-import AdminDashboard from './pages/AdminDashboard';
-import Performance from './pages/Performance';
 import Audit from './pages/Audit';
 import BackupRestore from './pages/BackupRestore';
 import { ClientRegistrations } from './pages/ClientRegistrations';
@@ -158,8 +156,6 @@ const AppRoutes: React.FC = () => {
         <Route path="cadastros-config" element={<CadastrosConfig />} />
         <Route path="category-assignments" element={<CategoryAssignments />} />
         <Route path="reports" element={<Reports />} />
-        <Route path="admin-dashboard" element={<AdminDashboard />} />
-        <Route path="performance" element={<Performance />} />
         <Route path="audit" element={<Audit />} />
         <Route path="backup" element={<BackupRestore />} />
       </Route>

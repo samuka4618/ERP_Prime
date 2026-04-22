@@ -53,7 +53,7 @@ export class AuthService {
     
     logger.debug('Senha verificada com sucesso', { userId: user.id }, 'AUTH');
 
-    const { password, ...userWithoutPassword } = user;
+    const { password, ui_preferences: _uiPrefs, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
 
@@ -149,7 +149,7 @@ export class AuthService {
           userEmail: reactivatedUser.email
         });
         
-        const { password, ...userWithoutPassword } = reactivatedUser;
+        const { password, ui_preferences: _uiPrefsRe, ...userWithoutPassword } = reactivatedUser;
         
         return {
           user: userWithoutPassword,
@@ -187,7 +187,7 @@ export class AuthService {
         userEmail: user.email
       });
 
-      const { password, ...userWithoutPassword } = user;
+      const { password, ui_preferences: _uiPrefsReg, ...userWithoutPassword } = user;
 
       logger.success('Registro concluído com sucesso', { 
         userId: user.id,

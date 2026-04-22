@@ -11,6 +11,10 @@ const usePostgres = process.env.USE_POSTGRES === 'true' && !!process.env.DATABAS
 const databaseUrl = (process.env.DATABASE_URL || '').trim();
 
 const nodeEnv = process.env.NODE_ENV || 'development';
+
+/** Qual build de UI o Express serve: `legacy` (Vite → frontend/dist) ou `next` (export estático → web-next/out). */
+const erpUiRaw = (process.env.ERP_UI || 'legacy').toLowerCase().trim();
+const erpUi = erpUiRaw === 'next' ? 'next' : 'legacy';
 const jwtSecret = process.env.JWT_SECRET?.trim();
 if (nodeEnv === 'production' && (!jwtSecret || jwtSecret.length < 32)) {
   throw new Error('Em produção, JWT_SECRET é obrigatório e deve ter no mínimo 32 caracteres. Defina a variável de ambiente JWT_SECRET.');
@@ -19,6 +23,8 @@ if (nodeEnv === 'production' && (!jwtSecret || jwtSecret.length < 32)) {
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv,
+  /** Interface web servida em produção/dev unificado (`npm start`): `legacy` | `next`. */
+  erpUi,
   database: {
     path: process.env.DB_PATH || './data/database/chamados.db',
     usePostgres,

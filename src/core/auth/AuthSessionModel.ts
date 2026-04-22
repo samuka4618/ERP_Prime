@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { dbAll, dbGet, dbRun } from '../database/connection';
-import { bindBoolean } from '../database/sql-dialect';
+import { bindBoolean, sqlNow } from '../database/sql-dialect';
 import { config } from '../../config/database';
 
 export interface SessionMetadata {
@@ -32,6 +32,8 @@ export interface PublicAuthSession {
   lastUsedAt: string;
   expiresAt: string;
   revokedAt: string | null;
+  /** Comunicação recente com a API (navegador provavelmente aberto). */
+  presence: 'active' | 'idle';
 }
 
 function normalizeIpAddress(ip?: string): string | null {
@@ -114,9 +116,60 @@ async function createSessionRecord(
   return { sessionId, refreshToken, expiresAt };
 }
 
+/** Considera "em uso" se houve tráfego autenticado nos últimos N minutos. */
+const PRESENCE_ACTIVE_WINDOW_MS = 10 * 60 * 1000;
+
+const touchThrottle = new Map<string, number>();
+const TOUCH_MIN_INTERVAL_MS = 90 * 1000;
+
 export class AuthSessionModel {
   static parseDurationToMs(duration: string): number {
     return parseDurationToMs(duration);
+  }
+
+  /** Marca atividade da sessão (throttled) para distinguir uso real de token válido à espera. */
+  static async touchSessionLastUsed(userId: number, sessionId: string | undefined): Promise<void> {
+    if (!sessionId) return;
+    const key = `${userId}:${sessionId}`;
+    const now = Date.now();
+    const last = touchThrottle.get(key) || 0;
+    if (now - last < TOUCH_MIN_INTERVAL_MS) return;
+    touchThrottle.set(key, now);
+    await dbRun(
+      `UPDATE auth_sessions
+          SET last_used_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?
+          AND session_id = ?
+          AND revoked_at IS NULL
+          AND expires_at > ${sqlNow()}`,
+      [userId, sessionId]
+    );
+  }
+
+  /** Revoga sessões cujo refresh já expirou (mantém a lista alinhada à realidade). */
+  static async revokeExpiredSessionsForUser(userId: number): Promise<number> {
+    const result = await dbRun(
+      `UPDATE auth_sessions
+          SET revoked_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?
+          AND revoked_at IS NULL
+          AND expires_at <= ${sqlNow()}`,
+      [userId]
+    );
+    return result.changes;
+  }
+
+  /** Sessões com refresh ainda válido e não revogadas (não altera linhas). */
+  static async countActiveSessions(userId: number): Promise<number> {
+    const row = await dbGet(
+      `SELECT COUNT(*) as c
+         FROM auth_sessions
+        WHERE user_id = ?
+          AND revoked_at IS NULL
+          AND expires_at > ${sqlNow()}`,
+      [userId]
+    ) as { c: number } | undefined;
+    return Number(row?.c ?? 0);
   }
 
   static async createSession(
@@ -230,26 +283,36 @@ export class AuthSessionModel {
   }
 
   static async listUserSessions(userId: number, currentSessionId?: string): Promise<PublicAuthSession[]> {
+    await this.revokeExpiredSessionsForUser(userId);
     const rows = await dbAll(
       `SELECT session_id, user_id, refresh_token_hash, user_agent, ip_address, remember_me, created_at,
               last_used_at, expires_at, revoked_at, replaced_by_session_id
          FROM auth_sessions
         WHERE user_id = ?
-        ORDER BY created_at DESC`,
+          AND revoked_at IS NULL
+          AND expires_at > ${sqlNow()}
+        ORDER BY last_used_at DESC, created_at DESC`,
       [userId]
     ) as AuthSessionRow[];
 
-    return rows.map((row) => ({
-      sessionId: row.session_id,
-      current: !!currentSessionId && row.session_id === currentSessionId,
-      rememberMe: toBool(row.remember_me),
-      userAgent: row.user_agent,
-      ipAddress: row.ip_address,
-      createdAt: row.created_at,
-      lastUsedAt: row.last_used_at,
-      expiresAt: row.expires_at,
-      revokedAt: row.revoked_at
-    }));
+    const now = Date.now();
+    return rows.map((row) => {
+      const lastUsedMs = new Date(row.last_used_at).getTime();
+      const presence =
+        !Number.isNaN(lastUsedMs) && now - lastUsedMs <= PRESENCE_ACTIVE_WINDOW_MS ? 'active' : 'idle';
+      return {
+        sessionId: row.session_id,
+        current: !!currentSessionId && row.session_id === currentSessionId,
+        rememberMe: toBool(row.remember_me),
+        userAgent: row.user_agent,
+        ipAddress: row.ip_address,
+        createdAt: row.created_at,
+        lastUsedAt: row.last_used_at,
+        expiresAt: row.expires_at,
+        revokedAt: row.revoked_at,
+        presence,
+      };
+    });
   }
 }
 

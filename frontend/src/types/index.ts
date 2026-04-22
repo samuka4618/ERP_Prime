@@ -162,6 +162,7 @@ export interface LoginRequest {
   email: string;
   password: string;
   rememberMe?: boolean;
+  forceDisconnectOthers?: boolean;
 }
 
 export interface LoginResponse {
@@ -179,6 +180,7 @@ export interface AuthSession {
   lastUsedAt: string;
   expiresAt: string;
   revokedAt: string | null;
+  presence?: 'active' | 'idle';
 }
 
 export interface CreateTicketRequest {

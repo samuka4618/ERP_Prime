@@ -17,6 +17,8 @@ router.post('/logout', AuthController.logout);
 router.use(authenticate);
 
 router.get('/profile', AuthController.getProfile);
+router.get('/me/preferences', AuthController.getMyPreferences);
+router.put('/me/preferences', AuthController.updateMyPreferences);
 router.put('/profile', validate(updateProfileSchema), AuthController.updateProfile);
 router.put('/change-password', validate(changePasswordSchema), AuthController.changePassword);
 router.post('/reset-password', validate(resetPasswordSchema), AuthController.resetPassword);

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserModel } from '../users/User';
+import AuthSessionModel from './AuthSessionModel';
 import { User, UserRole } from '../../shared/types';
 import { config } from '../../config/database';
 import { tokenCacheService } from './TokenCacheService';
@@ -61,6 +62,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         updated_at: new Date()
       };
       req.authSessionId = extractSessionIdFromToken(token);
+      void AuthSessionModel.touchSessionLastUsed(cachedUser.userId, req.authSessionId);
       logger.success('Autenticação via cache bem-sucedida', {
         requestId,
         userId: cachedUser.userId,
@@ -101,6 +103,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     const { password, ...userWithoutPassword } = user;
     req.user = userWithoutPassword;
     req.authSessionId = typeof decoded.sid === 'string' ? decoded.sid : undefined;
+    void AuthSessionModel.touchSessionLastUsed(user.id, req.authSessionId);
     
     logger.success('Autenticação bem-sucedida', {
       requestId,

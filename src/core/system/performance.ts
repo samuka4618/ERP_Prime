@@ -1,20 +1,21 @@
 import { Router } from 'express';
 import { PerformanceController } from './PerformanceController';
-import { authenticate, authorize } from '../auth/middleware';
-import { UserRole } from '../../shared/types';
+import { authenticate } from '../auth/middleware';
+import { adminOrPermission, requireAnyPermission } from '../permissions/middleware';
 
 const router = Router();
 
 // Todas as rotas de performance requerem autenticação
 router.use(authenticate);
 
-// Apenas administradores podem acessar métricas detalhadas
-router.use(authorize(UserRole.ADMIN));
+// GET /api/performance/metrics — administrador ou permissão de gestão
+router.get('/metrics', adminOrPermission('performance.manage'), PerformanceController.getMetrics);
 
-// GET /api/performance/metrics - Métricas completas de performance
-router.get('/metrics', PerformanceController.getMetrics);
-
-// GET /api/performance/dashboard - Métricas formatadas para dashboard
-router.get('/dashboard', PerformanceController.getDashboardMetrics);
+// GET /api/performance/dashboard — leitura para widget (performance.view ou performance.manage)
+router.get(
+  '/dashboard',
+  requireAnyPermission('performance.view', 'performance.manage'),
+  PerformanceController.getDashboardMetrics
+);
 
 export default router;

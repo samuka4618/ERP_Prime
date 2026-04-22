@@ -10,6 +10,9 @@ import { log as auditLog } from '../audit/AuditService';
 import AuthSessionModel from './AuthSessionModel';
 import jwt from 'jsonwebtoken';
 import Joi from 'joi';
+import { loginSchema, updateUiPreferencesSchema } from './schemas';
+import { mergeUiPreferences, parseUiPreferences } from './uiPreferencesService';
+import { PermissionModel } from '../permissions/PermissionModel';
 
 const ACCESS_COOKIE_NAME = 'token';
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -70,12 +73,6 @@ function clearAuthCookies(res: Response): void {
 }
 
 
-const loginSchema = Joi.object({
-  email: Joi.string().email().required().trim(),
-  password: Joi.string().min(6).required().trim(),
-  rememberMe: Joi.boolean().optional().default(false)
-});
-
 const registerSchema = Joi.object({
   name: Joi.string().min(2).max(255).required(),
   email: Joi.string().email().required(),
@@ -118,9 +115,24 @@ export class AuthController {
 
     const credentials = value as LoginRequest;
     const rememberMe = Boolean(credentials.rememberMe);
+    const forceDisconnectOthers = Boolean(credentials.forceDisconnectOthers);
     
     try {
       const user = await AuthService.validateCredentials(credentials);
+      await AuthSessionModel.revokeExpiredSessionsForUser(user.id);
+      const activeCount = await AuthSessionModel.countActiveSessions(user.id);
+      if (activeCount > 0 && !forceDisconnectOthers) {
+        res.status(409).json({
+          error: 'Este utilizador já tem sessão ativa noutro dispositivo ou separador.',
+          code: 'SESSION_CONFLICT',
+          activeSessions: activeCount
+        });
+        return;
+      }
+      if (activeCount > 0 && forceDisconnectOthers) {
+        await AuthSessionModel.revokeAllUserSessions(user.id);
+        tokenCacheService.removeUserTokens(user.id);
+      }
       const metadata = getClientMetadata(req);
       const session = await AuthSessionModel.createSession(user.id, rememberMe, metadata);
       const accessToken = issueAccessToken(user, session.sessionId);
@@ -250,12 +262,16 @@ export class AuthController {
               userId: existingUser.id 
             }, 'AUTH');
             
+            await AuthSessionModel.revokeExpiredSessionsForUser(existingUser.id);
+            await AuthSessionModel.revokeAllUserSessions(existingUser.id);
+            tokenCacheService.removeUserTokens(existingUser.id);
+
             const metadata = getClientMetadata(req);
             const session = await AuthSessionModel.createSession(existingUser.id, true, metadata);
             const token = issueAccessToken(existingUser, session.sessionId);
             const refreshMaxAgeMs = Math.max(1, session.refreshExpiresAt.getTime() - Date.now());
 
-            const { password, ...userWithoutPassword } = existingUser;
+            const { password, ui_preferences: _u1, ...userWithoutPassword } = existingUser;
 
             res.cookie(ACCESS_COOKIE_NAME, token, getAccessCookieOptions());
             res.cookie(
@@ -316,7 +332,7 @@ export class AuthController {
       return;
     }
 
-    const { password, ...userWithoutPassword } = user;
+    const { password, ui_preferences: _u2, ...userWithoutPassword } = user;
     const accessToken = issueAccessToken(userWithoutPassword, rotated.sessionId);
     const refreshMaxAgeMs = Math.max(1, rotated.refreshExpiresAt.getTime() - Date.now());
     res.cookie(ACCESS_COOKIE_NAME, accessToken, getAccessCookieOptions());
@@ -551,11 +567,77 @@ export class AuthController {
       return;
     }
 
-    const { password, ...userWithoutPassword } = updatedUser;
+    const { password, ui_preferences: _prefs, ...userWithoutPassword } = updatedUser;
     
     res.json({
       message: 'Perfil atualizado com sucesso',
       data: { user: userWithoutPassword }
     });
+  });
+
+  static getMyPreferences = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      res.status(404).json({ error: 'Usuário não encontrado' });
+      return;
+    }
+    const preferences = parseUiPreferences((user as { ui_preferences?: string }).ui_preferences);
+    res.json({ message: 'Preferências obtidas com sucesso', data: { preferences } });
+  });
+
+  static updateMyPreferences = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+    const { error, value } = updateUiPreferencesSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    if (error) {
+      res.status(400).json({
+        error: 'Dados inválidos',
+        details: error.details.map((d) => d.message),
+      });
+      return;
+    }
+    if (JSON.stringify(value).length > 32000) {
+      res.status(400).json({ error: 'Preferências excedem o tamanho máximo permitido' });
+      return;
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      res.status(404).json({ error: 'Usuário não encontrado' });
+      return;
+    }
+
+    if (value.dashboard != null && Object.prototype.hasOwnProperty.call(value.dashboard, 'layouts')) {
+      const layouts = value.dashboard.layouts as Record<string, unknown> | undefined;
+      const hasWidgets =
+        layouts &&
+        typeof layouts === 'object' &&
+        Object.values(layouts).some((arr) => Array.isArray(arr) && arr.length > 0);
+      if (hasWidgets) {
+        const canCustomize = await PermissionModel.hasPermission(userId, user.role, 'dashboard.customize');
+        if (!canCustomize) {
+          res.status(403).json({
+            error: 'Sem permissão para guardar o layout do dashboard',
+            requiredPermission: 'dashboard.customize',
+          });
+          return;
+        }
+      }
+    }
+
+    const merged = mergeUiPreferences((user as { ui_preferences?: string }).ui_preferences, value);
+    await UserModel.update(userId, { ui_preferences: JSON.stringify(merged) });
+    res.json({ message: 'Preferências atualizadas com sucesso', data: { preferences: merged } });
   });
 }

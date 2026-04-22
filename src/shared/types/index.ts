@@ -25,6 +25,8 @@ export interface User {
   password: string;
   role: UserRole;
   is_active: boolean;
+  /** JSON serializado (preferências de UI); uso interno — não expor em respostas públicas. */
+  ui_preferences?: string | null;
   // Campos corporativos
   phone?: string;
   department?: string;
@@ -177,6 +179,8 @@ export interface LoginRequest {
   email: string;
   password: string;
   rememberMe?: boolean;
+  /** Se true, revoga todas as sessões existentes do utilizador e inicia uma nova (após conflito 409). */
+  forceDisconnectOthers?: boolean;
 }
 
 export interface CreateTicketRequest {
@@ -218,6 +222,7 @@ export interface UpdateUserRequest {
   email?: string;
   role?: UserRole;
   is_active?: boolean;
+  ui_preferences?: string | null;
   // Campos corporativos
   phone?: string;
   department?: string;

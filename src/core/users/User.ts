@@ -49,16 +49,6 @@ export class UserModel {
       return null;
     }
 
-    // Log para debug - verificar o que vem do banco
-    console.log('📸 findById - Dados do banco:', {
-      id: user.id,
-      avatar: user.avatar,
-      avatarType: typeof user.avatar,
-      hasAvatar: 'avatar' in user,
-      allKeys: Object.keys(user),
-      fullRow: JSON.stringify(user, null, 2)
-    });
-
     return this.mapRowToUser(user);
   }
 
@@ -273,6 +263,11 @@ export class UserModel {
       values.push(userData.hire_date || null);
     }
 
+    if (userData.ui_preferences !== undefined) {
+      updates.push('ui_preferences = ?');
+      values.push(userData.ui_preferences);
+    }
+
     if (updates.length === 0) {
       const user = await this.findById(id);
       if (!user) {
@@ -293,15 +288,6 @@ export class UserModel {
     if (!user) {
       throw new Error('Usuário não encontrado');
     }
-
-    // Log para debug - verificar se o avatar está no objeto retornado
-    console.log('📸 UserModel.update retornou:', {
-      id: user.id,
-      avatar: user.avatar,
-      hasAvatar: !!user.avatar,
-      avatarValue: user.avatar,
-      allKeys: Object.keys(user)
-    });
 
     return user;
   }
@@ -356,7 +342,8 @@ export class UserModel {
       skype: row.skype ?? undefined,
       hire_date: row.hire_date ?? undefined,
       created_at: row.created_at,
-      updated_at: row.updated_at
+      updated_at: row.updated_at,
+      ui_preferences: row.ui_preferences != null ? String(row.ui_preferences) : undefined
     };
   }
 }

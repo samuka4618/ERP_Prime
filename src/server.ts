@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import fs from 'fs';
 import os from 'os';
 import { config } from './config/database';
 import { executeSchema } from './core/database/connection';
@@ -25,6 +26,12 @@ import { ReportController } from './modules/chamados/controllers/ReportControlle
 import { BackupAutomationService } from './core/backup/BackupAutomationService';
 
 const app = express();
+
+const uiStaticRoot =
+  config.erpUi === 'next'
+    ? path.join(process.cwd(), 'web-next/out')
+    : path.join(process.cwd(), 'frontend/dist');
+const uiIndexHtml = path.join(uiStaticRoot, 'index.html');
 
 // Middleware para tratar tentativas de acesso via HTTPS (redirecionar para HTTP)
 app.use((req, res, next) => {
@@ -196,8 +203,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Servir arquivos estáticos do frontend
-app.use(express.static(path.join(process.cwd(), 'frontend/dist'), {
+// Servir arquivos estáticos do frontend (Vite ou export Next conforme ERP_UI)
+app.use(express.static(uiStaticRoot, {
   setHeaders: (res) => {
     if (config.nodeEnv !== 'production' || disableHsts) res.removeHeader('Strict-Transport-Security');
     res.removeHeader('Origin-Agent-Cluster');
@@ -432,7 +439,7 @@ app.get('*', (req, res, next) => {
   res.removeHeader('Origin-Agent-Cluster');
 
   // Servir o HTML
-  res.sendFile(path.join(process.cwd(), 'frontend/dist/index.html'), (err) => {
+  res.sendFile(uiIndexHtml, (err) => {
     if (err) {
       next(err);
     }
@@ -485,6 +492,14 @@ async function startServer() {
     console.log('Executando migração do banco de dados...');
     await executeSchema();
     console.log('Migração concluída com sucesso!');
+
+    if (config.erpUi === 'next' && !fs.existsSync(uiIndexHtml)) {
+      console.warn(
+        `⚠️  ERP_UI=next mas não foi encontrado o ficheiro de entrada da UI: ${uiIndexHtml}. ` +
+          'Execute `npm run build:web-next` (ou `npm run build:all`) antes de `npm start`.'
+      );
+    }
+    console.log(`🖥️  UI estática: ${config.erpUi} → ${uiStaticRoot}`);
 
     // Iniciar serviço de atualização automática de status
     StatusUpdateService.startAutoUpdate();

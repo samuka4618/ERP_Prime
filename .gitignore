@@ -24,6 +24,13 @@ out/
 frontend/dist/
 frontend/node_modules/
 
+# web-next (Next.js / export estático na mesma árvore Git)
+web-next/node_modules/
+web-next/.next/
+web-next/out/
+web-next/.vercel/
+web-next/.turbo/
+
 # Railway Satellite (app separada na raiz do repo)
 RailwaySatellite/dist/
 RailwaySatellite/web/dist/

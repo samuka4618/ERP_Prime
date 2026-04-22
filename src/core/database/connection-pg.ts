@@ -263,6 +263,15 @@ async function runSchemaMigrationsPostgres(): Promise<void> {
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_form_responses_descarga_satellite
        ON form_responses_descarga(satellite_submission_id) WHERE satellite_submission_id IS NOT NULL`
     );
+
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ui_preferences TEXT`);
+
+    await client.query(`
+      INSERT INTO permissions (name, code, module, description)
+      SELECT 'Visualizar métricas de performance (dashboard)', 'performance.view', 'administration',
+             'Permite ver métricas agregadas de performance no dashboard'
+      WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'performance.view')
+    `);
   } finally {
     client.release();
   }

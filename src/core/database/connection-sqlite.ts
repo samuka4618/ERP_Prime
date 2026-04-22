@@ -443,6 +443,17 @@ async function runSchemaMigrations(): Promise<void> {
       await dbRun(`INSERT OR IGNORE INTO role_permissions (role, permission_id, granted) VALUES ('admin', ?, 1)`, [p.id]);
     }
   }
+
+  const userCols = await dbAll(`PRAGMA table_info(users)`) as { name: string }[];
+  if (!userCols.some((c) => c.name === 'ui_preferences')) {
+    await dbRun(`ALTER TABLE users ADD COLUMN ui_preferences TEXT`);
+    console.log('Migração: coluna ui_preferences em users (SQLite)');
+  }
+
+  await dbRun(`
+    INSERT OR IGNORE INTO permissions (name, code, module, description) VALUES
+    ('Visualizar métricas de performance (dashboard)', 'performance.view', 'administration', 'Permite ver métricas agregadas de performance no dashboard')
+  `);
 }
 
 export const executeSchema = async (): Promise<void> => {

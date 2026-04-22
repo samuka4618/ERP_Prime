@@ -55,7 +55,7 @@ const Sessions: React.FC = () => {
   const activeSessions = useMemo(
     () => sessions.filter((session) => !session.revokedAt),
     [sessions]
-  );
+  ); /* servidor só envia refresh válido */
 
   const hasOtherActiveSessions = activeSessions.some((session) => !session.current);
 
@@ -111,7 +111,8 @@ const Sessions: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sessões Ativas</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Gerencie os dispositivos logados na sua conta.
+            Só aparecem sessões com refresh ainda válido. &quot;Em uso&quot; indica atividade recente na API;
+            &quot;Inativa&quot; mantém o login válido mas sem tráfego recente.
           </p>
         </div>
         <div className="flex gap-2">
@@ -159,6 +160,7 @@ const Sessions: React.FC = () => {
                   <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Último uso</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Expira em</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Lembrar de mim</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Presença</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Ações</th>
                 </tr>
@@ -202,13 +204,24 @@ const Sessions: React.FC = () => {
                         {session.rememberMe ? 'Sim' : 'Não'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
+                        {(session.presence ?? 'idle') === 'active' ? (
+                          <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                            Em uso
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100">
+                            Inativa
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {session.current ? (
                           <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
                             Sessão atual
                           </span>
                         ) : (
                           <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                            Ativa
+                            Outra sessão
                           </span>
                         )}
                       </td>

@@ -6,11 +6,13 @@ import SystemSettings from '../pages/SystemSettings';
 import Reports from '../pages/Reports';
 import Audit from '../pages/Audit';
 import BackupRestore from '../pages/BackupRestore';
+import AccessProfiles from '../pages/AccessProfiles';
 
 /** Administração e sistema. */
 export const adminRoutes: RouteObject[] = [
   { path: 'users', element: <Users /> },
   { path: 'permissions', element: <PermissionsPage /> },
+  { path: 'access-profiles', element: <AccessProfiles /> },
   { path: 'system-config', element: <SystemConfig /> },
   { path: 'system-settings', element: <SystemSettings /> },
   { path: 'reports', element: <Reports /> },

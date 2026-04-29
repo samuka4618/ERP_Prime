@@ -10,7 +10,7 @@ export interface Permission {
   module: string;
   description: string | null;
   granted: boolean;
-  source: 'role' | 'user' | 'default';
+  source: 'role' | 'user' | 'profile' | 'default';
   created_at: Date;
   updated_at: Date;
 }

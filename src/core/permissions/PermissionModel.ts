@@ -1,4 +1,6 @@
 import { dbRun, dbGet, dbAll } from '../database/connection';
+import { PERMISSION_ALIAS } from './permission-catalog';
+import { sqlBooleanTrue } from '../database/sql-dialect';
 
 export interface Permission {
   id: number;
@@ -28,10 +30,37 @@ export interface UserPermission {
 
 export interface PermissionWithStatus extends Permission {
   granted: boolean;
-  source: 'role' | 'user' | 'default';
+  source: 'role' | 'user' | 'profile' | 'default';
 }
 
 export class PermissionModel {
+  private static normalizePermissionCode(code: string): string {
+    return PERMISSION_ALIAS[code] || code;
+  }
+
+  private static async getUserProfilePermissions(userId: number): Promise<Map<number, boolean>> {
+    const rows = await dbAll(
+      `SELECT pp.permission_id, pp.granted
+       FROM user_access_profiles uap
+       JOIN access_profiles ap ON ap.id = uap.profile_id AND ap.is_active = ${sqlBooleanTrue()}
+       JOIN profile_permissions pp ON pp.profile_id = ap.id
+       WHERE uap.user_id = ?`,
+      [userId]
+    ) as any[];
+
+    const map = new Map<number, boolean>();
+    for (const row of rows) {
+      const permissionId = Number(row.permission_id);
+      const granted = PermissionModel.normalizeDbBoolean(row.granted);
+      if (!map.has(permissionId)) {
+        map.set(permissionId, granted);
+        continue;
+      }
+      // Em caso de múltiplos perfis, qualquer grant=true prevalece.
+      if (granted) map.set(permissionId, true);
+    }
+    return map;
+  }
   /**
    * Normaliza valores booleanos vindos do banco (0/1, '0'/'1', true/false)
    */
@@ -162,6 +191,8 @@ export class PermissionModel {
       userPermsMap.set(up.permission_id, granted);
     });
 
+    const profilePermsMap = await this.getUserProfilePermissions(userId);
+
     // Construir resultado: todas as permissões do sistema
     const result: PermissionWithStatus[] = allPermissions.map(perm => {
       // Se há permissão individual, ela prevalece
@@ -188,11 +219,14 @@ export class PermissionModel {
       // Se não há permissão individual, usar o valor do role
       // Para admin, se não há permissão no role_permissions, assume true (admin tem tudo por padrão)
       let granted: boolean;
-      let source: 'role' | 'user' | 'default' = 'role';
+      let source: 'role' | 'user' | 'profile' | 'default' = 'role';
 
       if (rolePermsMap.has(perm.id)) {
         granted = rolePermsMap.get(perm.id)!;
         source = 'role';
+      } else if (profilePermsMap.has(perm.id)) {
+        granted = profilePermsMap.get(perm.id)!;
+        source = 'profile';
       } else if (userRole === 'admin') {
         granted = true;
         source = 'default';
@@ -234,10 +268,27 @@ export class PermissionModel {
     permissionCode: string
   ): Promise<boolean> {
     // Buscar permissão por código
-    const permission = await this.findByCode(permissionCode);
+    const normalizedCode = this.normalizePermissionCode(permissionCode);
+    const permission = await this.findByCode(normalizedCode);
     if (!permission) {
       return false;
     }
+    // Verificar permissão por perfil de acesso antes de cair no role.
+    const profilePermission = await dbGet(
+      `SELECT pp.granted
+       FROM user_access_profiles uap
+       JOIN access_profiles ap ON ap.id = uap.profile_id AND ap.is_active = ${sqlBooleanTrue()}
+       JOIN profile_permissions pp ON pp.profile_id = ap.id
+       WHERE uap.user_id = ? AND pp.permission_id = ?
+       ORDER BY pp.granted DESC
+       LIMIT 1`,
+      [userId, permission.id]
+    ) as any;
+
+    if (profilePermission !== undefined && profilePermission !== null) {
+      return PermissionModel.normalizeDbBoolean(profilePermission.granted);
+    }
+
 
     // Verificar permissão individual do usuário PRIMEIRO (sobrescreve role, incluindo admin)
     const userPermission = await dbGet(

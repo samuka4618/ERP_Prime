@@ -4,6 +4,7 @@ import userRoutes from './users/users';
 import systemRoutes from './system/system';
 import performanceRoutes from './system/performance';
 import permissionRoutes from './permissions/permissions';
+import accessProfilesRoutes from './permissions/accessProfiles';
 import { authenticate } from './auth/middleware';
 import { auditRoutes } from './audit';
 
@@ -18,5 +19,6 @@ export function registerCoreRoutes(router: Router, authLimiter: any) {
   router.use('/system/audit-logs', authenticate, auditRoutes);
   router.use('/performance', performanceRoutes);
   router.use('/permissions', permissionRoutes);
+  router.use('/access-profiles', accessProfilesRoutes);
 }
 

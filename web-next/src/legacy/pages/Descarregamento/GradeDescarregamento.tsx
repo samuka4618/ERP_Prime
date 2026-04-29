@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Package, Truck, Users, RefreshCw, LogIn, CheckCircle } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Package, Truck, Users, RefreshCw, LogIn, CheckCircle, MonitorUp, Maximize2, Minimize2 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import FormattedDate from '../../components/FormattedDate';
@@ -69,6 +69,12 @@ const GradeDescarregamento: React.FC = () => {
   const [loadingDocas, setLoadingDocas] = useState(false);
   const [liberarModal, setLiberarModal] = useState<{ id: number; name: string; defaultDock: string } | null>(null);
   const [liberarSubmitting, setLiberarSubmitting] = useState(false);
+  const [tvMode, setTvMode] = useState(() => new URLSearchParams(window.location.search).get('tv') === '1');
+  const [tvRefreshSeconds, setTvRefreshSeconds] = useState<number>(() => {
+    const raw = Number(new URLSearchParams(window.location.search).get('tv_refresh'));
+    return [15, 30, 60].includes(raw) ? raw : 15;
+  });
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     const loadDocas = async () => {
@@ -92,9 +98,41 @@ const GradeDescarregamento: React.FC = () => {
 
   useEffect(() => {
     fetchData(true);
-    const interval = setInterval(() => fetchData(false), 30000);
+    const interval = setInterval(() => fetchData(false), tvMode ? tvRefreshSeconds * 1000 : 30000);
     return () => clearInterval(interval);
-  }, [currentDate, statusFilter, viewMode]);
+  }, [currentDate, statusFilter, viewMode, tvMode, tvRefreshSeconds]);
+
+  useEffect(() => {
+    if (!tvMode) return;
+    const rotation = setInterval(() => {
+      setViewMode((prev) => (prev === 'dia' ? 'semana' : 'dia'));
+    }, 20000);
+    return () => clearInterval(rotation);
+  }, [tvMode]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && tvMode) {
+        setTvMode(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [tvMode]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (tvMode) {
+      params.set('tv', '1');
+      params.set('tv_refresh', String(tvRefreshSeconds));
+    } else {
+      params.delete('tv');
+      params.delete('tv_refresh');
+    }
+    const queryString = params.toString();
+    const newUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', newUrl);
+  }, [tvMode, tvRefreshSeconds]);
 
   // Função para formatar data no formato YYYY-MM-DD no fuso horário local
   const formatDateToYYYYMMDD = (date: Date): string => {
@@ -115,6 +153,7 @@ const GradeDescarregamento: React.FC = () => {
     try {
       await Promise.all([fetchAgendamentos(), fetchMotoristas()]);
       hasLoadedOnce.current = true;
+      setLastUpdatedAt(new Date());
     } catch (error) {
       const msg = 'Falha ao carregar agendamentos e motoristas. Tente novamente.';
       setLoadError(msg);
@@ -328,8 +367,32 @@ const GradeDescarregamento: React.FC = () => {
     }
   };
 
+  const toggleTvMode = async () => {
+    const next = !tvMode;
+    setTvMode(next);
+    if (next) {
+      setViewMode('dia');
+      setStatusFilter('all');
+      if (document.fullscreenEnabled && !document.fullscreenElement) {
+        try {
+          await document.documentElement.requestFullscreen();
+        } catch {
+          /* ignorar falha de fullscreen */
+        }
+      }
+      return;
+    }
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        /* ignorar falha ao sair de fullscreen */
+      }
+    }
+  };
+
   return (
-    <div className="p-6 space-y-6">
+    <div className={tvMode ? 'fixed inset-0 z-50 bg-gray-950 text-white p-4 sm:p-6 overflow-auto space-y-4' : 'p-6 space-y-6'}>
       <LiberarParaDocaModal
         open={!!liberarModal}
         driverName={liberarModal?.name || ''}
@@ -357,10 +420,15 @@ const GradeDescarregamento: React.FC = () => {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Grade de Descarregamento</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
+            <h1 className={`text-3xl font-bold ${tvMode ? 'text-white' : 'text-gray-900 dark:text-white'}`}>Grade de Descarregamento</h1>
+            <p className={`${tvMode ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400'} mt-1`}>
               {viewMode === 'semana' && weekDates.length ? getWeekRangeLabel() : `${dateHeader.dayOfWeek}, ${dateHeader.day} de ${dateHeader.month} de ${dateHeader.year}`}
             </p>
+            {tvMode && (
+              <p className="text-xs text-gray-400 mt-1">
+                Rotação automática Dia/Semana · Pressione Esc para sair
+              </p>
+            )}
           </div>
           {isRefreshing && (
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400" aria-live="polite">
@@ -370,38 +438,80 @@ const GradeDescarregamento: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={() => fetchData(true)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              tvMode
+                ? 'bg-gray-800 hover:bg-gray-700 text-gray-100 border border-gray-700'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            <RefreshCw className="w-4 h-4" />
+            Atualizar
+          </button>
+          <button
+            type="button"
+            onClick={toggleTvMode}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              tvMode
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
+          >
+            <MonitorUp className="w-4 h-4" />
+            {tvMode ? (
+              <>
+                <Minimize2 className="w-4 h-4" />
+                Sair do modo TV
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-4 h-4" />
+                Modo TV
+              </>
+            )}
+          </button>
           {/* Navegação de Data */}
-          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg shadow-md px-3 py-2 border border-gray-200 dark:border-gray-700">
+          <div className={`flex items-center gap-2 rounded-lg shadow-md px-3 py-2 border ${
+            tvMode
+              ? 'bg-gray-900 border-gray-700'
+              : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+          }`}>
             <button
               onClick={() => navigateDate('prev')}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className={`p-1 rounded transition-colors ${tvMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             >
               <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
             <button
               onClick={() => navigateDate('today')}
-              className="flex items-center gap-2 px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-sm font-medium text-gray-700 dark:text-gray-300"
+              className={`flex items-center gap-2 px-3 py-1 rounded transition-colors text-sm font-medium ${
+                tvMode ? 'text-gray-100 hover:bg-gray-800' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
             >
               <Calendar className="w-4 h-4" />
               Hoje
             </button>
             <button
               onClick={() => navigateDate('next')}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className={`p-1 rounded transition-colors ${tvMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             >
               <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
           </div>
 
           {/* Toggle Vista */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 flex border border-gray-200 dark:border-gray-700">
+          <div className={`rounded-lg shadow-md p-1 flex border ${tvMode ? 'bg-gray-900 border-gray-700' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
             <button
               onClick={() => setViewMode('dia')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'dia'
                   ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : tvMode
+                    ? 'text-gray-300 hover:bg-gray-800'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               Dia
@@ -411,7 +521,9 @@ const GradeDescarregamento: React.FC = () => {
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'semana'
                   ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : tvMode
+                    ? 'text-gray-300 hover:bg-gray-800'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               Semana
@@ -420,8 +532,33 @@ const GradeDescarregamento: React.FC = () => {
         </div>
       </div>
 
+      {tvMode && (
+        <div className="rounded-lg border border-gray-700 bg-gray-900 px-4 py-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm text-gray-300 flex items-center gap-2">
+            Exibição para monitor operacional
+            <span className="text-xs text-gray-400">Atualização:</span>
+            <select
+              value={tvRefreshSeconds}
+              onChange={(e) => setTvRefreshSeconds(Number(e.target.value))}
+              className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100"
+            >
+              <option value={15}>15s</option>
+              <option value={30}>30s</option>
+              <option value={60}>60s</option>
+            </select>
+          </div>
+          <div className="text-xs text-gray-400">
+            Última atualização: {lastUpdatedAt ? lastUpdatedAt.toLocaleTimeString('pt-BR') : '--:--:--'}
+          </div>
+        </div>
+      )}
+
       {/* Legenda e Filtros */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border border-gray-200 dark:border-gray-700">
+      <div className={`rounded-lg shadow-md p-4 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border ${
+        tvMode
+          ? 'bg-gray-900 border-gray-700'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+      }`}>
         <div className="flex flex-wrap items-center gap-4">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Status:</span>
           <div className="flex items-center gap-2">
@@ -502,7 +639,7 @@ const GradeDescarregamento: React.FC = () => {
                       <div className="text-xs text-gray-500 dark:text-gray-500 mb-3">
                         <FormattedDate date={motorista.submitted_at} includeTime={true} />
                       </div>
-                      {canLiberar && (
+                      {canLiberar && !tvMode && (
                         <div className="flex flex-wrap gap-2">
                           {!realizando ? (
                             <button

@@ -6,6 +6,7 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { config } from '../../config/database';
+import { PERMISSION_CATALOG } from '../permissions/permission-catalog';
 
 const dbPath = path.isAbsolute(config.database.path)
   ? config.database.path
@@ -450,10 +451,87 @@ async function runSchemaMigrations(): Promise<void> {
     console.log('Migração: coluna ui_preferences em users (SQLite)');
   }
 
-  await dbRun(`
-    INSERT OR IGNORE INTO permissions (name, code, module, description) VALUES
-    ('Visualizar métricas de performance (dashboard)', 'performance.view', 'administration', 'Permite ver métricas agregadas de performance no dashboard')
-  `);
+    await dbRun(`
+      INSERT OR IGNORE INTO permissions (name, code, module, description) VALUES
+      ('Visualizar métricas de performance (dashboard)', 'performance.view', 'administration', 'Permite ver métricas agregadas de performance no dashboard')
+    `);
+
+    // Catálogo canônico de permissões (fonte única para novos módulos/telas)
+    for (const perm of PERMISSION_CATALOG) {
+      await dbRun(
+        `INSERT OR IGNORE INTO permissions (name, code, module, description) VALUES (?, ?, ?, ?)`,
+        [perm.name, perm.code, perm.module, perm.description]
+      );
+    }
+
+    // Perfis de acesso (enterprise RBAC)
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS access_profiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name VARCHAR(120) NOT NULL UNIQUE,
+        slug VARCHAR(120) NOT NULL UNIQUE,
+        description TEXT,
+        is_system BOOLEAN DEFAULT 0,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS profile_permissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profile_id INTEGER NOT NULL,
+        permission_id INTEGER NOT NULL,
+        granted BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(profile_id, permission_id),
+        FOREIGN KEY (profile_id) REFERENCES access_profiles(id) ON DELETE CASCADE,
+        FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+      )
+    `);
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS user_access_profiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        profile_id INTEGER NOT NULL,
+        assigned_by INTEGER,
+        assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, profile_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (profile_id) REFERENCES access_profiles(id) ON DELETE CASCADE,
+        FOREIGN KEY (assigned_by) REFERENCES users(id)
+      )
+    `);
+
+    await dbRun(
+      `INSERT OR IGNORE INTO access_profiles (name, slug, description, is_system, is_active)
+       VALUES
+       ('Administrador do Sistema', 'system_admin', 'Perfil administrativo completo', 1, 1),
+       ('Atendente Padrão', 'default_attendant', 'Perfil padrão de atendimento', 1, 1),
+       ('Usuário Padrão', 'default_user', 'Perfil padrão de usuário operacional', 1, 1)`
+    );
+
+    // Migrar role_permissions para perfis padrão (idempotente)
+    await dbRun(
+      `INSERT OR IGNORE INTO profile_permissions (profile_id, permission_id, granted)
+       SELECT ap.id, rp.permission_id, rp.granted
+       FROM role_permissions rp
+       JOIN access_profiles ap
+         ON (rp.role = 'admin' AND ap.slug = 'system_admin')
+         OR (rp.role = 'attendant' AND ap.slug = 'default_attendant')
+         OR (rp.role = 'user' AND ap.slug = 'default_user')`
+    );
+
+    // Atribuir perfil padrão aos usuários existentes que ainda não possuem vínculo
+    await dbRun(
+      `INSERT OR IGNORE INTO user_access_profiles (user_id, profile_id, assigned_by)
+       SELECT u.id, ap.id, NULL
+       FROM users u
+       JOIN access_profiles ap
+         ON (u.role = 'admin' AND ap.slug = 'system_admin')
+         OR (u.role = 'attendant' AND ap.slug = 'default_attendant')
+         OR (u.role = 'user' AND ap.slug = 'default_user')`
+    );
 }
 
 export const executeSchema = async (): Promise<void> => {

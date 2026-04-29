@@ -9,8 +9,17 @@ import Joi from 'joi';
 import { dbRun } from '../database/connection';
 
 const router = Router();
+const CRITICAL_PERMISSION_CODES = new Set([
+  'users.manage',
+  'users.delete',
+  'permissions.manage',
+  'profiles.manage',
+  'system.backup.restore',
+  'system.config.manage'
+]);
 
 const updateRolePermissionsSchema = Joi.object({
+  confirmCritical: Joi.boolean().optional(),
   permissions: Joi.array()
     .items(
       Joi.object({
@@ -22,6 +31,7 @@ const updateRolePermissionsSchema = Joi.object({
 });
 
 const updateUserPermissionsSchema = Joi.object({
+  confirmCritical: Joi.boolean().optional(),
   permissions: Joi.array()
     .items(
       Joi.object({
@@ -209,7 +219,21 @@ router.put('/role/:role', authenticate, authorize(UserRole.ADMIN), async (req: R
       return;
     }
 
-    const { permissions } = value as { permissions: Array<{ permissionId: number; granted: boolean }> };
+    const { permissions, confirmCritical } = value as {
+      permissions: Array<{ permissionId: number; granted: boolean }>;
+      confirmCritical?: boolean;
+    };
+    const allPermissions = await PermissionModel.findAll();
+    const permissionById = new Map(allPermissions.map((p) => [p.id, p.code]));
+    const hasCriticalMutation = permissions.some(
+      (perm) => perm.granted && CRITICAL_PERMISSION_CODES.has(permissionById.get(perm.permissionId) || '')
+    );
+    if (hasCriticalMutation && !confirmCritical) {
+      res.status(400).json({ error: 'Alteração inclui permissão crítica. Reenvie com confirmCritical=true.' });
+      return;
+    }
+
+    const previousRolePermissions = await PermissionModel.findByRole(role as 'user' | 'attendant' | 'admin');
 
     // Atualizar permissões em transação
     await dbRun('BEGIN TRANSACTION');
@@ -234,7 +258,12 @@ router.put('/role/:role', authenticate, authorize(UserRole.ADMIN), async (req: R
       action: 'permissions.role.update',
       resource: 'administration',
       resourceId: role,
-      details: `${permissions.length} permissão(ões) atualizadas para o role ${role}`,
+      details: JSON.stringify({
+        role,
+        changed_permissions: permissions.length,
+        previous_granted_count: previousRolePermissions.filter((p) => Boolean(p.granted)).length,
+        next_granted_count: permissions.filter((p) => Boolean(p.granted)).length
+      }),
       ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined
     });
     res.json({ message: 'Permissões atualizadas com sucesso' });
@@ -265,7 +294,26 @@ router.put('/user/:userId', authenticate, authorize(UserRole.ADMIN), async (req:
       });
     }
 
-    const { permissions } = value as { permissions: Array<{ permissionId: number; granted: boolean | null }> };
+    const { permissions, confirmCritical } = value as {
+      permissions: Array<{ permissionId: number; granted: boolean | null }>;
+      confirmCritical?: boolean;
+    };
+    const allPermissions = await PermissionModel.findAll();
+    const permissionById = new Map(allPermissions.map((p) => [p.id, p.code]));
+    const hasCriticalMutation = permissions.some(
+      (perm) => perm.granted === true && CRITICAL_PERMISSION_CODES.has(permissionById.get(perm.permissionId) || '')
+    );
+    if (hasCriticalMutation && !confirmCritical) {
+      res.status(400).json({ error: 'Alteração inclui permissão crítica. Reenvie com confirmCritical=true.' });
+      return;
+    }
+
+    const targetUser = await UserModel.findById(userId);
+    if (!targetUser) {
+      res.status(404).json({ error: 'Usuário não encontrado' });
+      return;
+    }
+    const previousUserPermissions = await PermissionModel.findByUser(userId, String(targetUser.role));
 
     // Atualizar permissões em transação
     await dbRun('BEGIN TRANSACTION');
@@ -314,14 +362,20 @@ router.put('/user/:userId', authenticate, authorize(UserRole.ADMIN), async (req:
         isUndefined: p.granted === undefined
       }))
     }, 'PERMISSIONS');
-    const targetUser = await UserModel.findById(userId).catch(() => null);
     auditLog({
       userId: req.user?.id,
       userName: req.user?.name,
       action: 'permissions.user.update',
       resource: 'administration',
       resourceId: String(userId),
-      details: targetUser ? `${permissions.length} permissão(ões) atualizadas para ${targetUser.name} (${targetUser.email})` : `Permissões do usuário ${userId} atualizadas`,
+      details: JSON.stringify({
+        userId,
+        targetUser: `${targetUser.name} (${targetUser.email})`,
+        changed_permissions: permissions.length,
+        previous_granted_count: previousUserPermissions.filter((p) => Boolean(p.granted)).length,
+        overrides_set: permissions.filter((p) => p.granted !== null).length,
+        overrides_removed: permissions.filter((p) => p.granted === null).length
+      }),
       ip: req.ip || (req.headers['x-forwarded-for'] as string) || undefined
     });
     res.json({ message: 'Permissões atualizadas com sucesso' });

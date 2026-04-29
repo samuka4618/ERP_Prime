@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { PermissionsProvider } from './contexts/PermissionsContext';
+import { PermissionsProvider, usePermissions } from './contexts/PermissionsContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SystemConfigProvider } from './contexts/SystemConfigContext';
 import Layout from './components/Layout';
@@ -23,6 +23,7 @@ import Categories from './pages/Categories';
 import Status from './pages/Status';
 import CadastrosConfig from './pages/CadastrosConfig';
 import PermissionsPage from './pages/Permissions';
+import AccessProfilesPage from './pages/AccessProfiles';
 import Reports from './pages/Reports';
 import Audit from './pages/Audit';
 import BackupRestore from './pages/BackupRestore';
@@ -81,7 +82,15 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
+const PermissionRoute: React.FC<{ permission: string; children: React.ReactNode }> = ({ permission, children }) => {
+  const { loadingPermissions, hasPermission } = usePermissions();
+  if (loadingPermissions) return <LoadingSpinner />;
+  if (!hasPermission(permission)) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+
 const AppRoutes: React.FC = () => {
+  const iamV2Enabled = String(import.meta.env.VITE_FEATURE_IAM_V2 ?? 'true') !== 'false';
   return (
     <PublicFormOnlyGuard>
       <Routes>
@@ -117,35 +126,38 @@ const AppRoutes: React.FC = () => {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="tickets" element={<Tickets />} />
+        <Route path="tickets" element={<PermissionRoute permission="tickets.view"><Tickets /></PermissionRoute>} />
         <Route path="tickets/new" element={<CreateTicket />} />
         <Route path="tickets/:id" element={<TicketDetail />} />
-        <Route path="client-registrations" element={<ClientRegistrations />} />
+        <Route path="client-registrations" element={<PermissionRoute permission="registrations.view"><ClientRegistrations /></PermissionRoute>} />
         <Route path="client-registrations/new" element={<ClientRegistrationForm />} />
         <Route path="client-registrations/:id" element={<ClientRegistrationDetail />} />
         <Route path="client-registrations/:id/edit" element={<ClientRegistrationForm />} />
-        <Route path="compras/solicitacoes" element={<SolicitacoesCompra />} />
+        <Route path="compras/solicitacoes" element={<PermissionRoute permission="compras.solicitacoes.view"><SolicitacoesCompra /></PermissionRoute>} />
         <Route path="compras/solicitacoes/nova" element={<NovaSolicitacaoCompra />} />
         <Route path="compras/solicitacoes/:id" element={<SolicitacaoCompraDetail />} />
         <Route path="compras/solicitacoes/:solicitacaoId/orcamento/novo" element={<NovoOrcamento />} />
-        <Route path="compras/orcamentos" element={<OrcamentosRecebidos />} />
+        <Route path="compras/orcamentos" element={<PermissionRoute permission="compras.orcamentos.view"><OrcamentosRecebidos /></PermissionRoute>} />
         <Route path="compras/orcamentos/:id" element={<OrcamentoDetail />} />
         <Route path="compras/minhas-solicitacoes" element={<MinhasSolicitacoesComprador />} />
         <Route path="compras/pendentes-aprovacao" element={<SolicitacoesPendentesAprovacao />} />
         <Route path="compras-config" element={<ComprasConfig />} />
-        <Route path="descarregamento/agendamentos" element={<AgendamentosDescarregamento />} />
+        <Route path="descarregamento/agendamentos" element={<PermissionRoute permission="descarregamento.agendamentos.view"><AgendamentosDescarregamento /></PermissionRoute>} />
         <Route path="descarregamento/agendamentos/novo" element={<NovoAgendamento />} />
         <Route path="descarregamento/agendamentos/:id" element={<NovoAgendamento />} />
-        <Route path="descarregamento/fornecedores" element={<FornecedoresDescarregamento />} />
+        <Route path="descarregamento/fornecedores" element={<PermissionRoute permission="descarregamento.fornecedores.view"><FornecedoresDescarregamento /></PermissionRoute>} />
         <Route path="descarregamento/fornecedores/novo" element={<NovoFornecedor />} />
         <Route path="descarregamento/fornecedores/:id/editar" element={<NovoFornecedor />} />
-        <Route path="descarregamento/grade" element={<GradeDescarregamento />} />
-        <Route path="descarregamento/docas" element={<Docas />} />
-        <Route path="descarregamento/motoristas-patio" element={<MotoristasPatio />} />
-        <Route path="descarregamento/historico" element={<HistoricoDescarregamento />} />
+        <Route path="descarregamento/grade" element={<PermissionRoute permission="descarregamento.grade.view"><GradeDescarregamento /></PermissionRoute>} />
+        <Route path="descarregamento/docas" element={<PermissionRoute permission="descarregamento.docas.view"><Docas /></PermissionRoute>} />
+        <Route path="descarregamento/motoristas-patio" element={<PermissionRoute permission="descarregamento.motoristas.view"><MotoristasPatio /></PermissionRoute>} />
+        <Route path="descarregamento/historico" element={<PermissionRoute permission="descarregamento.historico.view"><HistoricoDescarregamento /></PermissionRoute>} />
         <Route path="descarregamento-config" element={<DescarregamentoConfig />} />
-        <Route path="users" element={<Users />} />
-        <Route path="permissions" element={<PermissionsPage />} />
+        <Route path="users" element={<PermissionRoute permission="users.view"><Users /></PermissionRoute>} />
+        <Route path="permissions" element={<PermissionRoute permission="permissions.manage"><PermissionsPage /></PermissionRoute>} />
+        {iamV2Enabled && (
+          <Route path="access-profiles" element={<PermissionRoute permission="profiles.manage"><AccessProfilesPage /></PermissionRoute>} />
+        )}
         <Route path="profile" element={<Profile />} />
         <Route path="sessions" element={<Sessions />} />
         <Route path="notifications" element={<NotificationsPage />} />
@@ -155,8 +167,8 @@ const AppRoutes: React.FC = () => {
         <Route path="status" element={<Status />} />
         <Route path="cadastros-config" element={<CadastrosConfig />} />
         <Route path="category-assignments" element={<CategoryAssignments />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="audit" element={<Audit />} />
+        <Route path="reports" element={<PermissionRoute permission="reports.view"><Reports /></PermissionRoute>} />
+        <Route path="audit" element={<PermissionRoute permission="system.audit.view"><Audit /></PermissionRoute>} />
         <Route path="backup" element={<BackupRestore />} />
       </Route>
     </Routes>

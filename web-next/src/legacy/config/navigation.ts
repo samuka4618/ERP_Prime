@@ -47,6 +47,8 @@ export type NavSection = {
   collapsible?: boolean;
 };
 
+const iamV2Enabled = String(process.env.NEXT_PUBLIC_FEATURE_IAM_V2 ?? 'true') !== 'false';
+
 export const NAV_SECTIONS: NavSection[] = [
   {
     id: 'dashboard',
@@ -144,7 +146,7 @@ export const NAV_SECTIONS: NavSection[] = [
             name: 'Grade',
             href: '/descarregamento/grade',
             icon: Calendar,
-            permissionAny: ['descarregamento.agendamentos.view'],
+            permissionAny: ['descarregamento.grade.view'],
           },
           {
             id: 'nav-descarga-fornecedores',
@@ -172,7 +174,7 @@ export const NAV_SECTIONS: NavSection[] = [
             name: 'Histórico',
             href: '/descarregamento/historico',
             icon: History,
-            permissionAny: ['descarregamento.agendamentos.view', 'descarregamento.form_responses.view'],
+            permissionAny: ['descarregamento.historico.view'],
           },
         ],
       },
@@ -193,6 +195,15 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Shield,
         permissionAny: ['permissions.manage'],
       },
+      ...(iamV2Enabled
+        ? [{
+            id: 'nav-access-profiles',
+            name: 'Perfis de Acesso',
+            href: '/access-profiles',
+            icon: ShieldCheck,
+            permissionAny: ['profiles.manage'],
+          }]
+        : []),
       { id: 'nav-reports', name: 'Relatórios', href: '/reports', icon: BarChart3, permissionAny: ['reports.view'] },
       {
         id: 'nav-audit',

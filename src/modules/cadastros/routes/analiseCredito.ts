@@ -1,12 +1,13 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../../../core/auth/middleware';
+import { authenticate } from '../../../core/auth/middleware';
 import { AnaliseCreditoModel } from '../models/AnaliseCredito';
-import { UserRole } from '../../../shared/types';
+import { requirePermission } from '../../../core/permissions/middleware';
 
 const router = Router();
 
 // Middleware de autenticação
 router.use(authenticate);
+router.use(requirePermission('registrations.analise_credito.view'));
 
 // GET /api/analise-credito/:cnpj(*) - Buscar análise de crédito pelo CNPJ (usa regex para capturar CNPJ com barras)
 router.get('/:cnpj(*)', async (req, res) => {

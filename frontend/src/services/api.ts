@@ -551,11 +551,11 @@ class ApiService {
   }
 
   async updateRolePermissions(role: string, permissions: Array<{ permissionId: number; granted: boolean }>): Promise<void> {
-    await this.api.put(`/permissions/role/${role}`, { permissions });
+    await this.api.put(`/permissions/role/${role}`, { permissions, confirmCritical: true });
   }
 
   async updateUserPermissions(userId: number, permissions: Array<{ permissionId: number; granted: boolean | null }>): Promise<void> {
-    await this.api.put(`/permissions/user/${userId}`, { permissions });
+    await this.api.put(`/permissions/user/${userId}`, { permissions, confirmCritical: true });
   }
 
   async createPermission(permission: { name: string; code: string; module: string; description?: string }): Promise<any> {
@@ -570,6 +570,39 @@ class ApiService {
 
   async deletePermission(id: number): Promise<void> {
     await this.api.delete(`/permissions/${id}`);
+  }
+
+  // Access Profiles (perfis enterprise)
+  async getAccessProfiles(): Promise<any[]> {
+    const response = await this.api.get<ApiResponse<any[]>>('/access-profiles');
+    return response.data.data || [];
+  }
+
+  async createAccessProfile(data: { name: string; slug: string; description?: string }): Promise<any> {
+    const response = await this.api.post<ApiResponse<any>>('/access-profiles', data);
+    return response.data.data;
+  }
+
+  async updateAccessProfile(id: number, data: { name?: string; description?: string; is_active?: boolean }): Promise<void> {
+    await this.api.put(`/access-profiles/${id}`, data);
+  }
+
+  async getAccessProfilePermissions(profileId: number): Promise<Array<{ permission_id: number; granted: boolean }>> {
+    const response = await this.api.get<ApiResponse<Array<{ permission_id: number; granted: boolean }>>>(`/access-profiles/${profileId}/permissions`);
+    return response.data.data || [];
+  }
+
+  async updateAccessProfilePermissions(profileId: number, permissions: Array<{ permissionId: number; granted: boolean }>): Promise<void> {
+    await this.api.put(`/access-profiles/${profileId}/permissions`, { permissions });
+  }
+
+  async getUserAccessProfiles(userId: number): Promise<any[]> {
+    const response = await this.api.get<ApiResponse<any[]>>(`/access-profiles/users/${userId}`);
+    return response.data.data || [];
+  }
+
+  async updateUserAccessProfiles(userId: number, profileIds: number[]): Promise<void> {
+    await this.api.put(`/access-profiles/users/${userId}`, { profileIds });
   }
 
   async getAuditLogs(params?: { page?: number; limit?: number; date_from?: string; date_to?: string; user_id?: number; action?: string; resource?: string }): Promise<{ data: AuditLogListResponse }> {

@@ -30,6 +30,7 @@ import {
   History
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../contexts/PermissionsContext';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
 import UserAvatar from './UserAvatar';
 import clsx from 'clsx';
@@ -47,6 +48,7 @@ interface NavigationItem {
   icon: React.ComponentType<{ className?: string }>;
   badge?: string | number;
   adminOnly?: boolean;
+  permissionCode?: string;
   items?: NavigationItem[];
 }
 
@@ -56,6 +58,7 @@ interface NavigationSection {
   icon: React.ComponentType<{ className?: string }>;
   items: NavigationItem[];
   adminOnly?: boolean;
+  permissionCode?: string;
   collapsible?: boolean;
 }
 
@@ -65,7 +68,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onClose,
   onToggleCollapse
 }) => {
+  const iamV2Enabled = String(import.meta.env.VITE_FEATURE_IAM_V2 ?? 'true') !== 'false';
   const { user, isAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
   const { config } = useSystemConfig();
   const location = useLocation();
 
@@ -110,28 +115,30 @@ const Sidebar: React.FC<SidebarProps> = ({
       name: 'Módulos',
       icon: FolderOpen,
       items: [
-        { name: 'Chamados', href: '/tickets', icon: Ticket, badge: location.pathname.startsWith('/tickets') ? undefined : undefined },
-        { name: 'Cadastros', href: '/client-registrations', icon: Building2 },
+        { name: 'Chamados', href: '/tickets', icon: Ticket, permissionCode: 'tickets.view', badge: location.pathname.startsWith('/tickets') ? undefined : undefined },
+        { name: 'Cadastros', href: '/client-registrations', icon: Building2, permissionCode: 'registrations.view' },
         {
           name: 'Compras',
+          permissionCode: 'compras.modulo.view',
           icon: ShoppingCart,
           items: [
-            { name: 'Todas as Solicitações', href: '/compras/solicitacoes', icon: ClipboardList },
-            { name: 'Orçamentos Recebidos', href: '/compras/orcamentos', icon: FileText },
-            { name: 'Minhas Solicitações', href: '/compras/minhas-solicitacoes', icon: Package },
-            { name: 'Pendentes de Aprovação', href: '/compras/pendentes-aprovacao', icon: CheckCircle }
+            { name: 'Todas as Solicitações', href: '/compras/solicitacoes', icon: ClipboardList, permissionCode: 'compras.solicitacoes.view' },
+            { name: 'Orçamentos Recebidos', href: '/compras/orcamentos', icon: FileText, permissionCode: 'compras.orcamentos.view' },
+            { name: 'Minhas Solicitações', href: '/compras/minhas-solicitacoes', icon: Package, permissionCode: 'compras.solicitacoes.view' },
+            { name: 'Pendentes de Aprovação', href: '/compras/pendentes-aprovacao', icon: CheckCircle, permissionCode: 'compras.solicitacoes.approve' }
           ]
         },
         {
           name: 'Descarregamento',
+          permissionCode: 'descarregamento.modulo.view',
           icon: Truck,
           items: [
-            { name: 'Agendamentos', href: '/descarregamento/agendamentos', icon: Calendar },
-            { name: 'Grade', href: '/descarregamento/grade', icon: Calendar },
-            { name: 'Fornecedores', href: '/descarregamento/fornecedores', icon: Building2 },
-            { name: 'Docas', href: '/descarregamento/docas', icon: Warehouse },
-            { name: 'Motoristas no Pátio', href: '/descarregamento/motoristas-patio', icon: Users },
-            { name: 'Histórico', href: '/descarregamento/historico', icon: History }
+            { name: 'Agendamentos', href: '/descarregamento/agendamentos', icon: Calendar, permissionCode: 'descarregamento.agendamentos.view' },
+            { name: 'Grade', href: '/descarregamento/grade', icon: Calendar, permissionCode: 'descarregamento.grade.view' },
+            { name: 'Fornecedores', href: '/descarregamento/fornecedores', icon: Building2, permissionCode: 'descarregamento.fornecedores.view' },
+            { name: 'Docas', href: '/descarregamento/docas', icon: Warehouse, permissionCode: 'descarregamento.docas.view' },
+            { name: 'Motoristas no Pátio', href: '/descarregamento/motoristas-patio', icon: Users, permissionCode: 'descarregamento.motoristas.view' },
+            { name: 'Histórico', href: '/descarregamento/historico', icon: History, permissionCode: 'descarregamento.historico.view' }
           ]
         }
       ],
@@ -142,40 +149,41 @@ const Sidebar: React.FC<SidebarProps> = ({
       name: 'Administração',
       icon: Shield,
       items: [
-        { name: 'Usuários', href: '/users', icon: Users },
-        { name: 'Permissões', href: '/permissions', icon: Shield },
-        { name: 'Relatórios', href: '/reports', icon: BarChart3 },
-        { name: 'Auditoria', href: '/audit', icon: FileText },
-        { name: 'Sessões Ativas', href: '/sessions', icon: ShieldCheck },
-        { name: 'Backup e Restore', href: '/backup', icon: Database },
+        { name: 'Usuários', href: '/users', icon: Users, permissionCode: 'users.view' },
+        { name: 'Permissões', href: '/permissions', icon: Shield, permissionCode: 'permissions.manage' },
+        ...(iamV2Enabled ? [{ name: 'Perfis de Acesso', href: '/access-profiles', icon: ShieldCheck, permissionCode: 'profiles.manage' }] : []),
+        { name: 'Relatórios', href: '/reports', icon: BarChart3, permissionCode: 'reports.view' },
+        { name: 'Auditoria', href: '/audit', icon: FileText, permissionCode: 'system.audit.view' },
+        { name: 'Sessões Ativas', href: '/sessions', icon: ShieldCheck, permissionCode: 'users.view' },
+        { name: 'Backup e Restore', href: '/backup', icon: Database, permissionCode: 'system.backup.manage' },
         {
           name: 'Configurações',
           icon: Settings,
           items: [
-            { name: 'Configurações Gerais', href: '/system-settings', icon: Settings },
+            { name: 'Configurações Gerais', href: '/system-settings', icon: Settings, permissionCode: 'system.config.manage' },
             {
               name: 'Sistema de Chamados',
               icon: Ticket,
               items: [
-                { name: 'Categorias', href: '/categories', icon: Tag },
-                { name: 'Status', href: '/status', icon: List },
-                { name: 'Atribuições', href: '/category-assignments', icon: UserCheck }
+                { name: 'Categorias', href: '/categories', icon: Tag, permissionCode: 'tickets.categories.manage' },
+                { name: 'Status', href: '/status', icon: List, permissionCode: 'tickets.status.manage' },
+                { name: 'Atribuições', href: '/category-assignments', icon: UserCheck, permissionCode: 'tickets.assignments.manage' }
               ]
             },
             {
               name: 'Sistema de Cadastros',
               icon: Building2,
-              items: [{ name: 'Configurações', href: '/cadastros-config', icon: FileText }]
+              items: [{ name: 'Configurações', href: '/cadastros-config', icon: FileText, permissionCode: 'registrations.config.manage' }]
             },
             {
               name: 'Sistema de Compras',
               icon: ShoppingBag,
-              items: [{ name: 'Configurações', href: '/compras-config', icon: Settings }]
+              items: [{ name: 'Configurações', href: '/compras-config', icon: Settings, permissionCode: 'compras.aprovadores.manage' }]
             },
             {
               name: 'Sistema de Descarregamento',
               icon: Truck,
-              items: [{ name: 'Configurações', href: '/descarregamento-config', icon: Settings }]
+              items: [{ name: 'Configurações', href: '/descarregamento-config', icon: Settings, permissionCode: 'descarregamento.formularios.manage' }]
             }
           ]
         }
@@ -185,7 +193,25 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   ];
 
-  const visibleSections = navigationSections.filter(section => !section.adminOnly || isAdmin);
+  const filterItemsByPermission = (items: NavigationItem[]): NavigationItem[] => {
+    return items
+      .map((item) => {
+        const visibleChildren = item.items ? filterItemsByPermission(item.items) : undefined;
+        const hasItemPermission = !item.permissionCode || hasPermission(item.permissionCode);
+        if (visibleChildren && visibleChildren.length > 0) {
+          if (!hasItemPermission && item.permissionCode) return null;
+          return { ...item, items: visibleChildren };
+        }
+        if (!hasItemPermission) return null;
+        return { ...item, items: visibleChildren };
+      })
+      .filter(Boolean) as NavigationItem[];
+  };
+
+  const visibleSections = navigationSections
+    .filter(section => (!section.adminOnly || isAdmin) && (!section.permissionCode || hasPermission(section.permissionCode)))
+    .map(section => ({ ...section, items: filterItemsByPermission(section.items) }))
+    .filter(section => section.items.length > 0);
 
   const isActive = (href: string | undefined) => {
     if (!href) return false;

@@ -25,7 +25,9 @@ import { toast } from 'react-hot-toast';
 import FormattedDate from '../components/FormattedDate';
 
 const Users: React.FC = () => {
+  const iamV2Enabled = String(import.meta.env.VITE_FEATURE_IAM_V2 ?? 'true') !== 'false';
   const [users, setUsers] = useState<User[]>([]);
+  const [accessProfiles, setAccessProfiles] = useState<Array<{ id: number; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,6 +42,7 @@ const Users: React.FC = () => {
     role: 'user' as 'user' | 'attendant' | 'admin',
     is_active: true
   });
+  const [createProfileIds, setCreateProfileIds] = useState<number[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -49,6 +52,7 @@ const Users: React.FC = () => {
     role: 'user' as 'user' | 'attendant' | 'admin',
     is_active: true
   });
+  const [editProfileIds, setEditProfileIds] = useState<number[]>([]);
 
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importDefaultPassword, setImportDefaultPassword] = useState('');
@@ -152,9 +156,13 @@ const Users: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getUsers(currentPage, 10);
+      const [response, profiles] = await Promise.all([
+        apiService.getUsers(currentPage, 10),
+        iamV2Enabled ? apiService.getAccessProfiles() : Promise.resolve([])
+      ]);
       setUsers(response.data);
       setTotalPages(response.total_pages);
+      setAccessProfiles(Array.isArray(profiles) ? profiles : []);
       const userIds = response.data.map((item) => item.id);
       const summary = await apiService.getUsersSessionsSummary(userIds);
       setSessionsSummary(summary);
@@ -185,7 +193,12 @@ const Users: React.FC = () => {
       
       console.log('🔍 DEBUG FRONTEND - Dados processados:', userData);
       
-      await apiService.createUser(userData);
+      const createdUser = await apiService.createUser(userData);
+      if (iamV2Enabled && createProfileIds.length > 0) {
+        if (createdUser?.id) {
+          await apiService.updateUserAccessProfiles(createdUser.id, createProfileIds);
+        }
+      }
       toast.success('Usuário criado com sucesso!');
       setShowCreateModal(false);
       setCreateForm({
@@ -195,6 +208,7 @@ const Users: React.FC = () => {
         role: 'user',
         is_active: true
       });
+      setCreateProfileIds([]);
       fetchUsers();
     } catch (error: any) {
       console.error('❌ ERRO FRONTEND:', error);
@@ -283,6 +297,11 @@ const Users: React.FC = () => {
       is_active: Boolean(user.is_active)
     });
     setShowEditModal(true);
+    if (iamV2Enabled) {
+      apiService.getUserAccessProfiles(user.id)
+        .then((profiles) => setEditProfileIds((profiles || []).map((p: any) => Number(p.id)).filter(Number.isInteger)))
+        .catch(() => setEditProfileIds([]));
+    }
   };
 
   const handleUpdateUser = async (e: React.FormEvent) => {
@@ -300,9 +319,13 @@ const Users: React.FC = () => {
       };
       
       await apiService.updateUser(editingUser.id, updateData);
+      if (iamV2Enabled) {
+        await apiService.updateUserAccessProfiles(editingUser.id, editProfileIds);
+      }
       toast.success('Usuário atualizado com sucesso!');
       setShowEditModal(false);
       setEditingUser(null);
+      setEditProfileIds([]);
       fetchUsers();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Erro ao atualizar usuário');
@@ -860,6 +883,29 @@ const Users: React.FC = () => {
                 </select>
               </div>
 
+              {iamV2Enabled && (
+                <div>
+                  <label htmlFor="edit_profiles" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Perfis de Acesso
+                  </label>
+                  <select
+                    id="edit_profiles"
+                    multiple
+                    value={editProfileIds.map(String)}
+                    onChange={(e) => {
+                      const values = Array.from(e.target.selectedOptions).map((opt) => Number(opt.value)).filter(Number.isInteger);
+                      setEditProfileIds(values);
+                    }}
+                    className="input w-full min-h-[120px]"
+                  >
+                    {accessProfiles.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Segure Ctrl para selecionar mais de um perfil.</p>
+                </div>
+              )}
+
               <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                 <input
                   type="checkbox"
@@ -958,6 +1004,29 @@ const Users: React.FC = () => {
                   <option value="admin">Administrador</option>
                 </select>
               </div>
+
+              {iamV2Enabled && (
+                <div>
+                  <label htmlFor="create_profiles" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Perfis de Acesso
+                  </label>
+                  <select
+                    id="create_profiles"
+                    multiple
+                    value={createProfileIds.map(String)}
+                    onChange={(e) => {
+                      const values = Array.from(e.target.selectedOptions).map((opt) => Number(opt.value)).filter(Number.isInteger);
+                      setCreateProfileIds(values);
+                    }}
+                    className="input w-full min-h-[120px]"
+                  >
+                    {accessProfiles.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Segure Ctrl para selecionar mais de um perfil.</p>
+                </div>
+              )}
 
               <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                 <input

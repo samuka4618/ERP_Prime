@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate, authorize } from '../../../core/auth/middleware';
 import { ClientConfigController } from '../controllers/ClientConfigController';
 import { UserRole } from '../../../shared/types';
+import { requireAnyPermission } from '../../../core/permissions/middleware';
 
 const router = Router();
 const controller = new ClientConfigController();
@@ -10,7 +11,7 @@ const controller = new ClientConfigController();
 router.use(authenticate);
 
 // GET /api/client-config/options - Todas opções para dropdowns
-router.get('/options', (req, res) => controller.getConfigOptions(req, res));
+router.get('/options', requireAnyPermission('registrations.config.view', 'registrations.config.manage'), (req, res) => controller.getConfigOptions(req, res));
 
 // GET /api/client-config/statistics - Estatísticas de configurações (admin)
 router.get('/statistics', authorize(UserRole.ADMIN), (req, res) => controller.getStatistics(req, res));

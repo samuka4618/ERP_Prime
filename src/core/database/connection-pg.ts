@@ -8,6 +8,7 @@ import { Pool } from 'pg';
 import path from 'path';
 import fs from 'fs';
 import { config } from '../../config/database';
+import { PERMISSION_CATALOG } from '../permissions/permission-catalog';
 
 if (!config.database.databaseUrl) {
   throw new Error('DATABASE_URL é obrigatório quando USE_POSTGRES=true');
@@ -271,6 +272,79 @@ async function runSchemaMigrationsPostgres(): Promise<void> {
       SELECT 'Visualizar métricas de performance (dashboard)', 'performance.view', 'administration',
              'Permite ver métricas agregadas de performance no dashboard'
       WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'performance.view')
+    `);
+
+    for (const perm of PERMISSION_CATALOG) {
+      await client.query(
+        `INSERT INTO permissions (name, code, module, description)
+         SELECT $1::varchar, $2::varchar, $3::varchar, $4::text
+         WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = $2::varchar)`,
+        [perm.name, perm.code, perm.module, perm.description]
+      );
+    }
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS access_profiles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(120) NOT NULL UNIQUE,
+        slug VARCHAR(120) NOT NULL UNIQUE,
+        description TEXT,
+        is_system BOOLEAN DEFAULT false,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS profile_permissions (
+        id SERIAL PRIMARY KEY,
+        profile_id INTEGER NOT NULL REFERENCES access_profiles(id) ON DELETE CASCADE,
+        permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+        granted BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(profile_id, permission_id)
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_access_profiles (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        profile_id INTEGER NOT NULL REFERENCES access_profiles(id) ON DELETE CASCADE,
+        assigned_by INTEGER REFERENCES users(id),
+        assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, profile_id)
+      )
+    `);
+
+    await client.query(`
+      INSERT INTO access_profiles (name, slug, description, is_system, is_active)
+      VALUES
+      ('Administrador do Sistema', 'system_admin', 'Perfil administrativo completo', true, true),
+      ('Atendente Padrão', 'default_attendant', 'Perfil padrão de atendimento', true, true),
+      ('Usuário Padrão', 'default_user', 'Perfil padrão de usuário operacional', true, true)
+      ON CONFLICT (slug) DO NOTHING
+    `);
+
+    await client.query(`
+      INSERT INTO profile_permissions (profile_id, permission_id, granted)
+      SELECT ap.id, rp.permission_id, rp.granted
+      FROM role_permissions rp
+      JOIN access_profiles ap
+        ON (rp.role = 'admin' AND ap.slug = 'system_admin')
+        OR (rp.role = 'attendant' AND ap.slug = 'default_attendant')
+        OR (rp.role = 'user' AND ap.slug = 'default_user')
+      ON CONFLICT (profile_id, permission_id) DO NOTHING
+    `);
+
+    await client.query(`
+      INSERT INTO user_access_profiles (user_id, profile_id, assigned_by)
+      SELECT u.id, ap.id, NULL
+      FROM users u
+      JOIN access_profiles ap
+        ON (u.role = 'admin' AND ap.slug = 'system_admin')
+        OR (u.role = 'attendant' AND ap.slug = 'default_attendant')
+        OR (u.role = 'user' AND ap.slug = 'default_user')
+      ON CONFLICT (user_id, profile_id) DO NOTHING
     `);
   } finally {
     client.release();

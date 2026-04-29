@@ -1,5 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
-import { sqlBooleanTrue, sqlOrderByDateProximity, sqlOrderByTodayFirstThenPastThenFuture, sqlMinutesDiffFromNow } from '../../../core/database/sql-dialect';
+import { sqlBooleanTrue, sqlOrderByDateProximity, sqlOrderByTodayFirstThenPastThenFuture, sqlMinutesDiffFromNow, sqlDialect } from '../../../core/database/sql-dialect';
 
 /** Dados do agendamento vinculado à chegada (quando existe registro em `agendamentos_descarga`). */
 export interface FormResponseAgendamentoSnapshot {
@@ -141,12 +141,19 @@ export class FormResponseModel {
     // Buscar agendamento do fornecedor por proximidade de data
     // Janela de busca: 3 dias antes até 1 dia depois (proximidade)
     // Prioriza agendamentos pendentes, mas pode pegar outros status se necessário
+    const dateWindowStartExpr = sqlDialect.isPostgres
+      ? "CURRENT_DATE - INTERVAL '3 days'"
+      : "DATE('now', '-3 days')";
+    const dateWindowEndExpr = sqlDialect.isPostgres
+      ? "CURRENT_DATE + INTERVAL '1 day'"
+      : "DATE('now', '+1 day')";
+
     const agendamento = await dbGet(
       `SELECT id, scheduled_date, scheduled_time, status
        FROM agendamentos_descarga 
        WHERE fornecedor_id = ? 
-       AND scheduled_date >= DATE('now', '-3 days')
-       AND scheduled_date <= DATE('now', '+1 day')
+       AND scheduled_date >= ${dateWindowStartExpr}
+       AND scheduled_date <= ${dateWindowEndExpr}
        AND (
          status = 'pendente' 
          OR (status = 'motorista_pronto' AND id NOT IN (

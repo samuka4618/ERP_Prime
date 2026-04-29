@@ -29,7 +29,7 @@ const Layout: React.FC = () => {
 
   if (isGradeTvMode) {
     return (
-      <div className="h-screen w-screen bg-gray-950">
+      <div className="h-screen w-screen bg-gray-50 dark:bg-gray-900">
         <Outlet />
       </div>
     );

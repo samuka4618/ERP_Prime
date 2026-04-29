@@ -70,11 +70,10 @@ const GradeDescarregamento: React.FC = () => {
   const [liberarModal, setLiberarModal] = useState<{ id: number; name: string; defaultDock: string } | null>(null);
   const [liberarSubmitting, setLiberarSubmitting] = useState(false);
   const [tvMode, setTvMode] = useState(() => new URLSearchParams(window.location.search).get('tv') === '1');
-  const [tvRefreshSeconds, setTvRefreshSeconds] = useState<number>(() => {
+  const [tvRefreshSeconds] = useState<number>(() => {
     const raw = Number(new URLSearchParams(window.location.search).get('tv_refresh'));
     return [15, 30, 60].includes(raw) ? raw : 15;
   });
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     const loadDocas = async () => {
@@ -153,7 +152,6 @@ const GradeDescarregamento: React.FC = () => {
     try {
       await Promise.all([fetchAgendamentos(), fetchMotoristas()]);
       hasLoadedOnce.current = true;
-      setLastUpdatedAt(new Date());
     } catch (error) {
       const msg = 'Falha ao carregar agendamentos e motoristas. Tente novamente.';
       setLoadError(msg);
@@ -392,7 +390,7 @@ const GradeDescarregamento: React.FC = () => {
   };
 
   return (
-    <div className={tvMode ? 'fixed inset-0 z-50 bg-gray-950 text-white p-4 sm:p-6 overflow-auto space-y-4' : 'p-6 space-y-6'}>
+    <div className={tvMode ? 'fixed inset-0 z-50 bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 overflow-auto space-y-4' : 'p-6 space-y-6'}>
       <LiberarParaDocaModal
         open={!!liberarModal}
         driverName={liberarModal?.name || ''}
@@ -416,6 +414,8 @@ const GradeDescarregamento: React.FC = () => {
           </button>
         </div>
       )}
+      {!tvMode && (
+      <>
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div className="flex items-center gap-3">
@@ -532,27 +532,6 @@ const GradeDescarregamento: React.FC = () => {
         </div>
       </div>
 
-      {tvMode && (
-        <div className="rounded-lg border border-gray-700 bg-gray-900 px-4 py-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm text-gray-300 flex items-center gap-2">
-            Exibição para monitor operacional
-            <span className="text-xs text-gray-400">Atualização:</span>
-            <select
-              value={tvRefreshSeconds}
-              onChange={(e) => setTvRefreshSeconds(Number(e.target.value))}
-              className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100"
-            >
-              <option value={15}>15s</option>
-              <option value={30}>30s</option>
-              <option value={60}>60s</option>
-            </select>
-          </div>
-          <div className="text-xs text-gray-400">
-            Última atualização: {lastUpdatedAt ? lastUpdatedAt.toLocaleTimeString('pt-BR') : '--:--:--'}
-          </div>
-        </div>
-      )}
-
       {/* Legenda e Filtros */}
       <div className={`rounded-lg shadow-md p-4 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border ${
         tvMode
@@ -602,6 +581,8 @@ const GradeDescarregamento: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* Conteúdo Principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

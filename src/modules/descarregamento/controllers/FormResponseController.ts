@@ -174,10 +174,12 @@ export class FormResponseController {
     }
 
     if (updatedResponse.satellite_submission_id) {
+      const dock = (updatedResponse.agendamento?.dock || '').trim() || null;
       SatelliteSyncService.pushDriverState(
         updatedResponse.satellite_submission_id,
         'dock_released',
-        'Liberado para descarregamento na doca.'
+        dock ? `Liberado para descarregamento na doca ${dock}.` : 'Liberado para descarregamento na doca.',
+        dock
       ).catch((err) => console.error('Satellite pushDriverState (dock):', err));
     }
 

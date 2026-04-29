@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Clock, CheckCircle, AlertCircle, Truck, Phone, Calendar, User } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, Truck, Phone, Calendar, User, MapPin } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import FormattedDate from '../components/FormattedDate';
@@ -20,6 +20,7 @@ interface TrackingResponse {
   tracking_code?: string;
   phase?: string;
   message?: string | null;
+  dock?: string | null;
 }
 
 const DriverTrackingPage: React.FC = () => {
@@ -214,6 +215,18 @@ const DriverTrackingPage: React.FC = () => {
                     <div className="flex-1">
                       <div className="text-xs text-gray-500">Descarregamento concluído</div>
                       <div className="font-medium text-gray-900">Registro finalizado.</div>
+                    </div>
+                  </div>
+                )}
+
+                {phase === 'dock_released' && response.dock && (
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-100 p-2 rounded-lg">
+                      <MapPin className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs text-gray-500">Doca de destino</div>
+                      <div className="font-semibold text-blue-800">Doca {response.dock}</div>
                     </div>
                   </div>
                 )}

@@ -66,7 +66,12 @@ export async function runMigrations(client: PoolClient): Promise<void> {
       submission_id UUID PRIMARY KEY REFERENCES submissions(id) ON DELETE CASCADE,
       phase TEXT NOT NULL DEFAULT 'submitted',
       message TEXT,
+      dock TEXT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
+  await client.query(`
+    ALTER TABLE driver_states
+    ADD COLUMN IF NOT EXISTS dock TEXT;
   `);
 }

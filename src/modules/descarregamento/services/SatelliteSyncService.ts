@@ -101,12 +101,18 @@ export class SatelliteSyncService {
     }
   }
 
-  static async pushDriverState(submissionUuid: string, phase: string, message?: string | null): Promise<void> {
+  static async pushDriverState(
+    submissionUuid: string,
+    phase: string,
+    message?: string | null,
+    dock?: string | null
+  ): Promise<void> {
     const c = client();
     if (!c) return;
     await c.post(`/internal/submissions/${submissionUuid}/driver-state`, {
       phase,
-      message: message ?? null
+      message: message ?? null,
+      dock: dock ?? null
     });
   }
 }

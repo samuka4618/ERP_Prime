@@ -124,6 +124,7 @@ router.post('/submissions/:submissionId/driver-state', async (req: Request, res:
   }
   const phase = typeof req.body?.phase === 'string' ? req.body.phase.slice(0, 64) : '';
   const message = typeof req.body?.message === 'string' ? req.body.message.slice(0, 2000) : null;
+  const dock = typeof req.body?.dock === 'string' ? req.body.dock.trim().slice(0, 120) : null;
   if (!phase) {
     res.status(400).json({ error: 'phase obrigatório' });
     return;
@@ -135,13 +136,14 @@ router.post('/submissions/:submissionId/driver-state', async (req: Request, res:
     return;
   }
   await pool.query(
-    `INSERT INTO driver_states (submission_id, phase, message, updated_at)
-     VALUES ($1::uuid, $2, $3, NOW())
+    `INSERT INTO driver_states (submission_id, phase, message, dock, updated_at)
+     VALUES ($1::uuid, $2, $3, $4, NOW())
      ON CONFLICT (submission_id) DO UPDATE SET
        phase = EXCLUDED.phase,
        message = EXCLUDED.message,
+       dock = EXCLUDED.dock,
        updated_at = NOW()`,
-    [submissionId, phase, message]
+    [submissionId, phase, message, dock]
   );
   res.json({ message: 'Estado atualizado' });
 });

@@ -85,7 +85,7 @@ router.get('/tracking/:trackingToken', async (req: Request, res: Response) => {
   const pool = getPool();
   const r = await pool.query(
     `SELECT s.id, s.driver_name, s.phone, s.fornecedor_id, s.responses, s.created_at, s.tracking_token,
-            d.phase, d.message, d.updated_at as state_updated_at,
+            d.phase, d.message, d.dock, d.updated_at as state_updated_at,
             fs.schema_json
      FROM submissions s
      LEFT JOIN driver_states d ON d.submission_id = s.id
@@ -119,6 +119,7 @@ router.get('/tracking/:trackingToken', async (req: Request, res: Response) => {
         tracking_code: row.tracking_token,
         phase: row.phase || 'submitted',
         message: row.message,
+        dock: row.dock || null,
         state_updated_at: row.state_updated_at
       }
     }

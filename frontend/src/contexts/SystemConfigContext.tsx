@@ -25,6 +25,12 @@ const defaultConfig: SystemConfig = {
   system_version: '1.0.0'
 };
 
+function browserTabTitleFromConfig(cfg: SystemConfig): string {
+  const name = cfg.system_name?.trim() || defaultConfig.system_name!;
+  const subtitle = cfg.system_subtitle?.trim();
+  return subtitle ? `${name} - ${subtitle}` : name;
+}
+
 export const SystemConfigProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<SystemConfig | null>(defaultConfig);
   const [loading, setLoading] = useState(false);
@@ -64,6 +70,12 @@ export const SystemConfigProvider: React.FC<{ children: ReactNode }> = ({ childr
       refreshConfig();
     }
   }, [hasTriedLoad]);
+
+  useEffect(() => {
+    if (config) {
+      document.title = browserTabTitleFromConfig(config);
+    }
+  }, [config]);
 
   return (
     <SystemConfigContext.Provider value={{ config, loading, refreshConfig }}>

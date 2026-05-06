@@ -267,6 +267,14 @@ async function runSchemaMigrationsPostgres(): Promise<void> {
 
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ui_preferences TEXT`);
 
+    await client.query(
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT false`
+    );
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMP`);
+    await client.query(
+      `UPDATE users SET password_changed_at = COALESCE(updated_at, created_at) WHERE password_changed_at IS NULL`
+    );
+
     await client.query(`
       INSERT INTO permissions (name, code, module, description)
       SELECT 'Visualizar métricas de performance (dashboard)', 'performance.view', 'administration',

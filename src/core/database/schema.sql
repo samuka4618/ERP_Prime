@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'attendant', 'admin')),
     is_active BOOLEAN DEFAULT 1,
     last_activity DATETIME,
+    must_change_password BOOLEAN DEFAULT 0,
+    password_changed_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

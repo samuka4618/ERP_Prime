@@ -143,7 +143,7 @@ const Tickets: React.FC = () => {
         </div>
         <div className="flex items-center space-x-3">
           <Link
-            to="/system-config"
+            to="/system-settings"
             className="btn btn-outline flex items-center space-x-2"
           >
             <Settings className="w-4 h-4" />

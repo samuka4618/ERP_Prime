@@ -22,7 +22,10 @@ export class SystemConfigModel {
       system_name: 'ERP PRIME',
       system_subtitle: 'Sistema de Gestão Empresarial',
       system_logo: '',
-      system_version: '1.0.0'
+      system_version: '1.0.0',
+      password_max_age_days: 0,
+      password_require_strong: true,
+      password_min_length_weak: 8
     };
 
     // Mapear valores do banco para o objeto de configuração
@@ -57,6 +60,15 @@ export class SystemConfigModel {
           break;
         case 'system_version':
           config.system_version = item.value;
+          break;
+        case 'password_max_age_days':
+          config.password_max_age_days = parseInt(item.value, 10) || 0;
+          break;
+        case 'password_require_strong':
+          config.password_require_strong = item.value === '1' || item.value === 'true';
+          break;
+        case 'password_min_length_weak':
+          config.password_min_length_weak = parseInt(item.value, 10) || 8;
           break;
       }
     }
@@ -101,6 +113,15 @@ export class SystemConfigModel {
     }
     if (updates.system_version !== undefined) {
       updateMap['system_version'] = updates.system_version;
+    }
+    if (updates.password_max_age_days !== undefined) {
+      updateMap['password_max_age_days'] = updates.password_max_age_days.toString();
+    }
+    if (updates.password_require_strong !== undefined) {
+      updateMap['password_require_strong'] = updates.password_require_strong ? '1' : '0';
+    }
+    if (updates.password_min_length_weak !== undefined) {
+      updateMap['password_min_length_weak'] = updates.password_min_length_weak.toString();
     }
 
     // Atualizar cada configuração

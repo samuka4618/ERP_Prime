@@ -1,5 +1,4 @@
 import Joi from 'joi';
-import { AuthService } from '../auth/AuthService';
 
 export const createUserSchema = Joi.object({
   name: Joi.string().min(2).max(255).required().messages({
@@ -10,14 +9,7 @@ export const createUserSchema = Joi.object({
     'string.email': 'Email inválido',
     'any.required': 'Email é obrigatório'
   }),
-  password: Joi.string().min(6).required().custom((value: string) => {
-    const result = AuthService.validatePassword(value);
-    if (!result.isValid) {
-      throw new Error(result.errors.join(' '));
-    }
-    return value;
-  }).messages({
-    'string.min': 'Senha deve ter pelo menos 6 caracteres',
+  password: Joi.string().min(1).required().messages({
     'any.required': 'Senha é obrigatória'
   }),
   role: Joi.string().valid('user', 'attendant', 'admin').required().messages({
@@ -27,7 +19,8 @@ export const createUserSchema = Joi.object({
   is_active: Joi.alternatives().try(
     Joi.boolean(),
     Joi.number().integer().valid(0, 1)
-  ).default(true)
+  ).default(true),
+  force_password_change_next_login: Joi.boolean().optional()
 });
 
 export const updateUserSchema = Joi.object({
@@ -48,6 +41,7 @@ export const updateUserSchema = Joi.object({
   linkedin: Joi.string().uri().max(255).optional().allow(''),
   skype: Joi.string().max(100).optional().allow(''),
   hire_date: Joi.date().optional().allow(null, ''),
+  must_change_password: Joi.boolean().optional(),
   currentPassword: Joi.string().optional(),
   newPassword: Joi.string().min(6).optional()
 }).min(1).unknown(false).messages({
@@ -56,7 +50,13 @@ export const updateUserSchema = Joi.object({
 });
 
 export const changePasswordSchema = Joi.object({
-  newPassword: Joi.string().min(6).required()
+  newPassword: Joi.string().min(1).required()
+});
+
+/** Redefinição de senha por administrador (`POST .../reset-password`). */
+export const adminResetPasswordSchema = Joi.object({
+  newPassword: Joi.string().min(1).required(),
+  force_password_change_next_login: Joi.boolean().optional()
 });
 
 export const userQuerySchema = Joi.object({

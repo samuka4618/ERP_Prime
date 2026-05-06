@@ -1,5 +1,5 @@
 import { dbRun, dbGet, dbAll } from '../database/connection';
-import { sqlBooleanTrue, sqlBooleanFalse, bindBoolean } from '../database/sql-dialect';
+import { sqlBooleanTrue, sqlBooleanFalse, bindBoolean, sqlNow } from '../database/sql-dialect';
 import { User, UserRole, CreateUserRequest, UpdateUserRequest } from '../../shared/types';
 import bcrypt from 'bcryptjs';
 
@@ -10,16 +10,20 @@ export class UserModel {
    */
   static async create(userData: CreateUserRequest): Promise<User> {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    
+
+    const mustChange = bindBoolean(userData.force_password_change_next_login === true);
+    const isActive = bindBoolean(userData.is_active !== undefined ? userData.is_active : true);
+
     const result = await dbRun(
-      `INSERT INTO users (name, email, password, role, is_active) 
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO users (name, email, password, role, is_active, must_change_password, password_changed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ${sqlNow()})`,
       [
         userData.name,
         userData.email,
         hashedPassword,
         userData.role,
-        userData.is_active !== undefined ? bindBoolean(userData.is_active) : bindBoolean(true)
+        isActive,
+        mustChange
       ]
     );
 
@@ -263,6 +267,11 @@ export class UserModel {
       values.push(userData.hire_date || null);
     }
 
+    if (userData.must_change_password !== undefined) {
+      updates.push('must_change_password = ?');
+      values.push(bindBoolean(userData.must_change_password));
+    }
+
     if (userData.ui_preferences !== undefined) {
       updates.push('ui_preferences = ?');
       values.push(userData.ui_preferences);
@@ -295,13 +304,27 @@ export class UserModel {
   /**
    * Atualizar senha do usuário
    */
-  static async updatePassword(id: number, newPassword: string): Promise<void> {
+  static async updatePassword(
+    id: number,
+    newPassword: string,
+    opts?: { requireChangeOnNextLogin?: boolean; clearForcedPasswordChange?: boolean }
+  ): Promise<void> {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    await dbRun(
-      'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [hashedPassword, id]
-    );
+    const mustChangePassword =
+      opts?.requireChangeOnNextLogin === true
+        ? true
+        : opts?.clearForcedPasswordChange === false
+          ? undefined
+          : false;
+    let sql = `UPDATE users SET password = ?, password_changed_at = ${sqlNow()}, updated_at = CURRENT_TIMESTAMP`;
+    const params: unknown[] = [hashedPassword];
+    if (mustChangePassword !== undefined) {
+      sql += ', must_change_password = ?';
+      params.push(bindBoolean(mustChangePassword));
+    }
+    sql += ' WHERE id = ?';
+    params.push(id);
+    await dbRun(sql, params);
   }
 
   /**
@@ -343,7 +366,26 @@ export class UserModel {
       hire_date: row.hire_date ?? undefined,
       created_at: row.created_at,
       updated_at: row.updated_at,
-      ui_preferences: row.ui_preferences != null ? String(row.ui_preferences) : undefined
+      ui_preferences: row.ui_preferences != null ? String(row.ui_preferences) : undefined,
+      must_change_password: row.must_change_password === 1 || row.must_change_password === true,
+      password_changed_at: row.password_changed_at ?? undefined
+    };
+  }
+
+  /** Estado mínimo para política de senha (consulta rápida no middleware). */
+  static async getPasswordPolicyColumns(
+    userId: number
+  ): Promise<{ must_change_password: boolean; password_changed_at?: Date | string | null } | null> {
+    const row = (await dbGet(
+      `SELECT must_change_password, password_changed_at FROM users WHERE id = ?`,
+      [userId]
+    )) as Record<string, unknown> | undefined;
+    if (!row) {
+      return null;
+    }
+    return {
+      must_change_password: row.must_change_password === 1 || row.must_change_password === true,
+      password_changed_at: (row.password_changed_at as Date | string | null) ?? undefined
     };
   }
 }

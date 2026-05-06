@@ -6,6 +6,7 @@ import { User, UserRole } from '../../shared/types';
 import { config } from '../../config/database';
 import { tokenCacheService } from './TokenCacheService';
 import { logger } from '../../shared/utils/logger';
+import { enforcePasswordChangeGate } from './passwordChangeGate';
 
 // Estender o tipo Request para incluir user
 declare global {
@@ -68,7 +69,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         userId: cachedUser.userId,
         responseTime: Date.now() - startTime
       }, 'AUTH');
-      next();
+      await enforcePasswordChangeGate(req, res, next);
       return;
     }
     
@@ -112,7 +113,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       responseTime: Date.now() - startTime
     }, 'AUTH');
     
-    next();
+    await enforcePasswordChangeGate(req, res, next);
   } catch (error) {
     logger.error('Erro na autenticação', {
       requestId,
@@ -190,7 +191,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         updated_at: new Date()
       };
       req.authSessionId = extractSessionIdFromToken(token);
-      next();
+      await enforcePasswordChangeGate(req, res, next);
       return;
     }
     
@@ -202,8 +203,8 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       req.user = userWithoutPassword;
       req.authSessionId = typeof decoded.sid === 'string' ? decoded.sid : undefined;
     }
-    
-    next();
+
+    await enforcePasswordChangeGate(req, res, next);
   } catch (error) {
     // Em caso de erro, apenas continua sem autenticação
     next();

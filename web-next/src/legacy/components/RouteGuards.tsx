@@ -3,8 +3,12 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
 
-export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+export const ProtectedRoute: React.FC<{
+  children: React.ReactNode;
+  /** Quando true, não redirecciona para `/forcar-troca-senha` (usar nessa própria página). */
+  bypassMandatoryPassword?: boolean;
+}> = ({ children, bypassMandatoryPassword }) => {
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return <LoadingSpinner />;
@@ -12,6 +16,10 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!bypassMandatoryPassword && user?.requiresPasswordChange) {
+    return <Navigate to="/forcar-troca-senha" replace />;
   }
 
   return <>{children}</>;

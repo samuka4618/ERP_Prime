@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { apiService, type NotificationTemplateItem } from '../services/api';
 import axios from 'axios';
-import { Settings, Save, Upload, Globe, Mail, Mailbox, Edit3 } from 'lucide-react';
+import { Settings, Save, Upload, Globe, Mail, Mailbox, Edit3, Lock, Play, CheckCircle, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
 import { NotificationTemplateModal } from '../components/NotificationTemplateModal';
 import { getApiBaseUrl } from '../utils/apiUrl';
+import { Link } from 'react-router-dom';
 
 interface SystemSettings {
   sla_first_response_hours: number;
@@ -19,6 +20,9 @@ interface SystemSettings {
   email_notifications: boolean;
   max_file_size: number;
   allowed_file_types: string;
+  password_max_age_days: number;
+  password_require_strong: boolean;
+  password_min_length_weak: number;
 }
 
 const SystemSettings: React.FC = () => {
@@ -35,8 +39,14 @@ const SystemSettings: React.FC = () => {
     system_version: '1.0.0',
     email_notifications: true,
     max_file_size: 10485760,
-    allowed_file_types: 'pdf,doc,docx,xls,xlsx,jpg,jpeg,png'
+    allowed_file_types: 'pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
+    password_max_age_days: 0,
+    password_require_strong: true,
+    password_min_length_weak: 8
   });
+  const [microsoftEnabled, setMicrosoftEnabled] = useState<boolean | null>(null);
+  const [testEntraLoading, setTestEntraLoading] = useState(false);
+  const [testEntraResult, setTestEntraResult] = useState<{ success: boolean; message: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
@@ -50,11 +60,39 @@ const SystemSettings: React.FC = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    apiService.getAuthProviders().then((p) => setMicrosoftEnabled(p.microsoft?.enabled ?? false)).catch(() => setMicrosoftEnabled(false));
+  }, []);
+
+  const testMicrosoftTenantConfig = async () => {
+    setTestEntraResult(null);
+    setTestEntraLoading(true);
+    try {
+      const { users } = await apiService.getEntraUsersList({ page: 1, limit: 5 });
+      const count = users?.length ?? 0;
+      setTestEntraResult({
+        success: true,
+        message:
+          count > 0
+            ? `Conexão com o tenant OK. ${count} usuário(s) encontrado(s) nesta página.`
+            : 'Conexão com o tenant OK. Nenhum usuário retornado (lista vazia ou integração não configurada).'
+      });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTestEntraResult({ success: false, message: msg });
+    } finally {
+      setTestEntraLoading(false);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
       const response = await apiService.get('/system/config');
-      setSettings(response.data?.data ?? response.data ?? settings);
+      const loaded = response.data?.data ?? response.data;
+      if (loaded && typeof loaded === 'object' && !Array.isArray(loaded)) {
+        setSettings((prev) => ({ ...prev, ...(loaded as Partial<SystemSettings>) }));
+      }
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
       toast.error('Erro ao carregar configurações');
@@ -100,9 +138,15 @@ const SystemSettings: React.FC = () => {
       
       // Recarregar os dados da página
       await fetchData();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao salvar configurações:', error);
-      toast.error('Erro ao salvar configurações');
+      const axiosErr = error as { response?: { data?: { error?: string; details?: string[] } } };
+      const details = axiosErr?.response?.data?.details;
+      const message =
+        Array.isArray(details) && details.length > 0
+          ? details.join(' | ')
+          : (axiosErr?.response?.data?.error || 'Erro ao salvar configurações');
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -201,11 +245,16 @@ const SystemSettings: React.FC = () => {
           <div className="flex items-center space-x-3 mb-2">
             <Settings className="w-8 h-8 text-primary-600" />
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Configurações do Sistema
+              Configurações gerais
             </h1>
           </div>
           <p className="text-gray-600 dark:text-gray-400">
-            Gerencie as configurações gerais do {settings.system_name || 'ERP PRIME'}
+            Definições globais aplicadas a todo o sistema ({settings.system_name || 'ERP PRIME'}). Para categorias de
+            chamados, cadastro de clientes e pré-visualização de tema, use{' '}
+            <Link to="/system-config" className="text-primary-600 dark:text-primary-400 font-medium underline-offset-2 hover:underline">
+              Configurações de módulos
+            </Link>
+            .
           </p>
         </div>
 
@@ -434,6 +483,71 @@ const SystemSettings: React.FC = () => {
             </div>
           </div>
 
+          {/* Política global de senhas */}
+          <div id="seguranca-senhas" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 scroll-mt-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <Lock className="w-5 h-5" />
+              Política global de senhas
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Aplica-se a todos os utilizadores com login local. Modo forte: mínimo 12 caracteres, maiúscula, minúscula,
+              número e símbolo.
+            </p>
+            <div className="space-y-6 max-w-xl">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Expiração da senha (dias)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={730}
+                  value={settings.password_max_age_days}
+                  onChange={(e) =>
+                    handleInputChange(
+                      'password_max_age_days',
+                      Math.min(730, Math.max(0, parseInt(e.target.value, 10) || 0))
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">0 = nunca expira.</p>
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.password_require_strong}
+                  onChange={(e) => handleInputChange('password_require_strong', e.target.checked)}
+                  className="h-4 w-4 text-primary-600 rounded"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Exigir senha forte</span>
+              </label>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Comprimento mínimo (modo simples)
+                </label>
+                <input
+                  type="number"
+                  min={8}
+                  max={128}
+                  value={settings.password_min_length_weak}
+                  onChange={(e) =>
+                    handleInputChange(
+                      'password_min_length_weak',
+                      Math.min(128, Math.max(8, parseInt(e.target.value, 10) || 8))
+                    )
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Usado quando senha forte está desligada (mínimo absoluto 8).
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Configurações de Arquivos */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
@@ -472,6 +586,84 @@ const SystemSettings: React.FC = () => {
                   Separe os tipos por vírgula (ex: pdf,doc,docx)
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* Integração Microsoft Entra ID */}
+          <div id="microsoft" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 scroll-mt-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary-500" />
+              Integração Microsoft Entra ID
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              As credenciais são configuradas no ficheiro <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">.env</code> do
+              servidor. Este painel apenas mostra o estado e permite testar a ligação ao tenant.
+            </p>
+            {microsoftEnabled !== null && (
+              <p className="text-sm mb-3">
+                Estado:{' '}
+                <span
+                  className={
+                    microsoftEnabled
+                      ? 'text-green-600 dark:text-green-400 font-medium'
+                      : 'text-amber-600 dark:text-amber-400'
+                  }
+                >
+                  {microsoftEnabled ? 'Configurado' : 'Não configurado'}
+                </span>
+              </p>
+            )}
+            <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-disc list-inside">
+              <li>
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">AZURE_CLIENT_ID</code> — Application (client) ID
+              </li>
+              <li>
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">AZURE_TENANT_ID</code> — Directory (tenant) ID
+              </li>
+              <li>
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">AZURE_CLIENT_SECRET</code> — Client secret
+              </li>
+              <li>
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">AZURE_REDIRECT_URI</code> — URL de callback
+              </li>
+            </ul>
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Testar configuração do tenant</p>
+              <button
+                type="button"
+                onClick={() => void testMicrosoftTenantConfig()}
+                disabled={testEntraLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {testEntraLoading ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Testando...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    Testar configuração
+                  </>
+                )}
+              </button>
+              {testEntraResult && (
+                <div
+                  className={clsx(
+                    'mt-3 flex items-start gap-2 p-3 rounded-md text-sm',
+                    testEntraResult.success
+                      ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                      : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+                  )}
+                >
+                  {testEntraResult.success ? (
+                    <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  )}
+                  <span>{testEntraResult.message}</span>
+                </div>
+              )}
             </div>
           </div>
 

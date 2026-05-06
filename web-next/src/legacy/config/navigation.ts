@@ -23,6 +23,7 @@ import {
   Warehouse,
   Database,
   History,
+  LayoutGrid,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -236,6 +237,13 @@ export const NAV_SECTIONS: NavSection[] = [
             name: 'Configurações Gerais',
             href: '/system-settings',
             icon: Settings,
+            permissionAny: ['system.config.manage'],
+          },
+          {
+            id: 'nav-system-modules-config',
+            name: 'Módulos e personalização',
+            href: '/system-config',
+            icon: LayoutGrid,
             permissionAny: ['system.config.manage'],
           },
           {

@@ -40,6 +40,10 @@ export interface User {
   linkedin?: string;
   skype?: string;
   hire_date?: string | Date;
+  requiresPasswordChange?: boolean;
+  passwordExpiredReason?: 'admin' | 'max_age' | null;
+  must_change_password?: boolean;
+  password_changed_at?: string | Date | null;
   created_at: string;
   updated_at: string;
 }

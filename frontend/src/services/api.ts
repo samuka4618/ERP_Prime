@@ -147,6 +147,17 @@ class ApiService {
           error.response?.data
         );
         
+        if (error.response?.status === 403) {
+          const code = (error.response?.data as { code?: string })?.code;
+          if (code === 'PASSWORD_CHANGE_REQUIRED') {
+            const target = typeof window !== 'undefined' ? window.location.pathname || '' : '';
+            if (!target.startsWith('/forcar-troca-senha')) {
+              logger.warn('Troca de senha obrigatória — redirecionando', {}, 'API');
+              window.location.href = '/forcar-troca-senha';
+            }
+          }
+        }
+
         if (error.response?.status === 401) {
           const originalRequest = error.config as any;
           const requestUrl = String(originalRequest?.url || '');
@@ -236,12 +247,17 @@ class ApiService {
   }
 
   private handleAuthFailure(url?: string): void {
-    const isLoginPage = window.location.pathname === '/login' || window.location.pathname === '/register';
+    const p = typeof window !== 'undefined' ? window.location.pathname || '' : '';
+    const isLoginPage = p === '/login' || p === '/register' || p.startsWith('/forcar-troca-senha');
     this.clearLocalAuthData();
     if (!isLoginPage) {
       logger.warn('Sessão expirada. Redirecionando para login', { url }, 'AUTH');
       window.location.href = '/login';
     }
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await this.api.put('/auth/change-password', { currentPassword, newPassword });
   }
 
   async getProfile(): Promise<User> {
@@ -333,13 +349,25 @@ class ApiService {
   }
 
   async createUser(userData: Partial<User>): Promise<User> {
-    const response = await this.api.post<ApiResponse<User>>('/users', userData);
-    return response.data.data;
+    const response = await this.api.post<ApiResponse<{ user: User }>>('/users', userData);
+    return response.data.data.user;
   }
 
-  async updateUser(id: number, userData: Partial<User>): Promise<User> {
-    const response = await this.api.put<ApiResponse<User>>(`/users/${id}`, userData);
-    return response.data.data;
+  async updateUser(id: number, userData: Partial<User> & { must_change_password?: boolean }): Promise<User> {
+    const response = await this.api.put<ApiResponse<{ user: User }>>(`/users/${id}`, userData);
+    return response.data.data.user;
+  }
+
+  /** Redefinir senha (admin ou permissão `users.edit`). */
+  async adminResetUserPassword(
+    userId: number,
+    newPassword: string,
+    forcePasswordChangeNextLogin = false
+  ): Promise<void> {
+    await this.api.post(`/users/${userId}/reset-password`, {
+      newPassword,
+      force_password_change_next_login: forcePasswordChangeNextLogin
+    });
   }
 
   async deleteUser(id: number): Promise<void> {
@@ -395,12 +423,14 @@ class ApiService {
   async importUsers(
     file: File,
     defaultPassword: string,
-    updateExisting: boolean
+    updateExisting: boolean,
+    forcePasswordChangeNextLogin = false
   ): Promise<{ created: number; updated: number; invalidCount: number; invalidRows: Array<{ rowIndex: number; errors: string[] }> }> {
     const form = new FormData();
     form.append('file', file);
     form.append('defaultPassword', defaultPassword);
     form.append('updateExisting', String(updateExisting));
+    form.append('forcePasswordChangeNextLogin', String(forcePasswordChangeNextLogin));
     const response = await this.api.post<ApiResponse<{
       created: number;
       updated: number;

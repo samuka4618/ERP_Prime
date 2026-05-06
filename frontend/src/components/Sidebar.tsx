@@ -27,7 +27,8 @@ import {
   Calendar,
   Warehouse,
   Database,
-  History
+  History,
+  LayoutGrid
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
@@ -161,6 +162,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           icon: Settings,
           items: [
             { name: 'Configurações Gerais', href: '/system-settings', icon: Settings, permissionCode: 'system.config.manage' },
+            { name: 'Módulos e personalização', href: '/system-config', icon: LayoutGrid, permissionCode: 'system.config.manage' },
             {
               name: 'Sistema de Chamados',
               icon: Ticket,

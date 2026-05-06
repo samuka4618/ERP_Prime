@@ -97,6 +97,23 @@ async function runSchemaMigrations(): Promise<void> {
       console.log('Migração: coluna last_activity adicionada em users');
     }
 
+    const usersColsPw1 = await dbAll('PRAGMA table_info(users)') as { name: string }[];
+    if (Array.isArray(usersColsPw1) && !usersColsPw1.some((c) => c.name === 'must_change_password')) {
+      await dbRun('ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT 0');
+      console.log('Migração: coluna must_change_password adicionada em users');
+    }
+    const usersColsPw2 = await dbAll('PRAGMA table_info(users)') as { name: string }[];
+    if (Array.isArray(usersColsPw2) && !usersColsPw2.some((c) => c.name === 'password_changed_at')) {
+      await dbRun('ALTER TABLE users ADD COLUMN password_changed_at DATETIME');
+      console.log('Migração: coluna password_changed_at adicionada em users');
+    }
+    const usersColsPwFinal = await dbAll('PRAGMA table_info(users)') as { name: string }[];
+    if (Array.isArray(usersColsPwFinal) && usersColsPwFinal.some((c) => c.name === 'password_changed_at')) {
+      await dbRun(
+        `UPDATE users SET password_changed_at = COALESCE(updated_at, created_at) WHERE password_changed_at IS NULL`
+      );
+    }
+
     const catCols = await dbAll('PRAGMA table_info(ticket_categories)') as { name: string }[];
     if (Array.isArray(catCols) && !catCols.some((c) => c.name === 'custom_fields')) {
       await dbRun('ALTER TABLE ticket_categories ADD COLUMN custom_fields TEXT');

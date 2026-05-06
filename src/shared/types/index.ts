@@ -37,6 +37,13 @@ export interface User {
   linkedin?: string;
   skype?: string;
   hire_date?: Date | string;
+  /** Administrador marcou troca obrigatória no próximo login. */
+  must_change_password?: boolean;
+  /** Momento da última alteração da senha (política de expiração global). */
+  password_changed_at?: Date | string | null;
+  /** Calculado pela API (login/perfil): indica sessão apenas válida até trocar a senha. */
+  requiresPasswordChange?: boolean;
+  passwordExpiredReason?: 'admin' | 'max_age' | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -140,6 +147,12 @@ export interface SystemConfig {
   system_subtitle?: string;
   system_logo?: string;
   system_version?: string;
+  /** Dias até expirar senha; 0 = sem expiração. */
+  password_max_age_days?: number;
+  /** Se true, exige regras de senha forte (comprimento mínimo maior + complexidade). */
+  password_require_strong?: boolean;
+  /** Comprimento mínimo quando senha forte está desligada (mínimo absoluto 8 na validação). */
+  password_min_length_weak?: number;
 }
 
 /** Chave única que identifica cada tipo de notificação por e-mail no sistema */
@@ -215,6 +228,8 @@ export interface CreateUserRequest {
   password: string;
   role: UserRole;
   is_active?: boolean;
+  /** Obrigar o utilizador a definir nova senha no próximo login com sucesso. */
+  force_password_change_next_login?: boolean;
 }
 
 export interface UpdateUserRequest {
@@ -233,6 +248,8 @@ export interface UpdateUserRequest {
   linkedin?: string;
   skype?: string;
   hire_date?: Date | string;
+  /** Apenas administradores/gestores com permissão (não sobre o próprio perfil). */
+  must_change_password?: boolean;
 }
 
 export interface AuthResponse {

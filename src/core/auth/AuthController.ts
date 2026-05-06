@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthService } from './AuthService';
 import { UserModel } from '../users/User';
-import { LoginRequest, CreateUserRequest } from '../../shared/types';
+import { LoginRequest, CreateUserRequest, User } from '../../shared/types';
 import { asyncHandler, type AppError } from '../../shared/middleware/errorHandler';
 import { tokenCacheService } from './TokenCacheService';
 import { config } from '../../config/database';
@@ -13,6 +13,24 @@ import Joi from 'joi';
 import { loginSchema, updateUiPreferencesSchema } from './schemas';
 import { mergeUiPreferences, parseUiPreferences } from './uiPreferencesService';
 import { PermissionModel } from '../permissions/PermissionModel';
+import { SystemConfigModel } from '../system/SystemConfig';
+import { computePasswordChangeRequirement } from './passwordPolicy';
+
+async function withPasswordGateFields(user: Omit<User, 'password'>): Promise<Omit<User, 'password'>> {
+  const sys = await SystemConfigModel.getSystemConfig();
+  const gate = computePasswordChangeRequirement(
+    {
+      must_change_password: user.must_change_password,
+      password_changed_at: user.password_changed_at
+    },
+    sys
+  );
+  return {
+    ...user,
+    requiresPasswordChange: gate.requiresPasswordChange,
+    passwordExpiredReason: gate.passwordExpiredReason
+  };
+}
 
 const ACCESS_COOKIE_NAME = 'token';
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -137,8 +155,9 @@ export class AuthController {
       const session = await AuthSessionModel.createSession(user.id, rememberMe, metadata);
       const accessToken = issueAccessToken(user, session.sessionId);
       const refreshMaxAgeMs = Math.max(1, session.refreshExpiresAt.getTime() - Date.now());
+      const userWithGate = await withPasswordGateFields(user);
       const result = {
-        user,
+        user: userWithGate,
         token: accessToken
       };
       
@@ -217,6 +236,15 @@ export class AuthController {
         requestId: (req as any).requestId,
         userData: { ...userData, password: '[HIDDEN]' }
       }, 'AUTH');
+
+      const regPass = await AuthService.validatePasswordForCurrentPolicy(userData.password);
+      if (!regPass.isValid) {
+        res.status(400).json({
+          error: 'Senha inválida para a política atual do sistema',
+          details: regPass.errors
+        });
+        return;
+      }
 
       try {
         const registerResult = await AuthService.register(userData);
@@ -451,7 +479,7 @@ export class AuthController {
     const { currentPassword, newPassword } = value;
     
     // Validar nova senha
-    const passwordValidation = AuthService.validatePassword(newPassword);
+    const passwordValidation = await AuthService.validatePasswordForCurrentPolicy(newPassword);
     if (!passwordValidation.isValid) {
       res.status(400).json({ 
         error: 'Senha inválida', 
@@ -483,15 +511,22 @@ export class AuthController {
   });
 
   static getProfile = asyncHandler(async (req: Request, res: Response) => {
-    const user = req.user;
-    if (!user) {
+    const uid = req.user?.id;
+    if (!uid) {
       res.status(401).json({ error: 'Usuário não autenticado' });
       return;
     }
+    const fresh = await UserModel.findById(uid);
+    if (!fresh) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+    const { password, ui_preferences: _prefs, ...stripped } = fresh;
+    const userPayload = await withPasswordGateFields(stripped);
 
     res.json({
       message: 'Perfil obtido com sucesso',
-      data: { user }
+      data: { user: userPayload }
     });
   });
 
@@ -541,7 +576,7 @@ export class AuthController {
       }
 
       // Validar nova senha
-      const passwordValidation = AuthService.validatePassword(newPassword);
+      const passwordValidation = await AuthService.validatePasswordForCurrentPolicy(newPassword);
       if (!passwordValidation.isValid) {
         res.status(400).json({ 
           error: 'Senha inválida', 
@@ -551,7 +586,7 @@ export class AuthController {
       }
 
       // Atualizar senha
-      await UserModel.updatePassword(userId, newPassword);
+      await UserModel.updatePassword(userId, newPassword, { clearForcedPasswordChange: true });
     }
 
     // Atualizar outros campos do usuário (se houver)

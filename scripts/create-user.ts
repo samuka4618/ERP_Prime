@@ -6,7 +6,7 @@ async function createUser() {
   const userData: CreateUserRequest = {
     name: process.env.CREATE_USER_NAME || 'Administrador',
     email: process.env.CREATE_USER_EMAIL || 'admin@localhost.com',
-    password: process.env.CREATE_USER_PASSWORD || 'Admin@123456',
+    password: process.env.CREATE_USER_PASSWORD || 'Admin@Secure123!',
     role: (process.env.CREATE_USER_ROLE as UserRole) || UserRole.ADMIN,
     is_active: true
   };
@@ -26,11 +26,11 @@ async function createUser() {
       if (!existingUser.is_active) {
         console.log('\n🔄 Reativando usuário...');
         await UserModel.update(existingUser.id, { is_active: true });
-        await UserModel.updatePassword(existingUser.id, userData.password);
+        await UserModel.updatePassword(existingUser.id, userData.password, { clearForcedPasswordChange: true });
         console.log('✅ Usuário reativado com sucesso!');
       } else {
         console.log('\n🔄 Atualizando senha...');
-        await UserModel.updatePassword(existingUser.id, userData.password);
+        await UserModel.updatePassword(existingUser.id, userData.password, { clearForcedPasswordChange: true });
         console.log('✅ Senha atualizada com sucesso!');
       }
       
@@ -44,8 +44,8 @@ async function createUser() {
         console.log(`   Ativo: ${updatedUser.is_active ? 'Sim' : 'Não'}`);
       }
     } else {
-      // Validar senha
-      const passwordValidation = AuthService.validatePassword(userData.password);
+      // Validar senha (política atual do sistema)
+      const passwordValidation = await AuthService.validatePasswordForCurrentPolicy(userData.password);
       if (!passwordValidation.isValid) {
         console.error('❌ Senha inválida:');
         passwordValidation.errors.forEach(error => console.error(`   - ${error}`));

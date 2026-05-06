@@ -40,6 +40,14 @@ export interface User {
   linkedin?: string;
   skype?: string;
   hire_date?: string | Date;
+  /** Administrador marcou troca obrigatória no próximo login. */
+  must_change_password?: boolean;
+  password_changed_at?: string | Date | null;
+  /** Calculado pela API após login / perfil */
+  requiresPasswordChange?: boolean;
+  passwordExpiredReason?: 'admin' | 'max_age' | null;
+  /** Apenas ao criar utilizador (pedido ao backend). */
+  force_password_change_next_login?: boolean;
   created_at: string;
   updated_at: string;
 }

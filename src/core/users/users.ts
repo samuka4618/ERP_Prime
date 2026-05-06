@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { UserController } from './UserController';
 import { authenticate, authorize } from '../auth/middleware';
 import { validate, validateQuery, validateParams } from '../../shared/middleware/validation';
-import { createUserSchema, updateUserSchema, changePasswordSchema, userQuerySchema } from './schemas';
+import { createUserSchema, updateUserSchema, changePasswordSchema, adminResetPasswordSchema, userQuerySchema } from './schemas';
 import { UserRole } from '../../shared/types';
 import { uploadSingle, uploadUserImport } from '../../shared/middleware/upload';
 import { adminOrPermission } from '../permissions/middleware';
@@ -32,7 +32,7 @@ router.get('/generate-password', authorize(UserRole.ADMIN), UserController.gener
 // Rotas específicas devem vir ANTES das rotas genéricas com :id
 // Rota para upload de avatar (deve vir antes de /:id)
 router.post('/:id/avatar', validateParams(paramsSchema), uploadSingle, UserController.uploadAvatar);
-router.post('/:id/reset-password', authorize(UserRole.ADMIN), validateParams(paramsSchema), validate(changePasswordSchema), UserController.resetPassword);
+router.post('/:id/reset-password', adminOrPermission('users.edit'), validateParams(paramsSchema), validate(adminResetPasswordSchema), UserController.resetPassword);
 
 // Rotas genéricas com :id
 router.get('/:id', authorize(UserRole.ADMIN), validateParams(paramsSchema), UserController.findById);

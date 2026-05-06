@@ -53,9 +53,14 @@ import DriverTracking from './pages/Descarregamento/DriverTracking';
 import PublicFormRestrito from './pages/Descarregamento/PublicFormRestrito';
 import LoadingSpinner from './components/LoadingSpinner';
 import { PublicFormOnlyGuard, PublicFormOnlyWrapper } from './components/PublicFormOnlyGuard';
+import ForcePasswordChangePage from './pages/ForcePasswordChangePage';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+const ProtectedRoute: React.FC<{
+  children: React.ReactNode;
+  /** Quando true, não redirecciona para troca obrigatória (usar nessa página). */
+  bypassMandatoryPassword?: boolean;
+}> = ({ children, bypassMandatoryPassword }) => {
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return <LoadingSpinner />;
@@ -65,17 +70,24 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
 
+  if (!bypassMandatoryPassword && user?.requiresPasswordChange) {
+    return <Navigate to="/forcar-troca-senha" replace />;
+  }
+
   return <>{children}</>;
 };
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
   if (isAuthenticated) {
+    if (user?.requiresPasswordChange) {
+      return <Navigate to="/forcar-troca-senha" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -109,6 +121,14 @@ const AppRoutes: React.FC = () => {
               <Register />
             </PublicRoute>
           } 
+        />
+        <Route
+          path="/forcar-troca-senha"
+          element={
+            <ProtectedRoute bypassMandatoryPassword>
+              <ForcePasswordChangePage />
+            </ProtectedRoute>
+          }
         />
         {/* Formulário e acompanhamento públicos: modo "só formulário" ativo (sem acesso a login/ERP). */}
         <Route path="/descarregamento/formulario/:id" element={<PublicFormOnlyWrapper><PublicForm /></PublicFormOnlyWrapper>} />

@@ -4,7 +4,8 @@ import {
   Plus, 
   Search, 
   Edit, 
-  Trash2, 
+  Trash2,
+  KeyRound,
   User as UserIcon,
   Shield,
   UserCheck,
@@ -23,9 +24,16 @@ import Modal from '../components/Modal';
 import UserAvatar from '../components/UserAvatar';
 import { toast } from 'react-hot-toast';
 import FormattedDate from '../components/FormattedDate';
+import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 const Users: React.FC = () => {
   const iamV2Enabled = String(import.meta.env.VITE_FEATURE_IAM_V2 ?? 'true') !== 'false';
+  const { user: authUser } = useAuth();
+  const { hasPermission, loadingPermissions } = usePermissions();
+  const canManageUserPasswords =
+    !loadingPermissions &&
+    Boolean(authUser?.role === 'admin' || hasPermission('users.edit'));
   const [users, setUsers] = useState<User[]>([]);
   const [accessProfiles, setAccessProfiles] = useState<Array<{ id: number; name: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +48,8 @@ const Users: React.FC = () => {
     email: '',
     password: '',
     role: 'user' as 'user' | 'attendant' | 'admin',
-    is_active: true
+    is_active: true,
+    force_password_change_next_login: false
   });
   const [createProfileIds, setCreateProfileIds] = useState<number[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -50,13 +59,21 @@ const Users: React.FC = () => {
     name: '',
     email: '',
     role: 'user' as 'user' | 'attendant' | 'admin',
-    is_active: true
+    is_active: true,
+    must_change_password: false
   });
   const [editProfileIds, setEditProfileIds] = useState<number[]>([]);
+
+  const [resetTarget, setResetTarget] = useState<User | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
+  const [resetForceNextLogin, setResetForceNextLogin] = useState(true);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importDefaultPassword, setImportDefaultPassword] = useState('');
   const [importUpdateExisting, setImportUpdateExisting] = useState(false);
+  const [importForcePasswordChange, setImportForcePasswordChange] = useState(false);
   const [importPreview, setImportPreview] = useState<{
     total: number;
     valid: number;
@@ -206,7 +223,8 @@ const Users: React.FC = () => {
         email: '',
         password: '',
         role: 'user',
-        is_active: true
+        is_active: true,
+        force_password_change_next_login: false
       });
       setCreateProfileIds([]);
       fetchUsers();
@@ -276,7 +294,12 @@ const Users: React.FC = () => {
     }
     setLoadingImport(true);
     try {
-      const data = await apiService.importUsers(importFile, importDefaultPassword, importUpdateExisting);
+      const data = await apiService.importUsers(
+        importFile,
+        importDefaultPassword,
+        importUpdateExisting,
+        importForcePasswordChange
+      );
       setImportResult(data);
       toast.success(`Importação concluída: ${data.created} criado(s), ${data.updated} atualizado(s)`);
       fetchUsers();
@@ -294,7 +317,8 @@ const Users: React.FC = () => {
       name: user.name,
       email: user.email,
       role: user.role,
-      is_active: Boolean(user.is_active)
+      is_active: Boolean(user.is_active),
+      must_change_password: Boolean(user.must_change_password)
     });
     setShowEditModal(true);
     if (iamV2Enabled) {
@@ -311,13 +335,16 @@ const Users: React.FC = () => {
     setEditLoading(true);
     try {
       // Garantir que os dados estão no formato correto
-      const updateData = {
+      const updateData: Parameters<typeof apiService.updateUser>[1] = {
         name: editForm.name.trim(),
         email: editForm.email.trim(),
         role: editForm.role,
         is_active: Boolean(editForm.is_active)
       };
-      
+      if (canManageUserPasswords && authUser?.id !== editingUser.id) {
+        updateData.must_change_password = Boolean(editForm.must_change_password);
+      }
+
       await apiService.updateUser(editingUser.id, updateData);
       if (iamV2Enabled) {
         await apiService.updateUserAccessProfiles(editingUser.id, editProfileIds);
@@ -343,6 +370,40 @@ const Users: React.FC = () => {
       } catch (error: any) {
         toast.error(error.response?.data?.error || 'Erro ao excluir usuário');
       }
+    }
+  };
+
+  const openResetPasswordModal = (user: User) => {
+    setResetTarget(user);
+    setResetPassword('');
+    setResetPasswordConfirm('');
+    setResetForceNextLogin(true);
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    if (!resetPassword || resetPassword.length < 6) {
+      toast.error('Informe a nova senha (mínimo 6 caracteres, sujeito à política do sistema)');
+      return;
+    }
+    if (resetPassword !== resetPasswordConfirm) {
+      toast.error('A confirmação da senha não coincide');
+      return;
+    }
+    setResetSubmitting(true);
+    try {
+      await apiService.adminResetUserPassword(resetTarget.id, resetPassword, resetForceNextLogin);
+      toast.success('Senha redefinida com sucesso.');
+      setResetTarget(null);
+      fetchUsers();
+    } catch (err: any) {
+      const detail = err?.response?.data?.details;
+      toast.error(
+        Array.isArray(detail) ? detail.join(' ') : err?.response?.data?.error || 'Erro ao redefinir senha'
+      );
+    } finally {
+      setResetSubmitting(false);
     }
   };
 
@@ -395,11 +456,11 @@ const Users: React.FC = () => {
         </div>
         <div className="flex items-center space-x-3">
           <Link
-            to="/system-config"
+            to="/system-settings"
             className="btn btn-outline flex items-center space-x-2"
           >
             <Settings className="w-4 h-4" />
-            <span>Configurações</span>
+            <span>Configurações gerais</span>
           </Link>
           <button
             type="button"
@@ -500,6 +561,14 @@ const Users: React.FC = () => {
                   onChange={(e) => setImportUpdateExisting(e.target.checked)}
                 />
                 Atualizar usuários existentes (por email)
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={importForcePasswordChange}
+                  onChange={(e) => setImportForcePasswordChange(e.target.checked)}
+                />
+                Exigir alteração de senha no primeiro login (novos utilizadores)
               </label>
               <div className="flex gap-2">
                 <button
@@ -754,14 +823,24 @@ const Users: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
-                      <button 
+                      <button
                         onClick={() => handleEditUser(user)}
                         className="text-primary-600 hover:text-primary-900"
                         title="Editar usuário"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button 
+                      {canManageUserPasswords && authUser?.id !== user.id && (
+                        <button
+                          type="button"
+                          onClick={() => openResetPasswordModal(user)}
+                          className="text-amber-600 hover:text-amber-800 dark:text-amber-500 dark:hover:text-amber-300"
+                          title="Redefinir senha"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
                         onClick={() => handleDeleteUser(user.id)}
                         className="text-red-600 hover:text-red-900"
                         title="Excluir usuário"
@@ -917,6 +996,21 @@ const Users: React.FC = () => {
                 <span className="text-sm text-gray-700 dark:text-gray-300 select-none">Usuário ativo</span>
               </label>
 
+              {canManageUserPasswords && authUser?.id !== editingUser.id && (
+                <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
+                  <input
+                    type="checkbox"
+                    name="must_change_password"
+                    checked={editForm.must_change_password}
+                    onChange={handleEditInputChange}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded flex-shrink-0"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300 select-none">
+                    Exigir alteração de senha no próximo login
+                  </span>
+                </label>
+              )}
+
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
@@ -934,6 +1028,77 @@ const Users: React.FC = () => {
                 </button>
               </div>
             </form>
+        </Modal>
+      )}
+
+      {resetTarget && (
+        <Modal
+          title={`Redefinir senha — ${resetTarget.name}`}
+          size="sm"
+          onClose={() => !resetSubmitting && setResetTarget(null)}
+        >
+          <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Nova senha para <strong className="text-gray-900 dark:text-white">{resetTarget.email}</strong>
+            </p>
+            <div>
+              <label htmlFor="reset_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Nova senha *
+              </label>
+              <input
+                id="reset_password"
+                type="password"
+                autoComplete="new-password"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                className="input w-full"
+                required
+                minLength={6}
+                disabled={resetSubmitting}
+              />
+            </div>
+            <div>
+              <label htmlFor="reset_password_confirm" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Confirmar senha *
+              </label>
+              <input
+                id="reset_password_confirm"
+                type="password"
+                autoComplete="new-password"
+                value={resetPasswordConfirm}
+                onChange={(e) => setResetPasswordConfirm(e.target.value)}
+                className="input w-full"
+                required
+                minLength={6}
+                disabled={resetSubmitting}
+              />
+            </div>
+            <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
+              <input
+                type="checkbox"
+                checked={resetForceNextLogin}
+                onChange={(e) => setResetForceNextLogin(e.target.checked)}
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded flex-shrink-0"
+                disabled={resetSubmitting}
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300 select-none">
+                Exigir alteração de senha no próximo login
+              </span>
+            </label>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={resetSubmitting}
+                onClick={() => setResetTarget(null)}
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={resetSubmitting}>
+                {resetSubmitting ? 'Aplicando...' : 'Redefinir senha'}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
 
@@ -1027,6 +1192,19 @@ const Users: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-1">Segure Ctrl para selecionar mais de um perfil.</p>
                 </div>
               )}
+
+              <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
+                <input
+                  type="checkbox"
+                  name="force_password_change_next_login"
+                  checked={createForm.force_password_change_next_login}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded flex-shrink-0"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300 select-none">
+                  Exigir alteração de senha no próximo login
+                </span>
+              </label>
 
               <label className="flex items-center gap-3 cursor-pointer py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 w-fit transition-colors">
                 <input

@@ -20,6 +20,7 @@ import {
 } from './userImportExport';
 import { dbAll, dbRun } from '../database/connection';
 import { config } from '../../config/database';
+import { PermissionModel } from '../permissions/PermissionModel';
 
 const getIp = (req: Request) => req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
 
@@ -91,6 +92,12 @@ export class UserController {
   static create = asyncHandler(async (req: Request, res: Response) => {
     const userData = req.body as CreateUserRequest;
 
+    const pwdCheck = await AuthService.validatePasswordForCurrentPolicy(userData.password);
+    if (!pwdCheck.isValid) {
+      res.status(400).json({ error: 'Senha inválida para a política atual do sistema', details: pwdCheck.errors });
+      return;
+    }
+
     // Verificar se email já existe (apenas usuários ativos)
     // Permite reutilizar email de usuários que foram excluídos (soft delete)
     const existingUser = await UserModel.findByEmailActive(userData.email);
@@ -110,7 +117,13 @@ export class UserController {
         is_active: true
       });
       
-      await UserModel.updatePassword(inactiveUser.id, userData.password);
+      await UserModel.updatePassword(
+        inactiveUser.id,
+        userData.password,
+        userData.force_password_change_next_login === true
+          ? { requireChangeOnNextLogin: true }
+          : { clearForcedPasswordChange: true }
+      );
       
       const updatedUser = await UserModel.findById(inactiveUser.id);
       if (!updatedUser) {
@@ -225,35 +238,65 @@ export class UserController {
       return;
     }
 
-    // Verificar permissões: apenas admin pode atualizar outros usuários
     const isAdmin = req.user?.role === UserRole.ADMIN;
     const isUpdatingOwnProfile = req.user?.id === userId;
-    
-    if (!isAdmin && !isUpdatingOwnProfile) {
-      res.status(403).json({ error: 'Você só pode atualizar seu próprio perfil' });
+
+    const canManageOtherUsers =
+      isAdmin ||
+      Boolean(
+        req.user?.id != null &&
+          (await PermissionModel.hasPermission(req.user!.id, req.user!.role, 'users.edit'))
+      );
+
+    if (!isUpdatingOwnProfile && !canManageOtherUsers) {
+      res.status(403).json({ error: 'Sem permissão para atualizar este utilizador' });
       return;
     }
 
-    // A validação já foi feita pelo middleware, então usamos req.body diretamente
-    const bodyData = req.body as any;
-    
-    // Separar dados de senha dos dados de usuário
-    const { currentPassword, newPassword, ...userData } = bodyData;
-    
-    // Usuários comuns não podem alterar role ou is_active
-    if (!isAdmin && (userData.role !== undefined || userData.is_active !== undefined)) {
-      res.status(403).json({ error: 'Você não tem permissão para alterar role ou status do usuário' });
-      return;
+    const bodyData = req.body as Record<string, unknown>;
+    const {
+      currentPassword,
+      newPassword,
+      must_change_password: mustChangePasswordBody,
+      ...userDataRaw
+    } = bodyData as {
+      currentPassword?: string;
+      newPassword?: string;
+      must_change_password?: boolean;
+      [key: string]: unknown;
+    };
+    const userData: Record<string, unknown> = { ...userDataRaw };
+
+    if (mustChangePasswordBody !== undefined) {
+      if (isUpdatingOwnProfile) {
+        res
+          .status(400)
+          .json({ error: 'Não é possível alterar esta opção sobre o próprio utilizador nesta rota.' });
+        return;
+      }
+      if (!canManageOtherUsers) {
+        res.status(403).json({ error: 'Sem permissão para alterar a exigência de troca de senha.' });
+        return;
+      }
+      userData.must_change_password = Boolean(mustChangePasswordBody);
     }
-    
+
+    const mutatesRoleOrActive = userData.role !== undefined || userData.is_active !== undefined;
+    if (mutatesRoleOrActive) {
+      const allowed = isAdmin || (!isUpdatingOwnProfile && canManageOtherUsers);
+      if (!allowed) {
+        res.status(403).json({ error: 'Sem permissão para alterar função ou estado do utilizador.' });
+        return;
+      }
+    }
     // Normalizar is_active para boolean se vier como número
     if (userData.is_active !== undefined) {
       userData.is_active = Boolean(userData.is_active);
     }
 
     // Verificar se email já existe (se estiver sendo alterado)
-    if (userData.email) {
-      const existingUser = await UserModel.findByEmail(userData.email);
+    if (typeof userData.email === 'string' && userData.email.trim()) {
+      const existingUser = await UserModel.findByEmail(userData.email.trim());
       if (existingUser && existingUser.id !== userId) {
         res.status(409).json({ error: 'Email já cadastrado' });
         return;
@@ -283,7 +326,7 @@ export class UserController {
         }
 
         // Validar nova senha
-        const passwordValidation = AuthService.validatePassword(newPassword);
+        const passwordValidation = await AuthService.validatePasswordForCurrentPolicy(newPassword);
         if (!passwordValidation.isValid) {
           res.status(400).json({ 
             error: 'Senha inválida', 
@@ -293,21 +336,22 @@ export class UserController {
         }
 
         // Atualizar senha
-        await UserModel.updatePassword(userId, newPassword);
+        await UserModel.updatePassword(userId, newPassword, { clearForcedPasswordChange: true });
       } else {
-        // Admin alterando senha de outro usuário - não precisa da senha atual
-        // Validar nova senha
-        const passwordValidation = AuthService.validatePassword(newPassword);
+        if (!canManageOtherUsers) {
+          res.status(403).json({ error: 'Sem permissão para alterar a senha deste utilizador.' });
+          return;
+        }
+        const passwordValidation = await AuthService.validatePasswordForCurrentPolicy(newPassword);
         if (!passwordValidation.isValid) {
-          res.status(400).json({ 
-            error: 'Senha inválida', 
-            details: passwordValidation.errors 
+          res.status(400).json({
+            error: 'Senha inválida',
+            details: passwordValidation.errors
           });
           return;
         }
 
-        // Atualizar senha
-        await UserModel.updatePassword(userId, newPassword);
+        await UserModel.updatePassword(userId, newPassword, { clearForcedPasswordChange: true });
       }
     }
 
@@ -385,15 +429,18 @@ export class UserController {
       return;
     }
 
-    const { newPassword } = req.body;
-    
+    const { newPassword, force_password_change_next_login } = req.body as {
+      newPassword?: string;
+      force_password_change_next_login?: boolean;
+    };
+
     if (!newPassword) {
       res.status(400).json({ error: 'Nova senha é obrigatória' });
       return;
     }
 
     // Validar nova senha
-    const passwordValidation = AuthService.validatePassword(newPassword);
+    const passwordValidation = await AuthService.validatePasswordForCurrentPolicy(newPassword);
     if (!passwordValidation.isValid) {
       res.status(400).json({ 
         error: 'Senha inválida', 
@@ -408,7 +455,13 @@ export class UserController {
       return;
     }
 
-    await UserModel.updatePassword(userId, newPassword);
+    await UserModel.updatePassword(
+      userId,
+      newPassword,
+      force_password_change_next_login === true
+        ? { requireChangeOnNextLogin: true }
+        : { clearForcedPasswordChange: true }
+    );
     auditLog({
       userId: req.user?.id,
       userName: req.user?.name,
@@ -666,17 +719,20 @@ export class UserController {
     const file = (req as any).file;
     const defaultPassword = (req.body as any).defaultPassword;
     const updateExisting = String((req.body as any).updateExisting).toLowerCase() === 'true' || (req.body as any).updateExisting === true;
+    const forcePasswordChangeOnImport =
+      String((req.body as any).forcePasswordChangeNextLogin).toLowerCase() === 'true' ||
+      (req.body as any).forcePasswordChangeNextLogin === true;
 
     if (!file || !file.buffer) {
       res.status(400).json({ error: 'Envie um arquivo CSV ou JSON (campo: file)' });
       return;
     }
-    if (!defaultPassword || typeof defaultPassword !== 'string' || defaultPassword.length < 6) {
-      res.status(400).json({ error: 'Senha padrão é obrigatória e deve ter no mínimo 6 caracteres' });
+    if (!defaultPassword || typeof defaultPassword !== 'string' || defaultPassword.length < 1) {
+      res.status(400).json({ error: 'Senha padrão é obrigatória' });
       return;
     }
 
-    const pv = AuthService.validatePassword(defaultPassword);
+    const pv = await AuthService.validatePasswordForCurrentPolicy(defaultPassword);
     if (!pv.isValid) {
       res.status(400).json({ error: 'Senha padrão inválida', details: pv.errors });
       return;
@@ -738,6 +794,7 @@ export class UserController {
             password: defaultPassword,
             role: row.data.role as UserRole,
             is_active: row.data.is_active,
+            force_password_change_next_login: forcePasswordChangeOnImport,
             phone: row.data.phone,
             department: row.data.department,
             position: row.data.position

@@ -1,11 +1,12 @@
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import { UserModel } from '../users/User';
-import { User, UserRole, LoginRequest, AuthResponse, CreateUserRequest } from '../../shared/types';
+import { LoginRequest, AuthResponse, CreateUserRequest, User } from '../../shared/types';
 import { config } from '../../config/database';
 import { tokenCacheService } from './TokenCacheService';
 import { logger } from '../../shared/utils/logger';
 import type { AppError } from '../../shared/middleware/errorHandler';
+import { SystemConfigModel } from '../system/SystemConfig';
+import { resolveEffectivePasswordPolicy, validatePasswordAgainstPolicy } from './passwordPolicy';
 
 function authError(message: string, statusCode: number = 401): AppError {
   const err = new Error(message) as AppError;
@@ -112,9 +113,6 @@ export class AuthService {
           userId: inactiveUser.id, 
           email: userData.email 
         }, 'AUTH');
-        
-        // Reativa o usuário existente com os novos dados
-        const hashedPassword = await bcrypt.hash(userData.password, 10);
         
         await UserModel.update(inactiveUser.id, {
           name: userData.name,
@@ -236,7 +234,13 @@ export class AuthService {
       throw new Error('Senha atual incorreta');
     }
 
-    await UserModel.updatePassword(userId, newPassword);
+    await UserModel.updatePassword(userId, newPassword, { clearForcedPasswordChange: true });
+  }
+
+  static async validatePasswordForCurrentPolicy(password: string): Promise<{ isValid: boolean; errors: string[] }> {
+    const sys = await SystemConfigModel.getSystemConfig();
+    const policy = resolveEffectivePasswordPolicy(sys);
+    return validatePasswordAgainstPolicy(password, policy);
   }
 
   static async resetPassword(email: string): Promise<void> {
@@ -251,37 +255,12 @@ export class AuthService {
     console.log(`Reset de senha solicitado para: ${email}`);
   }
 
-  static validatePassword(password: string): { isValid: boolean; errors: string[] } {
-    const errors: string[] = [];
-
-    if (password.length < 6) {
-      errors.push('Senha deve ter pelo menos 6 caracteres');
-    }
-
-    if (!/[A-Z]/.test(password)) {
-      errors.push('Senha deve conter pelo menos uma letra maiúscula');
-    }
-
-    if (!/[a-z]/.test(password)) {
-      errors.push('Senha deve conter pelo menos uma letra minúscula');
-    }
-
-    if (!/[0-9]/.test(password)) {
-      errors.push('Senha deve conter pelo menos um número');
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
-  }
-
   static validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
-  static generateRandomPassword(length: number = 12): string {
+  static generateRandomPassword(length: number = 14): string {
     const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
     let password = '';
     

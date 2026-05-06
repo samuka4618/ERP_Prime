@@ -243,7 +243,7 @@ const Dashboard: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400">Visão geral do {systemName}</p>
         </div>
         <Link
-          to="/system-config"
+          to="/system-settings"
           className="btn btn-outline flex items-center space-x-2"
         >
           <Settings className="w-4 h-4" />

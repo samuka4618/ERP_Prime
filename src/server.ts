@@ -24,6 +24,7 @@ import { SatelliteSyncService } from './modules/descarregamento/services/Satelli
 import { initializeWebSocket } from './modules/chamados/services/WebSocketService';
 import { ReportController } from './modules/chamados/controllers/ReportController';
 import { BackupAutomationService } from './core/backup/BackupAutomationService';
+import { requestContextMiddleware } from './shared/middleware/requestContext';
 
 const app = express();
 
@@ -118,7 +119,7 @@ app.use(cors({
 
 if (config.nodeEnv !== 'production') {
   app.use((req, res, next) => {
-    console.log('CORS Debug:', { origin: req.headers.origin, method: req.method, url: req.url });
+    logger.debug('CORS Debug', { origin: req.headers.origin, method: req.method, url: req.url }, 'CORS');
     next();
   });
 }
@@ -211,26 +212,8 @@ app.use(express.static(uiStaticRoot, {
   }
 }));
 
-// Middleware de logging
-app.use((req, res, next) => {
-  const startTime = Date.now();
-  const requestId = Math.random().toString(36).substring(7);
-  
-  // Adicionar requestId ao req para uso em outros middlewares
-  (req as any).requestId = requestId;
-  
-  logger.apiRequest(req.method, req.path, req.body, req.user);
-  
-  // Interceptar resposta para logar status e tempo
-  const originalSend = res.send;
-  res.send = function(data) {
-    const responseTime = Date.now() - startTime;
-    logger.apiResponse(req.method, req.path, res.statusCode, responseTime);
-    return originalSend.call(this, data);
-  };
-  
-  next();
-});
+// Middleware de contexto/correlação e logging de request/response
+app.use(requestContextMiddleware);
 
 // Rota para favicon (evita erro 404)
 app.get('/favicon.ico', (req, res) => {
@@ -298,12 +281,12 @@ const apiRouter = express.Router();
 
 // Middleware de debug para todas as requisições da API
 apiRouter.use((req, res, next) => {
-  console.log('🌐 Requisição API recebida:', {
+  logger.debug('Requisição API recebida', {
     method: req.method,
     path: req.path,
     originalUrl: req.originalUrl,
     url: req.url
-  });
+  }, 'API_ROUTER');
   next();
 });
 
@@ -323,7 +306,7 @@ apiRouter.get('/system/public-config', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Erro ao buscar configurações públicas:', error);
+    logger.error('Erro ao buscar configurações públicas', error, 'SYSTEM_CONFIG');
     res.json({
       message: 'Configurações públicas obtidas com sucesso',
       data: {
@@ -337,17 +320,17 @@ apiRouter.get('/system/public-config', async (req, res) => {
 });
 
 // Registrar módulos do ERP
-console.log('📦 Registrando rotas do sistema...');
+logger.info('Registrando rotas do sistema', undefined, 'BOOT');
 registerCoreRoutes(apiRouter, authLimiter);
 registerChamadosRoutes(apiRouter, uploadLimiter);
 registerCadastrosRoutes(apiRouter);
 registerComprasRoutes(apiRouter);
 registerDescarregamentoRoutes(apiRouter);
-console.log('✅ Todas as rotas registradas');
+logger.success('Todas as rotas registradas', undefined, 'BOOT');
 
 // Aplicar router da API
 app.use('/api', apiRouter);
-console.log('✅ Router da API aplicado em /api');
+logger.success('Router da API aplicado em /api', undefined, 'BOOT');
 
 // IMPORTANTE: Servir arquivos estáticos ANTES da rota catch-all
 // Servir imagens de cadastros de clientes
@@ -489,17 +472,19 @@ function getLocalIP(): string {
 async function startServer() {
   try {
     // Executar migração do banco de dados
-    console.log('Executando migração do banco de dados...');
+    logger.info('Executando migração do banco de dados', undefined, 'BOOT');
     await executeSchema();
-    console.log('Migração concluída com sucesso!');
+    logger.success('Migração concluída com sucesso', undefined, 'BOOT');
 
     if (config.erpUi === 'next' && !fs.existsSync(uiIndexHtml)) {
-      console.warn(
+      logger.warn(
         `⚠️  ERP_UI=next mas não foi encontrado o ficheiro de entrada da UI: ${uiIndexHtml}. ` +
-          'Execute `npm run build:web-next` (ou `npm run build:all`) antes de `npm start`.'
+          'Execute `npm run build:web-next` (ou `npm run build:all`) antes de `npm start`.',
+        undefined,
+        'BOOT'
       );
     }
-    console.log(`🖥️  UI estática: ${config.erpUi} → ${uiStaticRoot}`);
+    logger.info(`UI estática: ${config.erpUi} → ${uiStaticRoot}`, undefined, 'BOOT');
 
     // Iniciar serviço de atualização automática de status
     StatusUpdateService.startAutoUpdate();
@@ -507,7 +492,7 @@ async function startServer() {
     // Agendamento de relatórios: verificar a cada 1 minuto se há relatórios para executar
     setInterval(() => {
       ReportController.processScheduledReports().catch((err) => {
-        console.error('Erro no processador de agendamentos de relatórios:', err);
+        logger.error('Erro no processador de agendamentos de relatórios', err, 'REPORTS');
       });
     }, 60 * 1000);
     // Executar uma vez após 30s (dar tempo do servidor subir)
@@ -519,17 +504,17 @@ async function startServer() {
     const HOST = process.env.HOST || '0.0.0.0';
     const localIP = getLocalIP();
     const server = app.listen(PORT, HOST, () => {
-      console.log(`🚀 Servidor rodando na porta ${PORT}`);
-      console.log(`📊 Ambiente: ${config.nodeEnv}`);
-      console.log(`🔗 URL Local: http://localhost:${PORT}`);
-      console.log(`🔗 URL Rede: http://${localIP}:${PORT}`);
-      console.log(`📚 API: http://${localIP}:${PORT}/api`);
-      console.log(`❤️  Health: http://${localIP}:${PORT}/health`);
-      console.log(`🔌 WebSocket: ws://${localIP}:${PORT}/ws`);
+      logger.success(`Servidor rodando na porta ${PORT}`, undefined, 'BOOT');
+      logger.info(`Ambiente: ${config.nodeEnv}`, undefined, 'BOOT');
+      logger.info(`URL Local: http://localhost:${PORT}`, undefined, 'BOOT');
+      logger.info(`URL Rede: http://${localIP}:${PORT}`, undefined, 'BOOT');
+      logger.info(`API: http://${localIP}:${PORT}/api`, undefined, 'BOOT');
+      logger.info(`Health: http://${localIP}:${PORT}/health`, undefined, 'BOOT');
+      logger.info(`WebSocket: ws://${localIP}:${PORT}/ws`, undefined, 'BOOT');
       SatelliteInboundPoller.start();
       setTimeout(() => {
         SatelliteSyncService.pushAllPublishedSnapshots().catch((err) => {
-          console.error('SatelliteSyncService.pushAllPublishedSnapshots:', err);
+          logger.error('SatelliteSyncService.pushAllPublishedSnapshots', err, 'SATELLITE');
         });
       }, 5000);
     });
@@ -543,21 +528,18 @@ async function startServer() {
       const dbPath = path.isAbsolute(config.database.path)
         ? config.database.path
         : path.resolve(process.cwd(), config.database.path);
-      console.error('\n❌ Banco de dados SQLite corrompido.');
-      console.error(`   Arquivo: ${dbPath}`);
-      console.error('\n   Para recomeçar do zero (todos os dados locais serão perdidos):');
-      console.error('   1. Apague o arquivo acima ou renomeie (ex.: chamados.db.bak)');
-      console.error('   2. Reinicie o servidor (um novo banco será criado automaticamente)\n');
+      logger.error('Banco de dados SQLite corrompido', { dbPath }, 'BOOT');
+      logger.error('Para recomeçar do zero: apague/renomeie o arquivo e reinicie o servidor.', undefined, 'BOOT');
       process.exit(1);
     }
-    console.error('Erro ao iniciar servidor:', error);
+    logger.error('Erro ao iniciar servidor', error, 'BOOT');
     process.exit(1);
   }
 }
 
 // Promises em background (notificações, etc.) não devem derrubar o processo
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('unhandledRejection:', reason);
+  logger.error('unhandledRejection', reason, 'PROCESS');
   if (typeof (promise as any)?.catch === 'function') {
     (promise as Promise<unknown>).catch(() => {});
   }
@@ -568,12 +550,12 @@ startServer();
 
 // Tratamento de sinais para encerramento graceful
 process.on('SIGTERM', () => {
-  console.log('SIGTERM recebido. Encerrando servidor...');
+  logger.warn('SIGTERM recebido. Encerrando servidor...', undefined, 'PROCESS');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT recebido. Encerrando servidor...');
+  logger.warn('SIGINT recebido. Encerrando servidor...', undefined, 'PROCESS');
   process.exit(0);
 });
 

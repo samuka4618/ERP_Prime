@@ -19,9 +19,39 @@ export interface LogEntry {
 }
 
 class FrontendLogger {
-  private static logLevel: LogLevel = process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.INFO;
+  private static logLevel: LogLevel =
+    process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.WARN;
   private static logs: LogEntry[] = [];
-  private static maxLogs = 1000; // Limite de logs em memória
+  private static maxLogs = Number(import.meta.env.VITE_LOG_MAX_ENTRIES || 300);
+  private static readonly maxPayloadChars = Number(import.meta.env.VITE_LOG_MAX_PAYLOAD_CHARS || 2000);
+  private static listeners = new Set<(entry: LogEntry) => void>();
+  private static readonly sensitiveKeys = ['password', 'token', 'authorization', 'cookie', 'secret', 'cpf', 'cnpj'];
+
+  private static sanitize(value: any): any {
+    if (value == null) return value;
+    if (Array.isArray(value)) return value.map((item) => this.sanitize(item));
+    if (typeof value !== 'object') return value;
+    const out: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value)) {
+      const keyLower = key.toLowerCase();
+      if (this.sensitiveKeys.some((s) => keyLower.includes(s))) {
+        out[key] = '[REDACTED]';
+      } else {
+        out[key] = this.sanitize(nested);
+      }
+    }
+    return out;
+  }
+
+  private static notifyListeners(entry: LogEntry): void {
+    this.listeners.forEach((listener) => {
+      try {
+        listener(entry);
+      } catch {
+        // Evita quebrar a aplicação por erro em listeners de debug
+      }
+    });
+  }
 
   private static addLog(level: LogLevel, message: string, data?: any, context?: string): void {
     const logEntry: LogEntry = {
@@ -38,7 +68,7 @@ class FrontendLogger {
       level,
       message,
       context: context || 'FRONTEND',
-      data,
+      data: this.sanitize(data),
       stack: level >= LogLevel.ERROR ? new Error().stack : undefined,
       url: window.location.href,
       userAgent: navigator.userAgent,
@@ -52,6 +82,7 @@ class FrontendLogger {
     if (this.logs.length > this.maxLogs) {
       this.logs = this.logs.slice(-this.maxLogs);
     }
+    this.notifyListeners(logEntry);
 
     // Console output com cores
     if (level >= this.logLevel) {
@@ -61,8 +92,9 @@ class FrontendLogger {
       
       console.log(`${color}[${logEntry.timestamp}] ${levelName}: ${message}${reset}`);
       
-      if (data) {
-        console.log('Data:', data);
+      if (logEntry.data) {
+        const payload = JSON.stringify(logEntry.data);
+        console.log('Data:', payload.length > this.maxPayloadChars ? `${payload.slice(0, this.maxPayloadChars)}... [truncated]` : logEntry.data);
       }
       
       if (level >= LogLevel.ERROR && logEntry.stack) {
@@ -168,6 +200,11 @@ class FrontendLogger {
   // Métodos utilitários
   static getLogs(): LogEntry[] {
     return [...this.logs];
+  }
+
+  static subscribe(listener: (entry: LogEntry) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
   static clearLogs(): void {

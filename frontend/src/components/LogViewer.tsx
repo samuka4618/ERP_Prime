@@ -17,6 +17,10 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       setLogs(logger.getLogs());
+      const unsubscribe = logger.subscribe(() => {
+        setLogs(logger.getLogs());
+      });
+      return unsubscribe;
     }
   }, [isOpen]);
 
@@ -39,16 +43,6 @@ const LogViewer: React.FC<LogViewerProps> = ({ isOpen, onClose }) => {
 
     setFilteredLogs(filtered);
   }, [logs, selectedLevel, searchTerm]);
-
-  useEffect(() => {
-    if (isOpen) {
-      const interval = setInterval(() => {
-        setLogs(logger.getLogs());
-      }, 1000);
-
-      return () => clearInterval(interval);
-    }
-  }, [isOpen]);
 
   const getLevelColor = (level: LogLevel): string => {
     const colors = {

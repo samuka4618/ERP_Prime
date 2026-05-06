@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../utils/logger';
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -44,11 +45,8 @@ export const errorHandler = (
     statusCode,
     ...(isOperational ? {} : { stack: error.stack, ip: req.ip, userAgent: req.get('User-Agent') })
   };
-  if (isOperational) {
-    console.warn('Erro operacional (4xx):', logPayload);
-  } else {
-    console.error('Erro:', logPayload);
-  }
+  if (isOperational) logger.warn('Erro operacional (4xx)', logPayload, 'HTTP_ERROR');
+  else logger.error('Erro interno não operacional', logPayload, 'HTTP_ERROR');
 
   res.status(statusCode).json({
     error: message,

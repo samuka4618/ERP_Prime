@@ -76,7 +76,7 @@ class ApiService {
   constructor() {
     // Usar VITE_API_URL em produção (ex.: Vercel + Render); em dev usa /api ou hostname:port
     const baseURL = getApiBaseUrl();
-    console.log('API Base URL configurada:', baseURL);
+    logger.info('API Base URL configurada', { baseURL }, 'API');
     
     // Timeout padrão 10s; rotas pesadas (relatórios, export, integração Atak) sobrescrevem com 30s/60s. Ver docs/PLANO_ACAO_TIMEOUT_LENTIDAO.md e docs/ENDPOINTS_TIMEOUTS.md.
     this.api = axios.create({
@@ -665,21 +665,16 @@ class ApiService {
   }
 
   async createTicket(ticketData: CreateTicketRequest): Promise<Ticket> {
-    console.log('🔍 API DEBUG - Enviando dados:', ticketData);
+    logger.debug('Criando ticket', { hasDescription: !!ticketData.description, category_id: ticketData.category_id }, 'API');
     const response = await this.api.post<ApiResponse<Ticket>>('/tickets', ticketData);
-    console.log('🔍 API DEBUG - Resposta completa:', response);
-    console.log('🔍 API DEBUG - response.data:', response.data);
-    console.log('🔍 API DEBUG - response.data.data:', response.data.data);
     
     // Verificar diferentes estruturas possíveis da resposta
     if (response.data && response.data.data) {
-      console.log('🔍 API DEBUG - Estrutura: response.data.data');
       return response.data.data;
     } else if (response.data) {
-      console.log('🔍 API DEBUG - Estrutura: response.data.data');
       return response.data.data;
     } else {
-      console.error('❌ API DEBUG - Estrutura inesperada:', response.data);
+      logger.error('Estrutura de resposta inesperada ao criar ticket', { responseData: response.data }, 'API');
       throw new Error('Estrutura de resposta inesperada do servidor');
     }
   }
@@ -940,12 +935,6 @@ class ApiService {
 
   async exportReportExecution(executionId: number, format: string): Promise<Blob> {
     logger.info('Iniciando exportação via API', { executionId, format }, 'API');
-    
-    const token = localStorage.getItem('token');
-    logger.debug('Token disponível para exportação', { 
-      hasToken: !!token, 
-      tokenPrefix: token ? token.substring(0, 20) + '...' : 'N/A' 
-    }, 'API');
     
     const response = await this.api.get(`/reports/executions/${executionId}/export?format=${format}`, {
       responseType: 'blob'

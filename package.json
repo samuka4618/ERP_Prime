@@ -21,6 +21,7 @@
     "install:all": "npm install && cd frontend && npm install && cd ../web-next && npm install",
     "optimize": "ts-node src/database/optimize.ts",
     "test": "jest",
+    "check:logs": "node scripts/check-no-console.js",
     "migrate": "ts-node src/database/migrate.ts",
     "migrate:cnpj-status": "ts-node src/database/run-cnpj-status-migration.ts",
     "migrate:user-profile": "ts-node src/core/database/run-user-profile-migration.ts",

@@ -155,8 +155,7 @@ const HistoricoDescarregamento: React.FC = () => {
     const loadFornecedores = async () => {
       try {
         const res = await fetch(apiUrl('descarregamento/fornecedores?page=1&limit=500'), {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          credentials: 'include'
         });
         if (!res.ok) return;
         const json = await res.json();
@@ -184,8 +183,7 @@ const HistoricoDescarregamento: React.FC = () => {
       if (yardFilter === 'no') params.set('is_in_yard', 'false');
 
       const res = await fetch(apiUrl(`descarregamento/form-responses?${params}`), {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Falha ao carregar chegadas');
       const json = await res.json();
@@ -213,8 +211,7 @@ const HistoricoDescarregamento: React.FC = () => {
       if (agStatus !== 'all') params.set('status', agStatus);
 
       const res = await fetch(apiUrl(`descarregamento/agendamentos?${params}`), {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Falha ao carregar agendamentos');
       const json = await res.json();
@@ -242,8 +239,7 @@ const HistoricoDescarregamento: React.FC = () => {
     setHistoryLoading(true);
     try {
       const res = await fetch(apiUrl(`descarregamento/agendamentos/${row.agendamento_id}/status-history`), {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (res.ok) {
         const json = await res.json();

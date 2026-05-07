@@ -96,8 +96,7 @@ const OrcamentoDetail: React.FC = () => {
     try {
       setLoading(true);
       const res = await fetch(apiUrl(`orcamentos/${id}`), {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Orçamento não encontrado');
       const data = await res.json();
@@ -112,8 +111,7 @@ const OrcamentoDetail: React.FC = () => {
   const fetchAnexos = async () => {
     try {
       const res = await fetch(apiUrl(`compras-anexos/orcamento/${id}`), {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (res.ok) {
         const data = await res.json();
@@ -141,7 +139,6 @@ const OrcamentoDetail: React.FC = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(body)
       });
@@ -162,8 +159,7 @@ const OrcamentoDetail: React.FC = () => {
     try {
       const res = await fetch(apiUrl(`orcamentos/${id}/confirmar-entrega-solicitante`), {
         method: 'POST',
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Não autorizado');
       toast.success('Entrega confirmada pelo solicitante');
@@ -177,8 +173,7 @@ const OrcamentoDetail: React.FC = () => {
     try {
       const res = await fetch(apiUrl(`orcamentos/${id}/confirmar-entrega-comprador`), {
         method: 'POST',
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Não autorizado');
       toast.success('Entrega confirmada pelo comprador');
@@ -201,7 +196,6 @@ const OrcamentoDetail: React.FC = () => {
       const res = await fetch(apiUrl('compras-anexos/upload'), {
         method: 'POST',
         credentials: 'include',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: form
       });
       if (!res.ok) throw new Error('Falha no upload');
@@ -217,8 +211,7 @@ const OrcamentoDetail: React.FC = () => {
   const handleDownload = async (anexoId: number, nomeOriginal: string) => {
     try {
       const res = await fetch(apiUrl(`compras-anexos/${anexoId}/download`), {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (!res.ok) throw new Error('Falha no download');
       const blob = await res.blob();

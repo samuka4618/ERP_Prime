@@ -83,6 +83,12 @@ class SqlServerConnection {
       ]);
       
       console.log('✅ Conectado ao banco de dados SQL Server');
+      if (process.env.NODE_ENV === 'production' && sqlConfig.options?.trustServerCertificate === true) {
+        console.warn(
+          '[Segurança] DB_TRUST_CERT=true em produção: risco MITM na ligação ao SQL Server. ' +
+            'Use certificado TLS válido no servidor e defina DB_TRUST_CERT=false quando possível.'
+        );
+      }
     } catch (error: any) {
       console.error('❌ Erro ao conectar ao banco de dados SQL Server');
       console.error(`   Mensagem: ${error.message || error}`);

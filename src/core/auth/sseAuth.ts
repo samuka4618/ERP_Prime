@@ -22,8 +22,14 @@ export const sseAuthenticate = async (req: Request, res: Response, next: NextFun
   try {
     logger.debug('Iniciando autenticação SSE', { requestId, ip: req.ip, userAgent: req.get('User-Agent') }, 'SSE_AUTH');
     
-    // Para SSE, o token vem via query parameter
-    const token = req.query.token as string;
+    // SSE: token no cookie httpOnly (EventSource same-origin), Authorization: Bearer, ou ?token= (legado)
+    let token =
+      (req as any).cookies?.token ||
+      req.header('Authorization')?.replace(/^Bearer\s+/i, '')?.trim() ||
+      (typeof req.query.token === 'string' ? req.query.token : '');
+    if (token && (token === 'cookie' || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token))) {
+      token = '';
+    }
 
     if (!token) {
       logger.warn('Tentativa de acesso SSE sem token', { requestId, ip: req.ip }, 'SSE_AUTH');

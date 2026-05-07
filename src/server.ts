@@ -25,6 +25,7 @@ import { initializeWebSocket } from './modules/chamados/services/WebSocketServic
 import { ReportController } from './modules/chamados/controllers/ReportController';
 import { BackupAutomationService } from './core/backup/BackupAutomationService';
 import { requestContextMiddleware } from './shared/middleware/requestContext';
+import { mountSecureStorage } from './shared/middleware/secureStorage';
 
 const app = express();
 
@@ -72,11 +73,28 @@ app.use((req, res, next) => {
 
 // Middleware de segurança (em produção com HTTPS, HSTS pode ser reativado via DISABLE_HSTS=0)
 const disableHsts = process.env.DISABLE_HSTS === 'true' || config.nodeEnv !== 'production';
+const cspReportOnly = process.env.CSP_REPORT_ONLY === 'true' || process.env.CSP_REPORT_ONLY === '1';
+const helmetCsp = cspReportOnly
+  ? {
+      reportOnly: true as const,
+      directives: {
+        'default-src': ["'self'"],
+        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", 'data:', 'blob:'],
+        'connect-src': ["'self'", 'ws:', 'wss:'],
+        'font-src': ["'self'", 'data:'],
+        'base-uri': ["'self'"],
+        'form-action': ["'self'"]
+      }
+    }
+  : false;
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: false,
   strictTransportSecurity: disableHsts ? false : { maxAge: 31536000, includeSubDomains: true },
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: helmetCsp,
   originAgentCluster: false
 }));
 
@@ -92,21 +110,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configuração de CORS: em produção usar ALLOWED_ORIGINS (ex: https://meudominio.com), em dev permitir todas
+// CORS: em produção ALLOWED_ORIGINS é obrigatório (validação em config/database.ts)
 const allowedOriginsList = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((o: string) => o.trim()).filter(Boolean)
   : [];
 const hasVercelOrigin = allowedOriginsList.some((o: string) => o.includes('vercel.app'));
 
-const corsOrigin = config.nodeEnv === 'production' && allowedOriginsList.length > 0
-  ? (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      if (!origin) return callback(null, true);
-      if (allowedOriginsList.includes(origin)) return callback(null, true);
-      // Permite qualquer subdomínio/preview da Vercel quando há pelo menos uma URL vercel.app em ALLOWED_ORIGINS
-      if (hasVercelOrigin && origin.endsWith('.vercel.app')) return callback(null, true);
-      callback(null, false);
-    }
-  : true;
+const corsOrigin =
+  config.nodeEnv === 'production'
+    ? (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        if (!origin) return callback(null, true);
+        if (allowedOriginsList.includes(origin)) return callback(null, true);
+        if (hasVercelOrigin && origin.endsWith('.vercel.app')) return callback(null, true);
+        callback(null, false);
+      }
+    : true;
 
 app.use(cors({
   origin: corsOrigin,
@@ -124,14 +142,7 @@ if (config.nodeEnv !== 'production') {
   });
 }
 
-// Middleware para tratar requisições OPTIONS (preflight)
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
+// Preflight OPTIONS: delegado ao pacote cors (evita refletir qualquer Origin)
 
 // Middleware de compressão
 app.use(compression());
@@ -332,16 +343,8 @@ logger.success('Todas as rotas registradas', undefined, 'BOOT');
 app.use('/api', apiRouter);
 logger.success('Router da API aplicado em /api', undefined, 'BOOT');
 
-// IMPORTANTE: Servir arquivos estáticos ANTES da rota catch-all
-// Servir imagens de cadastros de clientes
-app.use('/storage/images', express.static(path.join(process.cwd(), 'storage/images')));
-// Servir arquivos de uploads
-app.use('/storage/uploads', express.static(path.join(process.cwd(), 'storage/uploads')));
-// Servir avatares de usuários
-app.use('/storage/avatars', express.static(path.join(process.cwd(), 'storage/avatars')));
-// Compatibilidade com rotas antigas (redirecionar)
-app.use('/imgCadastros', express.static(path.join(process.cwd(), 'storage/images')));
-app.use('/uploads', express.static(path.join(process.cwd(), 'storage/uploads')));
+// Ficheiros sensíveis em storage: autenticação + autorização (ver secureStorage.ts)
+mountSecureStorage(app);
 
 // Rota de documentação básica
 app.get('/api', (req, res) => {

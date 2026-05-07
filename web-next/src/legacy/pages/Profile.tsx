@@ -132,7 +132,6 @@ const Profile: React.FC = () => {
       const response = await axios.post(`${baseURL}/users/${user.id}/avatar`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
       });
 

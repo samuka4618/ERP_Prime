@@ -80,8 +80,7 @@ const GradeDescarregamento: React.FC = () => {
       try {
         setLoadingDocas(true);
         const response = await fetch(apiUrl('descarregamento/docas?activeOnly=true'), {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          credentials: 'include'
         });
         if (!response.ok) return;
         const data = await response.json();
@@ -192,10 +191,7 @@ const GradeDescarregamento: React.FC = () => {
       });
 
       const response = await fetch(apiUrl(`descarregamento/agendamentos?${params}`), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao carregar agendamentos');
@@ -211,10 +207,7 @@ const GradeDescarregamento: React.FC = () => {
   const fetchMotoristas = async () => {
     try {
       const response = await fetch(apiUrl('descarregamento/form-responses/patio'), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao carregar motoristas');
@@ -324,7 +317,6 @@ const GradeDescarregamento: React.FC = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ dock: dockNumero })
       });
@@ -349,8 +341,7 @@ const GradeDescarregamento: React.FC = () => {
     try {
       const res = await fetch(apiUrl(`descarregamento/form-responses/${m.id}/checkout`), {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (!res.ok) {
         const err = await res.json();

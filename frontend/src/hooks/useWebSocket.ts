@@ -58,70 +58,39 @@ export const useWebSocket = ({
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.error('❌ Token não encontrado no localStorage');
-        setError('Token não encontrado');
-        isConnectingRef.current = false;
-        return;
-      }
-
-      // Verificar se o token não expirou
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const now = Math.floor(Date.now() / 1000);
-        if (payload.exp && payload.exp < now) {
-          console.error('❌ Token JWT expirado');
-          setError('Token expirado');
-          isConnectingRef.current = false;
-          return;
-        }
-        console.log('🔌 Token JWT válido, expira em:', new Date(payload.exp * 1000));
-      } catch (error) {
-        console.error('❌ Erro ao verificar token JWT:', error);
-        setError('Token inválido');
-        isConnectingRef.current = false;
-        return;
-      }
-
-      // Fechar conexão anterior se existir
+      // JWT: cookie httpOnly — o browser envia no handshake WS no mesmo site.
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
 
-      // Obter URL do WebSocket (usa VITE_API_URL quando definido; senão ws://hostname:port)
       const serverOrigin = getApiOriginUrl();
       const healthUrl = `${serverOrigin}/health`;
-      console.log('🔌 Verificando conectividade com o servidor...');
       try {
         const response = await fetch(healthUrl, {
           method: 'GET',
           mode: 'cors',
+          credentials: 'include',
           cache: 'no-cache'
         });
-        console.log('🔌 Servidor respondeu:', response.status, response.statusText);
-      } catch (error) {
-        console.error('❌ Erro ao verificar conectividade:', error);
+        if (!response.ok) {
+          setError('Servidor não acessível');
+          isConnectingRef.current = false;
+          return;
+        }
+      } catch {
         setError('Servidor não acessível');
         isConnectingRef.current = false;
         return;
       }
 
-      const wsUrl = `${getWsUrl()}/ws?token=${encodeURIComponent(token)}`;
-      console.log('🔌 ===== CONECTANDO AO WEBSOCKET =====');
-      console.log('🔌 URL completa:', wsUrl);
-      console.log('🔌 Token (primeiros 50 chars):', token.substring(0, 50) + '...');
-      console.log('🔌 Ticket ID:', ticketId);
-      console.log('🔌 Timestamp atual:', new Date().toISOString());
-      console.log('🔌 ====================================');
-      
-      logger.info('Conectando ao WebSocket', { 
-        url: wsUrl, 
-        ticketId,
-        tokenLength: token.length,
-        timestamp: new Date().toISOString()
-      }, 'REALTIME');
+      const wsUrl = `${getWsUrl()}/ws`;
+
+      logger.info(
+        'Conectando ao WebSocket (cookie httpOnly)',
+        { wsUrl, ticketId, timestamp: new Date().toISOString() },
+        'REALTIME'
+      );
 
       wsRef.current = new WebSocket(wsUrl);
       

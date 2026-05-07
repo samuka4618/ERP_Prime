@@ -20,6 +20,28 @@ if (nodeEnv === 'production' && (!jwtSecret || jwtSecret.length < 32)) {
   throw new Error('Em produção, JWT_SECRET é obrigatório e deve ter no mínimo 32 caracteres. Defina a variável de ambiente JWT_SECRET.');
 }
 
+const allowedOriginsRaw = process.env.ALLOWED_ORIGINS?.trim();
+if (nodeEnv === 'production' && !allowedOriginsRaw) {
+  throw new Error(
+    'Em produção, ALLOWED_ORIGINS é obrigatório: lista separada por vírgulas das origens do browser (ex.: https://erp.empresa.com,https://erp.empresa.com:8443).'
+  );
+}
+
+if (nodeEnv === 'production') {
+  const hmac = process.env.BACKUP_HMAC_KEY?.trim();
+  const enc = process.env.BACKUP_ENCRYPTION_KEY?.trim();
+  if (!hmac || hmac.length < 16) {
+    throw new Error(
+      'Em produção, BACKUP_HMAC_KEY é obrigatório (mínimo 16 caracteres) para assinatura de manifest de backup.'
+    );
+  }
+  if (!enc || enc.length < 16) {
+    throw new Error(
+      'Em produção, BACKUP_ENCRYPTION_KEY é obrigatório (mínimo 16 caracteres) para proteger snapshots de configuração em backup.'
+    );
+  }
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv,

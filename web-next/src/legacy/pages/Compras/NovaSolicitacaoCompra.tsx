@@ -126,13 +126,11 @@ const NovaSolicitacaoCompra: React.FC = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(apiUrl('solicitacoes-compra'), {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           ...formData,
@@ -161,10 +159,7 @@ const NovaSolicitacaoCompra: React.FC = () => {
         try {
           const approvalResponse = await fetch(apiUrl(`solicitacoes-compra/${solicitacaoId}/enviar-aprovacao`), {
             method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+            credentials: 'include'
           });
 
           if (approvalResponse.ok) {
@@ -207,7 +202,6 @@ const NovaSolicitacaoCompra: React.FC = () => {
   const fetchUsuarios = async () => {
     try {
       setLoadingUsers(true);
-      const token = localStorage.getItem('token');
       const allUsers: any[] = [];
       let page = 1;
       let hasMore = true;
@@ -216,10 +210,7 @@ const NovaSolicitacaoCompra: React.FC = () => {
       // Buscar todos os usuários fazendo múltiplas requisições paginadas
       while (hasMore) {
         const response = await fetch(apiUrl(`users?page=${page}&limit=${limit}`), {
-          credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include'
         });
 
         if (!response.ok) {

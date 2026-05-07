@@ -272,22 +272,8 @@ const Reports: React.FC = () => {
         alert('Sessão expirada. Faça login novamente.');
         return;
       }
-      
-      // Obter token de autenticação
-      const token = localStorage.getItem('token');
-      if (!token) {
-        logger.error('Token de autenticação não encontrado para download', {}, 'REPORTS');
-        alert('Sessão expirada. Faça login novamente.');
-        return;
-      }
-      
-      logger.debug('Dados de autenticação para download', { 
-        userId: user.id, 
-        hasToken: !!token,
-        tokenPrefix: token.substring(0, 20) + '...'
-      }, 'REPORTS');
-      
-      // Usar o método original com blob para manter autenticação
+
+      // Download via apiService (cookie httpOnly / withCredentials)
       const blob = await apiService.exportReportExecution(executionId, format);
       
       // Criar URL segura para download

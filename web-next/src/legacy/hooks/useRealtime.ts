@@ -49,21 +49,12 @@ export const useRealtime = (options: UseRealtimeOptions = {}) => {
       eventSourceRef.current.close();
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('Token de autenticação não encontrado');
-      isConnectingRef.current = false;
-      return;
-    }
-
     try {
       // Usar VITE_API_URL quando definido (deploy Vercel + Render); senão /api/realtime ou origem:port
       const origin = getApiOriginUrl();
       const baseURL = origin.startsWith('http') ? `${origin}/api/realtime` : '/api/realtime';
 
-      const url = ticketId 
-        ? `${baseURL}/ticket/${ticketId}?token=${encodeURIComponent(token)}`
-        : `${baseURL}/notifications?token=${encodeURIComponent(token)}`;
+      const url = ticketId ? `${baseURL}/ticket/${ticketId}` : `${baseURL}/notifications`;
 
       logger.info('Conectando ao SSE', { url, ticketId }, 'REALTIME');
 
@@ -193,9 +184,9 @@ export const useRealtime = (options: UseRealtimeOptions = {}) => {
 
       const response = await fetch(`${baseURL}/heartbeat`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ clientId: 'frontend' })
       });

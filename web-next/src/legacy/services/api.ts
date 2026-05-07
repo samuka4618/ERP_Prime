@@ -88,23 +88,12 @@ class ApiService {
       },
     });
 
-    // Interceptor: envia cookie httpOnly automaticamente (withCredentials).
-    // Se ainda existir token no localStorage (compatibilidade), envia também no header.
+    // Interceptor: cookie httpOnly via withCredentials apenas (sem Bearer a partir de localStorage).
     this.api.interceptors.request.use(
       (config) => {
         const startTime = Date.now();
         (config as any).startTime = startTime;
-        
-        const token = localStorage.getItem('token');
-        const isJwt = token && token !== 'cookie' && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token);
-        if (isJwt) {
-          config.headers.Authorization = `Bearer ${token}`;
-          logger.debug('Token adicionado ao request (header)', { 
-            url: config.url, 
-            method: config.method 
-          }, 'API');
-        }
-        
+
         logger.apiRequest(
           config.method?.toUpperCase() || 'UNKNOWN',
           config.url || 'UNKNOWN',

@@ -43,18 +43,15 @@ export const SystemConfigProvider: React.FC<{ children: ReactNode }> = ({ childr
       const publicConfig = await apiService.getPublicSystemConfig();
       setConfig(prev => ({ ...defaultConfig, ...prev, ...publicConfig }));
 
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const response = await apiService.get('/system/config');
-          const data = response.data as { message?: string; data?: SystemConfig };
-          const fullConfig = data?.data ?? data;
-          if (fullConfig) {
-            setConfig(prev => ({ ...defaultConfig, ...prev, ...fullConfig }));
-          }
-        } catch {
-          // Mantém a config pública já definida
+      try {
+        const response = await apiService.get('/system/config');
+        const data = response.data as { message?: string; data?: SystemConfig };
+        const fullConfig = data?.data ?? data;
+        if (fullConfig) {
+          setConfig(prev => ({ ...defaultConfig, ...prev, ...fullConfig }));
         }
+      } catch {
+        /* mantém config pública */
       }
     } catch (error) {
       console.error('Erro ao carregar configurações do sistema:', error);

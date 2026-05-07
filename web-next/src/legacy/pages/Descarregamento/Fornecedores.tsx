@@ -31,10 +31,7 @@ const Fornecedores: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const response = await fetch(apiUrl('descarregamento/fornecedores/categories'), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -57,10 +54,7 @@ const Fornecedores: React.FC = () => {
       });
 
       const response = await fetch(apiUrl(`descarregamento/fornecedores?${params}`), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao carregar fornecedores');
@@ -89,10 +83,7 @@ const Fornecedores: React.FC = () => {
     try {
       const response = await fetch(apiUrl(`descarregamento/fornecedores/${id}`), {
         method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao excluir fornecedor');

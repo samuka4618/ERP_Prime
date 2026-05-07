@@ -1,8 +1,51 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import { Server } from 'http';
+import type { IncomingMessage } from 'http';
 import jwt from 'jsonwebtoken';
 import { config } from '../../../config/database';
 import { logger } from '../../../shared/utils/logger';
+
+const JWT_RE = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+const ACCESS_COOKIE_NAME = 'token';
+const isProd = config.nodeEnv === 'production';
+
+function parseCookies(header: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!header) return out;
+  for (const part of header.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const k = part.slice(0, idx).trim();
+    const v = part.slice(idx + 1).trim();
+    out[k] = decodeURIComponent(v);
+  }
+  return out;
+}
+
+/** JWT do handshake: cookie httpOnly (preferido), Authorization: Bearer, ou ?token= (legado). */
+function extractWsJwt(request: IncomingMessage): string | null {
+  const auth = request.headers.authorization;
+  if (auth?.startsWith('Bearer ')) {
+    const t = auth.slice(7).trim();
+    if (JWT_RE.test(t)) return t;
+  }
+  const fromCookie = parseCookies(request.headers.cookie)[ACCESS_COOKIE_NAME];
+  if (fromCookie && JWT_RE.test(fromCookie)) return fromCookie;
+
+  try {
+    const url = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
+    const q = url.searchParams.get('token');
+    if (q && JWT_RE.test(q)) {
+      if (isProd) {
+        logger.warn('WebSocket: token na query string é legado; use cookie ou Authorization', {}, 'WEBSOCKET');
+      }
+      return q;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
 
 interface WebSocketClient {
   id: string;
@@ -26,60 +69,58 @@ class WebSocketService {
 
   constructor(server: Server) {
     try {
-      this.wss = new WebSocketServer({ 
+      this.wss = new WebSocketServer({
         server,
         path: '/ws',
         perMessageDeflate: false
       });
 
-      console.log('🔌 WebSocket Server inicializado');
+      if (!isProd) logger.info('WebSocket Server inicializado', undefined, 'WEBSOCKET');
       this.setupWebSocketServer();
       this.startHeartbeat();
     } catch (error) {
-      console.error('❌ Erro ao inicializar WebSocket Server:', error);
+      logger.error('Erro ao inicializar WebSocket Server', error, 'WEBSOCKET');
     }
   }
 
   private setupWebSocketServer() {
     if (!this.wss) return;
     this.wss.on('connection', (ws: WebSocket, request) => {
-      console.log('🔌 WebSocket: Nova conexão recebida');
-      console.log('🔌 WebSocket: URL:', request.url);
-      console.log('🔌 WebSocket: Headers:', request.headers);
-      
-      // Extrair token da URL
-      const url = new URL(request.url || '', `http://${request.headers.host}`);
-      const token = url.searchParams.get('token');
-      
-      console.log('🔌 WebSocket: Token extraído:', token ? 'Presente' : 'Ausente');
-      
+      if (!isProd) {
+        logger.debug('WebSocket: nova conexão', { url: request.url }, 'WEBSOCKET');
+      }
+
+      const token = extractWsJwt(request);
       if (!token) {
-        console.log('❌ WebSocket: Token não fornecido');
+        logger.warn('WebSocket: token ausente (cookie, Authorization ou query legada)', {}, 'WEBSOCKET');
         ws.close(1008, 'Token não fornecido');
         return;
       }
 
       try {
-        console.log('🔌 WebSocket: Verificando token JWT...');
-        const decoded = jwt.verify(token, config.jwt.secret) as any;
-        console.log('🔌 WebSocket: Token válido para usuário', decoded.userId);
-        console.log('🔌 WebSocket: Payload do token:', decoded);
-        console.log('🔌 WebSocket: Token expira em:', new Date(decoded.exp * 1000));
-        
-        const clientId = `${decoded.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
+        const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload & { userId?: number };
+        const userId = typeof decoded.userId === 'number' ? decoded.userId : undefined;
+        if (userId == null) {
+          ws.close(1008, 'Token inválido');
+          return;
+        }
+
+        if (!isProd) {
+          logger.debug('WebSocket: JWT válido', { userId }, 'WEBSOCKET');
+        }
+
+        const clientId = `${userId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
         const client: WebSocketClient = {
           id: clientId,
-          userId: decoded.userId,
+          userId,
           ticketId: undefined,
           ws,
           lastHeartbeat: Date.now()
         };
 
         this.clients.set(clientId, client);
-        console.log(`🔌 WebSocket: Cliente conectado ${clientId} (total: ${this.clients.size})`);
 
-        // Enviar mensagem de conexão
         this.sendToClient(clientId, {
           type: 'connection',
           data: { message: 'Conectado ao sistema de tempo real' },
@@ -90,37 +131,21 @@ class WebSocketService {
           try {
             const message = JSON.parse(data.toString());
             this.handleMessage(clientId, message);
-          } catch (error) {
-            console.log('❌ WebSocket: Erro ao processar mensagem', error);
+          } catch (_error) {
+            if (!isProd) logger.debug('WebSocket: mensagem inválida', {}, 'WEBSOCKET');
           }
         });
 
         ws.on('close', () => {
-          console.log(`🔌 WebSocket: Cliente desconectado ${clientId}`);
           this.clients.delete(clientId);
         });
 
         ws.on('error', (error) => {
-          console.log(`❌ ===== ERRO NO CLIENTE WEBSOCKET =====`);
-          console.log(`❌ Cliente ID: ${clientId}`);
-          console.log(`❌ Usuário ID: ${decoded.userId}`);
-          console.log(`❌ Erro:`, error);
-          console.log(`❌ ReadyState:`, ws.readyState);
-          console.log(`❌ URL:`, request.url);
-          console.log(`❌ Headers:`, request.headers);
-          console.log(`❌ ======================================`);
+          logger.warn('Erro no cliente WebSocket', { clientId, err: (error as Error).message }, 'WEBSOCKET');
           this.clients.delete(clientId);
         });
-
       } catch (error) {
-        console.log('❌ ===== ERRO DE TOKEN JWT =====');
-        console.log('❌ Erro:', error);
-        console.log('❌ Token recebido:', token ? 'Presente' : 'Ausente');
-        console.log('❌ Tipo do erro:', (error as any).name);
-        console.log('❌ Mensagem do erro:', (error as any).message);
-        console.log('❌ URL:', request.url);
-        console.log('❌ Headers:', request.headers);
-        console.log('❌ ==============================');
+        logger.warn('WebSocket: JWT inválido', { err: (error as Error).message }, 'WEBSOCKET');
         ws.close(1008, 'Token inválido');
       }
     });
@@ -136,17 +161,17 @@ class WebSocketService {
         break;
       case 'subscribe_ticket':
         client.ticketId = message.ticketId;
-        console.log(`🔌 WebSocket: Cliente ${clientId} inscrito no ticket ${message.ticketId}`);
+        if (!isProd) logger.debug('WebSocket: inscrito no ticket', { clientId, ticketId: message.ticketId }, 'WEBSOCKET');
         break;
       default:
-        console.log(`🔌 WebSocket: Tipo de mensagem desconhecido: ${message.type}`);
+        if (!isProd) logger.debug('WebSocket: tipo desconhecido', { type: message.type }, 'WEBSOCKET');
     }
   }
 
   private sendToClient(clientId: string, message: WebSocketMessage) {
     const client = this.clients.get(clientId);
     if (!client) {
-      console.log(`🔌 WebSocket: Cliente ${clientId} não encontrado`);
+      if (!isProd) logger.debug('WebSocket: cliente não encontrado', { clientId }, 'WEBSOCKET');
       return;
     }
 
@@ -157,17 +182,15 @@ class WebSocketService {
         this.clients.delete(clientId);
       }
     } catch (error) {
-      console.log(`❌ WebSocket: Erro ao enviar para ${clientId}`, error);
+      logger.warn('WebSocket: erro ao enviar', { clientId, err: (error as Error).message }, 'WEBSOCKET');
       this.clients.delete(clientId);
     }
   }
 
   public sendMessageToTicket(ticketId: number, message: any, excludeUserId?: number) {
-    console.log(`🔌 WebSocket: Enviando mensagem para ticket ${ticketId}`, {
-      ticketId,
-      totalClients: this.clients.size,
-      excludeUserId
-    });
+    if (!isProd) {
+      logger.debug('WebSocket: enviar mensagem ticket', { ticketId, totalClients: this.clients.size, excludeUserId }, 'WEBSOCKET');
+    }
 
     let sentCount = 0;
     for (const [clientId, client] of this.clients) {
@@ -183,20 +206,15 @@ class WebSocketService {
       }
     }
 
-    console.log(`🔌 WebSocket: Mensagem enviada para ticket ${ticketId}`, {
-      ticketId,
-      sentCount,
-      excludeUserId,
-      totalClients: this.clients.size
-    });
+    if (!isProd) {
+      logger.debug('WebSocket: mensagem enviada ticket', { ticketId, sentCount, excludeUserId }, 'WEBSOCKET');
+    }
   }
 
   public sendTicketUpdate(ticketId: number, update: any, excludeUserId?: number) {
-    console.log(`🔌 WebSocket: Enviando atualização para ticket ${ticketId}`, {
-      ticketId,
-      totalClients: this.clients.size,
-      excludeUserId
-    });
+    if (!isProd) {
+      logger.debug('WebSocket: enviar atualização ticket', { ticketId, totalClients: this.clients.size, excludeUserId }, 'WEBSOCKET');
+    }
 
     let sentCount = 0;
     for (const [clientId, client] of this.clients) {
@@ -211,19 +229,15 @@ class WebSocketService {
       }
     }
 
-    console.log(`🔌 WebSocket: Atualização enviada para ticket ${ticketId}`, {
-      ticketId,
-      sentCount,
-      excludeUserId,
-      totalClients: this.clients.size
-    });
+    if (!isProd) {
+      logger.debug('WebSocket: atualização enviada ticket', { ticketId, sentCount, excludeUserId }, 'WEBSOCKET');
+    }
   }
 
   public sendNotificationToUser(userId: number, notification: any) {
-    console.log(`🔌 WebSocket: Enviando notificação para usuário ${userId}`, {
-      userId,
-      totalClients: this.clients.size
-    });
+    if (!isProd) {
+      logger.debug('WebSocket: enviar notificação', { userId, totalClients: this.clients.size }, 'WEBSOCKET');
+    }
 
     let sentCount = 0;
     for (const [clientId, client] of this.clients) {
@@ -237,11 +251,9 @@ class WebSocketService {
       }
     }
 
-    console.log(`🔌 WebSocket: Notificação enviada para usuário ${userId}`, {
-      userId,
-      sentCount,
-      totalClients: this.clients.size
-    });
+    if (!isProd) {
+      logger.debug('WebSocket: notificação enviada', { userId, sentCount }, 'WEBSOCKET');
+    }
   }
 
   private startHeartbeat() {
@@ -251,7 +263,7 @@ class WebSocketService {
 
       for (const [clientId, client] of this.clients) {
         if (now - client.lastHeartbeat > timeout) {
-          console.log(`🔌 WebSocket: Cliente ${clientId} inativo, removendo`);
+          if (!isProd) logger.debug('WebSocket: cliente inativo', { clientId }, 'WEBSOCKET');
           client.ws.close();
           this.clients.delete(clientId);
         }

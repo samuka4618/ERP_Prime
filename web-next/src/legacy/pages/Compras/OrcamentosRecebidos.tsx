@@ -41,10 +41,7 @@ const OrcamentosRecebidos: React.FC = () => {
       });
 
       const response = await fetch(apiUrl(`orcamentos?${params}`), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao carregar orçamentos');

@@ -42,10 +42,7 @@ const MinhasSolicitacoesComprador: React.FC = () => {
       });
 
       const response = await fetch(apiUrl(`solicitacoes-compra/minhas?${params}`), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao carregar solicitações');

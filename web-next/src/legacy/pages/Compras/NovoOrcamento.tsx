@@ -57,10 +57,8 @@ const NovoOrcamento: React.FC = () => {
   const fetchSolicitacao = async () => {
     try {
       setLoadingSolicitacao(true);
-      const token = localStorage.getItem('token');
       const response = await fetch(apiUrl(`solicitacoes-compra/${solicitacaoId}`), {
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -155,13 +153,11 @@ const NovoOrcamento: React.FC = () => {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const response = await fetch(apiUrl('orcamentos'), {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           solicitacao_id: parseInt(solicitacaoId!),
@@ -198,9 +194,6 @@ const NovoOrcamento: React.FC = () => {
         const uploadResponse = await fetch(apiUrl('compras-anexos/upload'), {
           method: 'POST',
           credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
           body: formDataUpload
         });
 

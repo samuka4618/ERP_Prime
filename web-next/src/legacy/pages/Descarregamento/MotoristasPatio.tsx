@@ -43,8 +43,7 @@ const MotoristasPatio: React.FC = () => {
       try {
         setLoadingDocas(true);
         const response = await fetch(apiUrl('descarregamento/docas?activeOnly=true'), {
-          credentials: 'include',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          credentials: 'include'
         });
         if (!response.ok) return;
         const data = await response.json();
@@ -72,10 +71,7 @@ const MotoristasPatio: React.FC = () => {
     try {
       setLoading(true);
       const response = await fetch(apiUrl('descarregamento/form-responses/patio'), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao carregar motoristas');
@@ -104,7 +100,6 @@ const MotoristasPatio: React.FC = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ dock: dockNumero })
       });
@@ -129,8 +124,7 @@ const MotoristasPatio: React.FC = () => {
     try {
       const res = await fetch(apiUrl(`descarregamento/form-responses/${motoristaId}/checkout`), {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (!res.ok) {
         const err = await res.json();

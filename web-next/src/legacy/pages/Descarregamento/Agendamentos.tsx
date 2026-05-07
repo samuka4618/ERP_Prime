@@ -40,8 +40,7 @@ const Agendamentos: React.FC = () => {
     try {
       const res = await fetch(apiUrl(`descarregamento/agendamentos/${id}`), {
         method: 'DELETE',
-        credentials: 'include',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        credentials: 'include'
       });
       if (!res.ok) {
         const err = await res.json();
@@ -72,10 +71,7 @@ const Agendamentos: React.FC = () => {
       }
 
       const response = await fetch(apiUrl(`descarregamento/agendamentos?${params}`), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao carregar agendamentos');

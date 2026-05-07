@@ -42,12 +42,8 @@ const ComprasConfig: React.FC = () => {
   const fetchCompradores = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const response = await fetch(apiUrl('compradores'), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -67,7 +63,6 @@ const ComprasConfig: React.FC = () => {
   const fetchUsuarios = async () => {
     try {
       setLoadingUsuarios(true);
-      const token = localStorage.getItem('token');
       const allUsers: Usuario[] = [];
       let page = 1;
       let hasMore = true;
@@ -76,10 +71,7 @@ const ComprasConfig: React.FC = () => {
       // Buscar todos os usuários fazendo múltiplas requisições paginadas
       while (hasMore) {
         const response = await fetch(apiUrl(`users?page=${page}&limit=${limit}`), {
-          credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include'
         });
 
         if (!response.ok) {
@@ -119,13 +111,11 @@ const ComprasConfig: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(apiUrl('compradores'), {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           user_id: usuarioSelecionado
@@ -148,13 +138,11 @@ const ComprasConfig: React.FC = () => {
 
   const handleToggleStatus = async (compradorId: number, currentStatus: boolean) => {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(apiUrl(`compradores/${compradorId}`), {
         method: 'PUT',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           is_active: !currentStatus
@@ -179,13 +167,9 @@ const ComprasConfig: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(apiUrl(`compradores/${compradorId}`), {
         method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) {

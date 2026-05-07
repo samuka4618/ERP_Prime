@@ -39,10 +39,7 @@ const NovoAgendamento: React.FC = () => {
     try {
       setLoadingFornecedores(true);
       const response = await fetch(apiUrl('descarregamento/fornecedores?limit=1000'), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -73,10 +70,7 @@ const NovoAgendamento: React.FC = () => {
     try {
       setLoadingData(true);
       const response = await fetch(apiUrl(`descarregamento/agendamentos/${agendamentoId}`), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao carregar agendamento');
@@ -132,7 +126,6 @@ const NovoAgendamento: React.FC = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(body)
       });

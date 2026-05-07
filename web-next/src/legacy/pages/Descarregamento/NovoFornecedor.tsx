@@ -29,10 +29,7 @@ const NovoFornecedor: React.FC = () => {
     try {
       setLoadingData(true);
       const response = await fetch(apiUrl(`descarregamento/fornecedores/${fornecedorId}`), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao carregar fornecedor');
@@ -77,7 +74,6 @@ const NovoFornecedor: React.FC = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           name: formData.name,

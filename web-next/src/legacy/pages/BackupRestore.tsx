@@ -54,12 +54,9 @@ const BackupRestore: React.FC = () => {
   const canRestore = hasPermission('system.backup.restore') || user?.role === 'admin';
   const canAccessPage = canCreate || canRestore;
 
-  const getAuthHeaders = (): Record<string, string> => {
-    const token = localStorage.getItem('token');
-    const headers: Record<string, string> = {};
-    if (token && token !== 'cookie') headers.Authorization = `Bearer ${token}`;
-    return headers;
-  };
+  const getAuthHeaders = (): Record<string, string> => ({
+    /* sessão via cookie httpOnly; não enviar Bearer a partir de localStorage */
+  });
 
   const formatDateTime = (value?: string | null): string => {
     if (!value) return '-';

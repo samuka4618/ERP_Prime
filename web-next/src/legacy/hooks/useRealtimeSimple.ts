@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { logger } from '../utils/logger';
+import { getApiOriginUrl } from '../utils/apiUrl';
 
 interface RealtimeEvent {
   type: 'message' | 'ticket_update' | 'notification' | 'heartbeat' | 'connection';
@@ -40,20 +41,16 @@ export const useRealtimeSimple = ({
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('Token não encontrado');
-        isConnectingRef.current = false;
-        return;
-      }
-
       // Fechar conexão anterior se existir
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
 
-      const url = `http://192.168.14.143:3000/api/realtime/ticket/${ticketId}?token=${encodeURIComponent(token)}`;
+      const origin = getApiOriginUrl();
+      const baseURL = origin.startsWith('http') ? `${origin}/api/realtime` : '/api/realtime';
+      const url = `${baseURL}/ticket/${ticketId}`;
+
       console.log('🔔 Conectando ao SSE:', url);
       logger.info('Conectando ao SSE', { url, ticketId }, 'REALTIME');
 

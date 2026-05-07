@@ -194,7 +194,6 @@ const SystemSettings: React.FC = () => {
       const response = await axios.post(`${baseURL}/system/logo`, formData, {
         headers: {
           // NÃO definir Content-Type manualmente - o axios/browser define automaticamente com o boundary correto
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
       });
 

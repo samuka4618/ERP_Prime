@@ -141,7 +141,6 @@ const DescarregamentoConfig: React.FC = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(docaForm)
       });
@@ -165,10 +164,7 @@ const DescarregamentoConfig: React.FC = () => {
     try {
       const response = await fetch(apiUrl(`descarregamento/docas/${id}`), {
         method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao excluir doca');
@@ -241,7 +237,6 @@ const DescarregamentoConfig: React.FC = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(formularioForm)
       });
@@ -289,10 +284,7 @@ const DescarregamentoConfig: React.FC = () => {
     try {
       const response = await fetch(apiUrl(`descarregamento/formularios/${id}`), {
         method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao excluir formulário');
@@ -311,10 +303,7 @@ const DescarregamentoConfig: React.FC = () => {
   const regenerateLink = async (formularioId: number) => {
     try {
       const response = await fetch(apiUrl(`descarregamento/formularios/${formularioId}/regenerate-link`), {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -428,7 +417,6 @@ const DescarregamentoConfig: React.FC = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify(smsTemplateForm)
       });
@@ -470,10 +458,7 @@ const DescarregamentoConfig: React.FC = () => {
     try {
       const response = await fetch(apiUrl(`descarregamento/sms-templates/${id}`), {
         method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
 
       if (!response.ok) throw new Error('Erro ao excluir template SMS');
@@ -512,7 +497,6 @@ const DescarregamentoConfig: React.FC = () => {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           template_id: testingTemplate.id,

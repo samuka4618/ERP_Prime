@@ -5,7 +5,6 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { apiUrl } from '../../utils/apiUrl';
-import { localTodayYmd } from '../../utils/dateUtils';
 
 interface Agendamento {
   id: number;
@@ -58,27 +57,19 @@ const Agendamentos: React.FC = () => {
   const fetchAgendamentos = async () => {
     try {
       setLoading(true);
-      const today = new Date();
 
-      // Se não houver filtro de data, buscar próximos 30 dias (datas no fuso local, não UTC)
-      let startDate = dateFilter;
-      let endDate = dateFilter;
-
-      if (!dateFilter) {
-        startDate = localTodayYmd();
-        const futureDate = new Date(today);
-        futureDate.setDate(futureDate.getDate() + 30);
-        endDate = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`;
-      }
-      
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '50',
-        start_date: startDate,
-        end_date: endDate,
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(searchTerm && { search: searchTerm })
       });
+
+      // Sem data escolhida: não envia intervalo — a API retorna todos os agendamentos (com paginação)
+      if (dateFilter) {
+        params.set('start_date', dateFilter);
+        params.set('end_date', dateFilter);
+      }
 
       const response = await fetch(apiUrl(`descarregamento/agendamentos?${params}`), {
         credentials: 'include',
@@ -269,7 +260,7 @@ const Agendamentos: React.FC = () => {
             </div>
             {!dateFilter && (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Mostrando próximos 30 dias
+                Sem filtro de data: todos os agendamentos
               </p>
             )}
           </div>

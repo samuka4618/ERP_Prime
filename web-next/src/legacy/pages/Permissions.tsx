@@ -313,16 +313,10 @@ const PermissionsPage: React.FC = () => {
                 const uiGranted = Boolean(perm.granted);
                 const defaultGrantedBool = Boolean(defaultGranted);
                 
-                // Determinar o estado atual efetivo no backend
-                // Se há permissão individual, usar ela; senão, usar o padrão do role
-                let backendGranted: boolean;
-                if (currentPerm && currentPerm.source === 'user') {
-                  // Há permissão individual explícita
-                  backendGranted = Boolean(currentPerm.granted);
-                } else {
-                  // Não há permissão individual, usar o padrão do role
-                  backendGranted = defaultGrantedBool;
-                }
+                // Estado efectivo no backend (igual a hasPermission: perfil → utilizador → role → default)
+                const backendGranted = currentPerm !== undefined
+                  ? Boolean(currentPerm.granted)
+                  : defaultGrantedBool;
                 
                 // Log especial para permissão 24
                 if (perm.id === 24) {

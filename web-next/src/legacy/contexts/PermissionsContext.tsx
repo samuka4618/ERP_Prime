@@ -120,8 +120,7 @@ export const PermissionsProvider: React.FC<PermissionsProviderProps> = ({ childr
       return false;
     }
     
-    // IMPORTANTE: Verificar permissões individuais primeiro
-    // Se há uma permissão individual (source === 'user'), ela prevalece sobre o role
+    // A lista `permissions` já reflecte a resolução no servidor (perfil → utilizador → role → default).
     const result = permission.granted === true;
     
     // Log especial para permissão 24

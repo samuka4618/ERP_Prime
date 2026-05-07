@@ -33,6 +33,18 @@ export interface PermissionWithStatus extends Permission {
   source: 'role' | 'user' | 'profile' | 'default';
 }
 
+/**
+ * Resolução de permissões (API e middleware): para cada código, aplica-se a **primeira**
+ * regra que exista, por esta ordem:
+ *
+ * 1. **Perfil(is) de acesso** — `user_access_profiles` + `profile_permissions` (perfil ativo).
+ *    Com vários perfis, para a mesma permissão qualquer `granted = true` vence no agregado.
+ * 2. **Excepção por utilizador** — `user_permissions`.
+ * 3. **Matriz por role** — `role_permissions`.
+ * 4. **Fallback** — role `admin`: permitir se nada acima definiu; outros roles: negar.
+ *
+ * `findByUser` segue a mesma ordem para que o campo `source` e `granted` coincidam com `hasPermission`.
+ */
 export class PermissionModel {
   private static normalizePermissionCode(code: string): string {
     return PERMISSION_ALIAS[code] || code;
@@ -156,8 +168,8 @@ export class PermissionModel {
   }
 
   /**
-   * Buscar permissões de um usuário (incluindo role e permissões individuais)
-   * Para admins: retorna TODAS as permissões do sistema, não apenas as do role
+   * Lista todas as permissões do sistema com o valor **efectivo** e `source`
+   * (mesma regra que {@link PermissionModel.hasPermission}).
    */
   static async findByUser(userId: number, userRole: string): Promise<PermissionWithStatus[]> {
     // Buscar TODAS as permissões do sistema
@@ -177,56 +189,33 @@ export class PermissionModel {
       rolePermsMap.set(rp.permission_id, PermissionModel.normalizeDbBoolean(rp.granted));
     });
 
-    // Buscar permissões individuais do usuário (sobrescrevem as do role)
+    // Excepções por utilizador (após perfil — ver ordem em hasPermission)
     const userPermissions = await dbAll(
       `SELECT permission_id, granted FROM user_permissions WHERE user_id = ?`,
       [userId]
     ) as any[];
 
-    // Criar mapa de permissões individuais do usuário
     const userPermsMap = new Map<number, boolean>();
     userPermissions.forEach(up => {
-      // Converter para boolean explicitamente
       const granted = PermissionModel.normalizeDbBoolean(up.granted);
       userPermsMap.set(up.permission_id, granted);
     });
 
     const profilePermsMap = await this.getUserProfilePermissions(userId);
 
-    // Construir resultado: todas as permissões do sistema
     const result: PermissionWithStatus[] = allPermissions.map(perm => {
-      // Se há permissão individual, ela prevalece
-      if (userPermsMap.has(perm.id)) {
-        const granted = userPermsMap.get(perm.id)!;
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `[findByUser] Permissão ${perm.id} (${perm.code}): individual do usuário, granted=${granted}`
-          );
-        }
-        return {
-          id: perm.id,
-          name: perm.name,
-          code: perm.code,
-          module: perm.module,
-          description: perm.description,
-          granted,
-          source: 'user',
-          created_at: new Date(perm.created_at),
-          updated_at: new Date(perm.updated_at)
-        };
-      }
-
-      // Se não há permissão individual, usar o valor do role
-      // Para admin, se não há permissão no role_permissions, assume true (admin tem tudo por padrão)
       let granted: boolean;
       let source: 'role' | 'user' | 'profile' | 'default' = 'role';
 
-      if (rolePermsMap.has(perm.id)) {
-        granted = rolePermsMap.get(perm.id)!;
-        source = 'role';
-      } else if (profilePermsMap.has(perm.id)) {
+      if (profilePermsMap.has(perm.id)) {
         granted = profilePermsMap.get(perm.id)!;
         source = 'profile';
+      } else if (userPermsMap.has(perm.id)) {
+        granted = userPermsMap.get(perm.id)!;
+        source = 'user';
+      } else if (rolePermsMap.has(perm.id)) {
+        granted = rolePermsMap.get(perm.id)!;
+        source = 'role';
       } else if (userRole === 'admin') {
         granted = true;
         source = 'default';
@@ -237,7 +226,7 @@ export class PermissionModel {
 
       if (process.env.NODE_ENV === 'development') {
         console.log(
-          `[findByUser] Permissão ${perm.id} (${perm.code}): do role ${userRole}, granted=${granted}, source=${source}`
+          `[findByUser] Permissão ${perm.id} (${perm.code}): granted=${granted}, source=${source}`
         );
       }
 
@@ -258,9 +247,9 @@ export class PermissionModel {
   }
 
   /**
-   * Verificar se usuário tem permissão
-   * Prioridade: Permissão individual do usuário > Permissão do role
-   * Para admins: se houver permissão individual negada, ela sobrescreve o comportamento padrão
+   * Verificar se o utilizador tem uma permissão (mesma ordem que {@link PermissionModel.findByUser}).
+   *
+   * Ordem: **perfil** → **utilizador** → **role** → fallback admin.
    */
   static async hasPermission(
     userId: number,
@@ -273,7 +262,7 @@ export class PermissionModel {
     if (!permission) {
       return false;
     }
-    // Verificar permissão por perfil de acesso antes de cair no role.
+    // 1) Perfil(is) de acesso
     const profilePermission = await dbGet(
       `SELECT pp.granted
        FROM user_access_profiles uap
@@ -289,19 +278,17 @@ export class PermissionModel {
       return PermissionModel.normalizeDbBoolean(profilePermission.granted);
     }
 
-
-    // Verificar permissão individual do usuário PRIMEIRO (sobrescreve role, incluindo admin)
+    // 2) Excepção por utilizador (só se o perfil não definiu esta permissão)
     const userPermission = await dbGet(
       'SELECT granted FROM user_permissions WHERE user_id = ? AND permission_id = ?',
       [userId, permission.id]
     ) as any;
 
     if (userPermission !== undefined && userPermission !== null) {
-      // Se há permissão individual, ela sempre prevalece (mesmo para admin)
       return PermissionModel.normalizeDbBoolean(userPermission.granted);
     }
 
-    // Se não há permissão individual, verificar permissão do role
+    // 3) Matriz por role
     const rolePermission = await dbGet(
       'SELECT granted FROM role_permissions WHERE role = ? AND permission_id = ?',
       [userRole, permission.id]
@@ -311,9 +298,7 @@ export class PermissionModel {
       return PermissionModel.normalizeDbBoolean(rolePermission.granted);
     }
 
-    // Se não há permissão individual nem de role:
-    // - Admin tem todas as permissões por padrão
-    // - Demais roles não têm permissão
+    // 4) Fallback: admin permite; outros negam
     if (userRole === 'admin') {
       return true;
     }

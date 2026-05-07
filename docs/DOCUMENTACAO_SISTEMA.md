@@ -367,6 +367,17 @@ ERP_Prime/
 
 ## Perfis de Usuário e Permissões
 
+### Precedência das permissões (política efectiva)
+
+O motor agrega **três camadas** configuráveis mais o fallback do role `admin`:
+
+1. **Perfil(is) de acesso** atribuído(s) ao utilizador (tabela de ligação utilizador–perfil + permissões do perfil). Com vários perfis, para a mesma permissão basta um perfil **conceder** para o efeito ser concedido no agregado.
+2. **Excepção por utilizador** (permissão explícita só para esse utilizador), quando o perfil **não** definiu essa permissão.
+3. **Matriz por role** (`user` / `attendant` / `admin`), quando nem perfil nem excepção definiram.
+4. **Fallback**: utilizadores com role `admin` passam a ter a permissão por defeito; os restantes roles negam por defeito.
+
+A API devolve, para cada permissão, o resultado já resolvido e o campo `source` (`profile`, `user`, `role`, `default`) indicando a camada que vigorou. A verificação em tempo real no servidor segue **a mesma ordem** (não há “duas verdades” entre o ecrã e o acesso).
+
 ### Perfil: Usuário (User)
 
 **Permissões:**

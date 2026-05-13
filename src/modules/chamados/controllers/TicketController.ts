@@ -524,10 +524,16 @@ export class TicketController {
       return;
     }
 
-    // Verificar se o atendente está atribuído ao chamado
-    if (req.user?.role === 'attendant' && existingTicket.attendant_id !== userId) {
-      res.status(403).json({ error: 'Você não está atribuído a este chamado' });
-      return;
+    // Verificar se o atendente pode atuar (designado no chamado ou fila por categoria)
+    if (req.user?.role === 'attendant') {
+      const canAct = await TicketModel.attendantCanActWithCategoryPool(userId, {
+        attendant_id: existingTicket.attendant_id,
+        category_id: existingTicket.category_id
+      });
+      if (!canAct) {
+        res.status(403).json({ error: 'Você não está autorizado a atuar neste chamado' });
+        return;
+      }
     }
 
     // Atualizar status para aguardando aprovação
@@ -727,9 +733,18 @@ export class TicketController {
       res.status(403).json({ error: 'Acesso negado' });
       return;
     }
-    if (req.user?.role === 'attendant' && ticket.attendant_id !== userId) {
-      res.status(403).json({ error: 'Apenas o atendente designado pode registrar a assinatura' });
-      return;
+    if (req.user?.role === 'attendant') {
+      const canAct = await TicketModel.attendantCanActWithCategoryPool(userId, {
+        attendant_id: ticket.attendant_id,
+        category_id: ticket.category_id
+      });
+      if (!canAct) {
+        res.status(403).json({
+          error:
+            'Apenas o atendente designado no chamado ou um técnico atribuído a esta categoria pode registar a assinatura'
+        });
+        return;
+      }
     }
 
     const existing = await CardSubscriptionModel.findByTicketId(ticketId);

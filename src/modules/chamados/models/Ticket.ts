@@ -1032,6 +1032,36 @@ export class TicketModel {
       .slice(0, 10);
   }
 
+  /**
+   * Quando o chamado está na fila (sem attendant_id): mesma regra que claimTicket /
+   * listagem por atendente — categoria «Outros» ou sem atribuições na matriz → qualquer atendente;
+   * caso contrário → só técnico com category_assignments para essa categoria.
+   */
+  static async attendantEligibleForCategoryQueue(attendantUserId: number, categoryId: number): Promise<boolean> {
+    const attendantAssignments = await CategoryAssignmentModel.findByAttendant(attendantUserId);
+    const assignedCategoryIds = attendantAssignments.map((c) => c.category_id);
+    const isOthersCategory = (await dbGet(
+      `SELECT id FROM ticket_categories WHERE id = ? AND (name = 'Outros' OR id NOT IN (SELECT DISTINCT category_id FROM category_assignments WHERE is_active = ${sqlBooleanTrue()}))`,
+      [categoryId]
+    )) as { id?: number } | undefined;
+    return assignedCategoryIds.includes(categoryId) || !!isOthersCategory;
+  }
+
+  /**
+   * Atendente pode atuar neste chamado: com atendente designado, só esse utilizador;
+   * sem designação, usar a fila da categoria (attendantEligibleForCategoryQueue).
+   */
+  static async attendantCanActWithCategoryPool(
+    attendantUserId: number,
+    ticket: { attendant_id?: number | null; category_id: number }
+  ): Promise<boolean> {
+    const aid = ticket.attendant_id ?? null;
+    if (aid != null) {
+      return aid === attendantUserId;
+    }
+    return await TicketModel.attendantEligibleForCategoryQueue(attendantUserId, ticket.category_id);
+  }
+
   /** Mesma lógica de atribuição usada na criação do chamado. */
   static async resolveAttendantForCategory(
     categoryId: number,

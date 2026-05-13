@@ -47,32 +47,76 @@ function ensureReturning(sql: string): string {
   return trimmed.slice(0, lastParen + 1) + ' RETURNING *' + trimmed.slice(lastParen + 1);
 }
 
+export type PgTransactionClient = {
+  run: (sql: string, params?: any[]) => Promise<{ lastID: number; changes: number }>;
+  get: (sql: string, params?: any[]) => Promise<any>;
+};
+
+async function queryRunWithClient(
+  client: PoolClient,
+  sql: string,
+  params: any[] = []
+): Promise<{ lastID: number; changes: number }> {
+  const pgSql = toPgParams(sql);
+  const withReturning = ensureReturning(pgSql);
+  const res = await client.query(withReturning, params);
+  const lastID =
+    res.rows && res.rows.length > 0 && res.rows[0].id != null
+      ? Number(res.rows[0].id)
+      : 0;
+  const changes = res.rowCount ?? 0;
+  return { lastID, changes };
+}
+
+async function queryGetWithClient(
+  client: PoolClient,
+  sql: string,
+  params: any[] = []
+): Promise<any> {
+  const res = await client.query(toPgParams(sql), params);
+  return res.rows && res.rows.length > 0 ? res.rows[0] : undefined;
+}
+
+/**
+ * Executa um bloco com uma única conexão do pool em transação real (BEGIN/COMMIT).
+ * O padrão anterior (dbRun('BEGIN') + dbRun(outros) + dbRun('COMMIT')) quebrava no Postgres
+ * porque cada dbRun usava outra conexão — transação aberta vazava e a API travava.
+ */
+export async function runInTransaction<T>(
+  fn: (tx: PgTransactionClient) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const run = (sql: string, params: any[] = []) => queryRunWithClient(client, sql, params);
+    const get = (sql: string, params: any[] = []) => queryGetWithClient(client, sql, params);
+    const result = await fn({ run, get });
+    await client.query('COMMIT');
+    return result;
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 export const dbRun = async (
   sql: string,
   params: any[] = []
 ): Promise<{ lastID: number; changes: number }> => {
-  const pgSql = toPgParams(sql);
-  const withReturning = ensureReturning(pgSql);
   const client = await pool.connect();
   try {
-    const res = await client.query(withReturning, params);
-    const lastID =
-      res.rows && res.rows.length > 0 && res.rows[0].id != null
-        ? Number(res.rows[0].id)
-        : 0;
-    const changes = res.rowCount ?? 0;
-    return { lastID, changes };
+    return await queryRunWithClient(client, sql, params);
   } finally {
     client.release();
   }
 };
 
 export const dbGet = async (sql: string, params: any[] = []): Promise<any> => {
-  const pgSql = toPgParams(sql);
   const client = await pool.connect();
   try {
-    const res = await client.query(pgSql, params);
-    return res.rows && res.rows.length > 0 ? res.rows[0] : undefined;
+    return await queryGetWithClient(client, sql, params);
   } finally {
     client.release();
   }

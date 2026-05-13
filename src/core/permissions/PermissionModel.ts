@@ -1,4 +1,4 @@
-import { dbRun, dbGet, dbAll } from '../database/connection';
+import { dbRun, dbGet, dbAll, type TransactionClient } from '../database/connection';
 import { PERMISSION_ALIAS } from './permission-catalog';
 import { sqlBooleanTrue } from '../database/sql-dialect';
 
@@ -312,9 +312,11 @@ export class PermissionModel {
   static async updateRolePermission(
     role: string,
     permissionId: number,
-    granted: boolean
+    granted: boolean,
+    tx?: TransactionClient
   ): Promise<void> {
-    await dbRun(
+    const run = tx?.run ?? dbRun;
+    await run(
       `INSERT INTO role_permissions (role, permission_id, granted)
        VALUES (?, ?, ?)
        ON CONFLICT(role, permission_id) DO UPDATE SET granted = ?`,
@@ -328,26 +330,29 @@ export class PermissionModel {
   static async updateUserPermission(
     userId: number,
     permissionId: number,
-    granted: boolean
+    granted: boolean,
+    tx?: TransactionClient
   ): Promise<void> {
     // Garantir que granted é um boolean
     const grantedValue = granted === true ? 1 : 0;
-    
+    const run = tx?.run ?? dbRun;
+    const get = tx?.get ?? dbGet;
+
     if (process.env.NODE_ENV === 'development') {
       console.log(
         `[updateUserPermission] Salvando permissão: userId=${userId}, permissionId=${permissionId}, granted=${granted} (valor no DB: ${grantedValue})`
       );
     }
-    
-    await dbRun(
+
+    await run(
       `INSERT INTO user_permissions (user_id, permission_id, granted)
        VALUES (?, ?, ?)
        ON CONFLICT(user_id, permission_id) DO UPDATE SET granted = ?`,
       [userId, permissionId, grantedValue, grantedValue]
     );
-    
+
     // Verificar se foi salvo corretamente
-    const saved = await dbGet(
+    const saved = await get(
       'SELECT granted FROM user_permissions WHERE user_id = ? AND permission_id = ?',
       [userId, permissionId]
     ) as any;
@@ -362,8 +367,9 @@ export class PermissionModel {
   /**
    * Remover permissão de usuário
    */
-  static async removeUserPermission(userId: number, permissionId: number): Promise<void> {
-    await dbRun(
+  static async removeUserPermission(userId: number, permissionId: number, tx?: TransactionClient): Promise<void> {
+    const run = tx?.run ?? dbRun;
+    await run(
       'DELETE FROM user_permissions WHERE user_id = ? AND permission_id = ?',
       [userId, permissionId]
     );

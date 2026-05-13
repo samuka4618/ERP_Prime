@@ -6,7 +6,7 @@ import { UserRole } from '../../shared/types';
 import { logger } from '../../shared/utils/logger';
 import { log as auditLog } from '../audit/AuditService';
 import Joi from 'joi';
-import { dbRun } from '../database/connection';
+import { runInTransaction } from '../database/connection';
 
 const router = Router();
 const CRITICAL_PERMISSION_CODES = new Set([
@@ -235,21 +235,12 @@ router.put('/role/:role', authenticate, authorize(UserRole.ADMIN), async (req: R
 
     const previousRolePermissions = await PermissionModel.findByRole(role as 'user' | 'attendant' | 'admin');
 
-    // Atualizar permissões em transação
-    await dbRun('BEGIN TRANSACTION');
-    try {
+    // Atualizar permissões em transação (uma conexão no Postgres)
+    await runInTransaction(async (tx) => {
       for (const perm of permissions) {
-        await PermissionModel.updateRolePermission(
-          role,
-          perm.permissionId,
-          perm.granted
-        );
+        await PermissionModel.updateRolePermission(role, perm.permissionId, perm.granted, tx);
       }
-      await dbRun('COMMIT');
-    } catch (err) {
-      await dbRun('ROLLBACK');
-      throw err;
-    }
+    });
 
     logger.info('Permissões do role atualizadas', { role, count: permissions.length }, 'PERMISSIONS');
     auditLog({
@@ -315,41 +306,47 @@ router.put('/user/:userId', authenticate, authorize(UserRole.ADMIN), async (req:
     }
     const previousUserPermissions = await PermissionModel.findByUser(userId, String(targetUser.role));
 
-    // Atualizar permissões em transação
-    await dbRun('BEGIN TRANSACTION');
-    try {
+    // Atualizar permissões em transação (uma conexão no Postgres)
+    await runInTransaction(async (tx) => {
       for (const perm of permissions) {
         if (perm.permissionId) {
           if (perm.granted === null) {
-            // Remover permissão individual (volta para o padrão do role)
-            logger.info('Removendo permissão individual', { 
-              userId, 
-              permissionId: perm.permissionId,
-              granted: perm.granted,
-              grantedType: typeof perm.granted
-            }, 'PERMISSIONS');
-            await PermissionModel.removeUserPermission(userId, perm.permissionId);
-            logger.info('Permissão individual removida com sucesso', { userId, permissionId: perm.permissionId }, 'PERMISSIONS');
+            logger.info(
+              'Removendo permissão individual',
+              {
+                userId,
+                permissionId: perm.permissionId,
+                granted: perm.granted,
+                grantedType: typeof perm.granted
+              },
+              'PERMISSIONS'
+            );
+            await PermissionModel.removeUserPermission(userId, perm.permissionId, tx);
+            logger.info(
+              'Permissão individual removida com sucesso',
+              { userId, permissionId: perm.permissionId },
+              'PERMISSIONS'
+            );
           } else {
-            // Atualizar ou criar permissão individual
-            logger.debug('Atualizando permissão individual', { 
-              userId, 
-              permissionId: perm.permissionId, 
-              granted: perm.granted 
-            }, 'PERMISSIONS');
+            logger.debug(
+              'Atualizando permissão individual',
+              {
+                userId,
+                permissionId: perm.permissionId,
+                granted: perm.granted
+              },
+              'PERMISSIONS'
+            );
             await PermissionModel.updateUserPermission(
               userId,
               perm.permissionId,
-              Boolean(perm.granted) // Garantir que é boolean
+              Boolean(perm.granted),
+              tx
             );
           }
         }
       }
-      await dbRun('COMMIT');
-    } catch (err) {
-      await dbRun('ROLLBACK');
-      throw err;
-    }
+    });
 
     logger.info('Permissões do usuário atualizadas', { 
       userId, 

@@ -1,4 +1,4 @@
-import { dbAll, dbGet, dbRun } from '../database/connection';
+import { dbAll, dbGet, dbRun, runInTransaction } from '../database/connection';
 import { bindBoolean } from '../database/sql-dialect';
 
 export interface AccessProfile {
@@ -54,9 +54,8 @@ export class AccessProfileModel {
   }
 
   static async replaceProfilePermissions(profileId: number, permissions: Array<{ permissionId: number; granted: boolean }>): Promise<void> {
-    await dbRun('BEGIN TRANSACTION');
-    try {
-      await dbRun('DELETE FROM profile_permissions WHERE profile_id = ?', [profileId]);
+    await runInTransaction(async (tx) => {
+      await tx.run('DELETE FROM profile_permissions WHERE profile_id = ?', [profileId]);
       const deduped = new Map<number, boolean>();
       for (const p of permissions) {
         const permissionId = Number(p.permissionId);
@@ -64,18 +63,14 @@ export class AccessProfileModel {
         deduped.set(permissionId, !!p.granted);
       }
       for (const [permissionId, granted] of deduped.entries()) {
-        await dbRun(
+        await tx.run(
           `INSERT INTO profile_permissions (profile_id, permission_id, granted)
            VALUES (?, ?, ?)
            ON CONFLICT(profile_id, permission_id) DO UPDATE SET granted = ?`,
           [profileId, permissionId, bindBoolean(granted), bindBoolean(granted)]
         );
       }
-      await dbRun('COMMIT');
-    } catch (e) {
-      await dbRun('ROLLBACK');
-      throw e;
-    }
+    });
   }
 
   static async getProfilePermissions(profileId: number): Promise<Array<{ permission_id: number; granted: boolean }>> {
@@ -92,20 +87,15 @@ export class AccessProfileModel {
   }
 
   static async setUserProfiles(userId: number, profileIds: number[], assignedBy?: number): Promise<void> {
-    await dbRun('BEGIN TRANSACTION');
-    try {
-      await dbRun('DELETE FROM user_access_profiles WHERE user_id = ?', [userId]);
+    await runInTransaction(async (tx) => {
+      await tx.run('DELETE FROM user_access_profiles WHERE user_id = ?', [userId]);
       for (const profileId of profileIds) {
-        await dbRun(
+        await tx.run(
           `INSERT INTO user_access_profiles (user_id, profile_id, assigned_by) VALUES (?, ?, ?)`,
           [userId, profileId, assignedBy || null]
         );
       }
-      await dbRun('COMMIT');
-    } catch (e) {
-      await dbRun('ROLLBACK');
-      throw e;
-    }
+    });
   }
 
   static async getUserProfiles(userId: number): Promise<AccessProfile[]> {

@@ -479,6 +479,8 @@ async function startServer() {
     await executeSchema();
     logger.success('Migração concluída com sucesso', undefined, 'BOOT');
 
+    const { assertSubscriptionEncryptionKeyConfigured } = await import('./core/security/CryptoService');
+    assertSubscriptionEncryptionKeyConfigured();
     if (config.erpUi === 'next' && !fs.existsSync(uiIndexHtml)) {
       logger.warn(
         `⚠️  ERP_UI=next mas não foi encontrado o ficheiro de entrada da UI: ${uiIndexHtml}. ` +
@@ -501,6 +503,30 @@ async function startServer() {
     // Executar uma vez após 30s (dar tempo do servidor subir)
     setTimeout(() => ReportController.processScheduledReports().catch(() => {}), 30 * 1000);
     BackupAutomationService.start();
+
+    const runSubscriptionRenewalAlerts = async (): Promise<void> => {
+      try {
+        const { CardSubscriptionModel } = await import('./modules/chamados/models/CardSubscription');
+        const { NotificationService } = await import('./modules/chamados/services/NotificationService');
+        const subs = await CardSubscriptionModel.listActiveWithRenewalDates();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const thresholds = [30, 15, 7];
+        for (const sub of subs) {
+          if (!sub.next_renewal_date) continue;
+          const rd = new Date(sub.next_renewal_date);
+          rd.setHours(0, 0, 0, 0);
+          const diff = Math.round((rd.getTime() - today.getTime()) / 86400000);
+          if (thresholds.includes(diff)) {
+            await NotificationService.notifySubscriptionRenewalSoon(sub.id, diff);
+          }
+        }
+      } catch (e) {
+        logger.error('Erro no alerta de renovações de assinatura', e, 'SUBSCRIPTIONS');
+      }
+    };
+    setInterval(runSubscriptionRenewalAlerts, 24 * 60 * 60 * 1000);
+    setTimeout(runSubscriptionRenewalAlerts, 90 * 1000);
 
     // Iniciar servidor
     const PORT = Number(config.port);

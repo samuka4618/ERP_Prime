@@ -28,13 +28,16 @@ import {
   Warehouse,
   Database,
   History,
-  LayoutGrid
+  LayoutGrid,
+  Landmark,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../contexts/PermissionsContext';
 import { useSystemConfig } from '../contexts/SystemConfigContext';
 import UserAvatar from './UserAvatar';
 import clsx from 'clsx';
+import { apiService } from '../services/api';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -50,6 +53,7 @@ interface NavigationItem {
   badge?: string | number;
   adminOnly?: boolean;
   permissionCode?: string;
+  permissionAny?: string[];
   items?: NavigationItem[];
 }
 
@@ -71,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const iamV2Enabled = String(import.meta.env.VITE_FEATURE_IAM_V2 ?? 'true') !== 'false';
   const { user, isAdmin } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, hasAnyPermission } = usePermissions();
   const { config } = useSystemConfig();
   const location = useLocation();
 
@@ -93,6 +97,27 @@ const Sidebar: React.FC<SidebarProps> = ({
   useEffect(() => {
     localStorage.setItem('expandedSections', JSON.stringify(Array.from(expandedSections)));
   }, [expandedSections]);
+
+  const [financePendingCount, setFinancePendingCount] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!hasPermission('chamados.finance_approval.approve')) {
+      setFinancePendingCount(undefined);
+      return;
+    }
+    let cancelled = false;
+    apiService
+      .getPendingFinanceApprovals(1, 1)
+      .then((r) => {
+        if (!cancelled) setFinancePendingCount(r.total);
+      })
+      .catch(() => {
+        if (!cancelled) setFinancePendingCount(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasPermission, location.pathname, user?.id]);
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => {
@@ -117,6 +142,19 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: FolderOpen,
       items: [
         { name: 'Chamados', href: '/tickets', icon: Ticket, permissionCode: 'tickets.view', badge: location.pathname.startsWith('/tickets') ? undefined : undefined },
+        {
+          name: 'Aprovações financeiras',
+          href: '/finance-approvals',
+          icon: Landmark,
+          permissionCode: 'chamados.finance_approval.approve',
+          badge: financePendingCount && financePendingCount > 0 ? financePendingCount : undefined
+        },
+        {
+          name: 'Assinaturas digitais',
+          href: '/card-subscriptions',
+          icon: CreditCard,
+          permissionAny: ['chamados.subscriptions.view', 'chamados.subscriptions.self']
+        },
         { name: 'Cadastros', href: '/client-registrations', icon: Building2, permissionCode: 'registrations.view' },
         {
           name: 'Compras',
@@ -198,10 +236,17 @@ const Sidebar: React.FC<SidebarProps> = ({
   const filterItemsByPermission = (items: NavigationItem[]): NavigationItem[] => {
     return items
       .map((item) => {
+        const passesPerm =
+          () => {
+            if (item.permissionAny?.length) return hasAnyPermission(...item.permissionAny);
+            if (item.permissionCode) return hasPermission(item.permissionCode);
+            return true;
+          };
+        const hasItemPermission = passesPerm();
+
         const visibleChildren = item.items ? filterItemsByPermission(item.items) : undefined;
-        const hasItemPermission = !item.permissionCode || hasPermission(item.permissionCode);
         if (visibleChildren && visibleChildren.length > 0) {
-          if (!hasItemPermission && item.permissionCode) return null;
+          if (!hasItemPermission && (item.permissionCode || item.permissionAny?.length)) return null;
           return { ...item, items: visibleChildren };
         }
         if (!hasItemPermission) return null;

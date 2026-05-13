@@ -2,8 +2,7 @@ import { Request, Response } from 'express';
 import { CategoryModel } from '../models/Category';
 import { CreateCategoryRequest, UpdateCategoryRequest } from '../types';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
-import { createCategorySchema, updateCategorySchema } from '../schemas/category';
-import Joi from 'joi';
+import { createCategorySchema, updateCategorySchema, categoryQuerySchema } from '../schemas/category';
 import {
   CATEGORY_IMPORT_EXPORT,
   toExportRow,
@@ -16,15 +15,16 @@ import { log as auditLog } from '../../../core/audit/AuditService';
 import { dbRun } from '../../../core/database/connection';
 import { config } from '../../../config/database';
 import { logger } from '../../../shared/utils/logger';
+import {
+  applyFinanceCardNormalizationToCreate,
+  applyFinanceCardNormalizationToUpdate,
+} from '../utils/financeCardCategory';
 
 const getIp = (req: Request) => req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
 const useTransaction = !config.database.usePostgres;
 
-const querySchema = Joi.object({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
-  search: Joi.string().max(255)
-});
+/** Query em GET /categories (validação duplicada com middleware por compatibilidade). */
+const categoryListQuerySchema = categoryQuerySchema;
 
 export class CategoryController {
   static create = asyncHandler(async (req: Request, res: Response) => {
@@ -38,7 +38,7 @@ export class CategoryController {
     }
 
     logger.debug('Dados validados', value, 'CATEGORY');
-    const categoryData = value as CreateCategoryRequest;
+    const categoryData = applyFinanceCardNormalizationToCreate(value as CreateCategoryRequest);
     const category = await CategoryModel.create(categoryData);
     
     res.status(201).json({
@@ -48,7 +48,7 @@ export class CategoryController {
   });
 
   static findAll = asyncHandler(async (req: Request, res: Response) => {
-    const { error, value } = querySchema.validate(req.query);
+    const { error, value } = categoryListQuerySchema.validate(req.query);
     if (error) {
       res.status(400).json({ error: 'Parâmetros inválidos', details: error.details.map(d => d.message) });
       return;
@@ -108,7 +108,13 @@ export class CategoryController {
       return;
     }
 
-    const categoryData = value as UpdateCategoryRequest;
+    const existing = await CategoryModel.findById(categoryId);
+    if (!existing) {
+      res.status(404).json({ error: 'Categoria não encontrada' });
+      return;
+    }
+
+    const categoryData = applyFinanceCardNormalizationToUpdate(existing, value as UpdateCategoryRequest);
     const category = await CategoryModel.update(categoryId, categoryData);
     
     if (!category) {

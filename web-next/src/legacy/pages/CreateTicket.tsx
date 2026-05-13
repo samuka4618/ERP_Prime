@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Save, X, Settings } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'react-hot-toast';
 import FileUpload from '../components/FileUpload';
 import { Category } from '../types';
+import { customFieldsForNewTicketForm, isMissingRequiredCustom } from '../utils/financeTicketFormFields';
 
 const CreateTicket: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +21,11 @@ const CreateTicket: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+
+  const ticketFormFields = useMemo(
+    () => customFieldsForNewTicketForm(selectedCategory),
+    [selectedCategory]
+  );
 
   useEffect(() => {
     fetchCategories();
@@ -111,17 +117,13 @@ const CreateTicket: React.FC = () => {
       return;
     }
 
-    // Validar campos customizados obrigatórios
-    if (selectedCategory?.custom_fields) {
-      const missingRequiredFields = selectedCategory.custom_fields
-        .filter(field => field.required && !customFieldsData[field.name])
-        .map(field => field.label);
-      
-      if (missingRequiredFields.length > 0) {
-        toast.error(`Preencha os campos obrigatórios: ${missingRequiredFields.join(', ')}`);
-        setLoading(false);
-        return;
-      }
+    const missingRequiredFields = ticketFormFields
+      .filter((field) => isMissingRequiredCustom(field, customFieldsData[field.name]))
+      .map((field) => field.label);
+
+    if (missingRequiredFields.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${missingRequiredFields.join(', ')}`);
+      return;
     }
 
     setLoading(true);
@@ -166,7 +168,12 @@ const CreateTicket: React.FC = () => {
       console.error('❌ ERRO - Detalhes:', error);
       console.error('❌ ERRO - Response:', error.response);
       console.error('❌ ERRO - Message:', error.message);
-      toast.error(error.response?.data?.message || 'Erro ao criar chamado');
+      toast.error(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          (Array.isArray(error.response?.data?.details) && error.response.data.details.join(' ')) ||
+          'Erro ao criar chamado'
+      );
     } finally {
       setLoading(false);
     }
@@ -297,14 +304,14 @@ const CreateTicket: React.FC = () => {
               </div>
             </div>
 
-            {/* Campos Customizados */}
-            {selectedCategory?.custom_fields && selectedCategory.custom_fields.length > 0 && (
+            {/* Campos customizados (inclui valor financeiro obrigatório no fluxo cartão/assinatura, mesmo sem JSON na categoria) */}
+            {ticketFormFields.length > 0 && (
               <div className="mt-6 border-t pt-6">
                 <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">
                   Informações Adicionais
                 </h4>
                 <div className="space-y-4">
-                  {selectedCategory.custom_fields.map((field) => (
+                  {ticketFormFields.map((field) => (
                     <div key={field.id}>
                       <label 
                         htmlFor={`custom_${field.name}`} 

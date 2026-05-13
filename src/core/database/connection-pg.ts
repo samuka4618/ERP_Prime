@@ -4,7 +4,7 @@
  * Converte placeholders ? para $1, $2, ... e retorna lastID quando a linha retornada tiver coluna id.
  */
 
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import path from 'path';
 import fs from 'fs';
 import { config } from '../../config/database';
@@ -354,8 +354,182 @@ async function runSchemaMigrationsPostgres(): Promise<void> {
         OR (u.role = 'user' AND ap.slug = 'default_user')
       ON CONFLICT (user_id, profile_id) DO NOTHING
     `);
+
+    await migrateFinanceCardPostgres(client);
   } finally {
     client.release();
+  }
+}
+
+async function migrateFinanceCardPostgres(client: PoolClient): Promise<void> {
+  try {
+    await client.query(`ALTER TABLE ticket_categories ADD COLUMN IF NOT EXISTS requires_approval BOOLEAN DEFAULT false`);
+    await client.query(`ALTER TABLE ticket_categories ADD COLUMN IF NOT EXISTS approval_value_field VARCHAR(100)`);
+    await client.query(`ALTER TABLE ticket_categories ADD COLUMN IF NOT EXISTS approval_type VARCHAR(30) DEFAULT 'none'`);
+
+    await client.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS custom_data TEXT`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ticket_category_approvers (
+        id SERIAL PRIMARY KEY,
+        category_id INTEGER NOT NULL REFERENCES ticket_categories(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        valor_minimo DECIMAL(15,2) DEFAULT 0,
+        valor_maximo DECIMAL(15,2) DEFAULT 999999999.99,
+        priority INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_tca_category ON ticket_category_approvers(category_id)`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ticket_approvals (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        approver_id INTEGER NOT NULL REFERENCES users(id),
+        decision VARCHAR(20) NOT NULL CHECK (decision IN ('approved','rejected')),
+        reason TEXT,
+        valor_referencia DECIMAL(15,2),
+        decided_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_ticket_approvals_ticket ON ticket_approvals(ticket_id)`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS card_subscriptions (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id),
+        owner_user_id INTEGER NOT NULL REFERENCES users(id),
+        platform VARCHAR(255) NOT NULL,
+        plan VARCHAR(255),
+        url VARCHAR(500),
+        login_username VARCHAR(255),
+        password_ciphertext TEXT,
+        password_iv VARCHAR(64),
+        password_auth_tag VARCHAR(64),
+        billing_cycle VARCHAR(20),
+        amount DECIMAL(15,2) NOT NULL,
+        currency VARCHAR(3) DEFAULT 'BRL',
+        card_last4 VARCHAR(4),
+        next_renewal_date DATE,
+        status VARCHAR(20) DEFAULT 'active',
+        cancelled_at TIMESTAMP,
+        cancellation_reason TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_cs_status ON card_subscriptions(status)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_cs_renewal ON card_subscriptions(next_renewal_date)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_cs_ticket ON card_subscriptions(ticket_id)`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS card_subscription_secret_access (
+        id SERIAL PRIMARY KEY,
+        subscription_id INTEGER NOT NULL REFERENCES card_subscriptions(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ip_address VARCHAR(64),
+        user_agent VARCHAR(500)
+      )
+    `);
+
+    await client.query(`ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_status_check`);
+    try {
+      await client.query(`
+        ALTER TABLE tickets ADD CONSTRAINT tickets_status_check CHECK (status IN (
+          'open', 'in_progress', 'pending_user', 'pending_third_party', 'pending_approval', 'pending_finance_approval',
+          'resolved', 'closed', 'overdue_first_response', 'overdue_resolution'
+        ))
+      `);
+    } catch {
+      /* constraint may already exist with same definition */
+    }
+
+    const chamadosPerms: Array<[string, string, string, string]> = [
+      ['Aprovar despesas (financeiro)', 'chamados.finance_approval.approve', 'tickets', 'Aprovar ou rejeitar chamados com despesa de cartão/assinatura.'],
+      ['Ver catálogo de assinaturas digitais', 'chamados.subscriptions.view', 'tickets', 'Listar todas as assinaturas e despesas recorrentes (visão operacional / atendentes).'],
+      ['Ver minhas assinaturas digitais', 'chamados.subscriptions.self', 'tickets', 'Listar apenas assinaturas dos chamados solicitados pelo próprio utilizador.'],
+      ['Revelar senha da assinatura', 'chamados.subscriptions.reveal_password', 'tickets', 'Revelar credencial da plataforma (auditado).'],
+      ['Gerenciar assinaturas', 'chamados.subscriptions.manage', 'tickets', 'Cancelar ou alterar status de assinaturas.']
+    ];
+    for (const [name, code, mod, desc] of chamadosPerms) {
+      await client.query(
+        `INSERT INTO permissions (name, code, module, description)
+         SELECT $1::varchar, $2::varchar, $3::varchar, $4::text
+         WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = $2::varchar)`,
+        [name, code, mod, desc]
+      );
+    }
+
+    await client.query(`
+      INSERT INTO role_permissions (role, permission_id, granted)
+      SELECT 'admin', id, true FROM permissions p
+      WHERE p.code LIKE 'chamados.%'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions rp WHERE rp.role = 'admin' AND rp.permission_id = p.id
+      )
+    `);
+
+    await client.query(`
+      INSERT INTO profile_permissions (profile_id, permission_id, granted)
+      SELECT ap.id, p.id, true
+      FROM access_profiles ap
+      CROSS JOIN permissions p
+      WHERE ap.slug = 'system_admin' AND p.code LIKE 'chamados.%'
+      AND NOT EXISTS (
+        SELECT 1 FROM profile_permissions pp
+        WHERE pp.profile_id = ap.id AND pp.permission_id = p.id
+      )
+    `);
+
+    await client.query(
+      `UPDATE permissions SET name = $1::varchar, description = $2::text WHERE code = $3::varchar`,
+      [
+        'Ver catálogo de assinaturas digitais',
+        'Listar todas as assinaturas e despesas recorrentes (visão operacional / atendentes).',
+        'chamados.subscriptions.view'
+      ]
+    );
+
+    await client.query(`
+      INSERT INTO profile_permissions (profile_id, permission_id, granted)
+      SELECT ap.id, p.id, true
+      FROM access_profiles ap
+      CROSS JOIN permissions p
+      WHERE ap.slug = 'default_user' AND p.code = 'chamados.subscriptions.self'
+      AND NOT EXISTS (
+        SELECT 1 FROM profile_permissions pp
+        WHERE pp.profile_id = ap.id AND pp.permission_id = p.id
+      )
+    `);
+
+    const seedFields = JSON.stringify([
+      { id: 'f1', name: 'plataforma', label: 'Plataforma / serviço', type: 'text', required: true, description: 'Ex.: Figma, ChatGPT Enterprise' },
+      { id: 'f2', name: 'plano', label: 'Plano desejado', type: 'text', required: true },
+      { id: 'f3', name: 'url', label: 'URL de login', type: 'text', required: false, placeholder: 'https://' },
+      { id: 'f4', name: 'login_plataforma', label: 'Usuário/e-mail na plataforma', type: 'text', required: true },
+      { id: 'f5', name: 'senha_plataforma', label: 'Senha na plataforma', type: 'text', required: true },
+      { id: 'f6', name: 'valor_mensal', label: 'Valor (referência para aprovação)', type: 'number', required: true },
+      { id: 'f7', name: 'ciclo_faturamento', label: 'Ciclo', type: 'select', required: true, options: ['monthly', 'annual', 'one_time'] },
+      { id: 'f8', name: 'justificativa', label: 'Justificativa / necessidade', type: 'textarea', required: true }
+    ]);
+    await client.query(
+      `INSERT INTO ticket_categories (name, description, sla_first_response_hours, sla_resolution_hours, is_active, custom_fields, requires_approval, approval_value_field, approval_type)
+       SELECT CAST($1 AS VARCHAR(100)), CAST($2 AS TEXT), 4, 48, CAST(false AS BOOLEAN), CAST($3 AS TEXT), CAST(true AS BOOLEAN), CAST($4 AS VARCHAR(100)), CAST($5 AS VARCHAR(30))
+       WHERE NOT EXISTS (SELECT 1 FROM ticket_categories WHERE name = CAST($1 AS VARCHAR(100)))`,
+      [
+        'Assinatura Digital - Cartão',
+        'Solicitação de nova assinatura paga com cartão corporativo.',
+        seedFields,
+        'valor_mensal',
+        'finance_card'
+      ]
+    );
+  } catch (e) {
+    console.warn('Migração finance card (Postgres):', (e as Error).message);
   }
 }
 

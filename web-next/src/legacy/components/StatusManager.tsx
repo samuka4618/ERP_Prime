@@ -13,6 +13,7 @@ const statusOptions = [
   { value: 'pending_user', label: 'Aguardando Usuário', color: 'bg-blue-100 text-blue-800', description: 'Aguardando resposta do usuário' },
   { value: 'pending_third_party', label: 'Aguardando Terceiros', color: 'bg-purple-100 text-purple-800', description: 'Aguardando resposta de terceiros' },
   { value: 'pending_approval', label: 'Aguardando Aprovação', color: 'bg-yellow-200 text-yellow-900', description: 'Aguardando aprovação do solicitante' },
+  { value: 'pending_finance_approval', label: 'Aprovação Financeira', color: 'bg-amber-200 text-amber-900', description: 'Aguardando aprovação financeira' },
   { value: 'resolved', label: 'Resolvido', color: 'bg-green-100 text-green-800', description: 'Chamado resolvido' },
   { value: 'closed', label: 'Fechado', color: 'bg-gray-100 text-gray-800', description: 'Chamado fechado' },
   { value: 'overdue_first_response', label: 'Atrasado - Primeira Resposta', color: 'bg-red-200 text-red-900', description: 'Atrasado na primeira resposta' },

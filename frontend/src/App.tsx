@@ -54,6 +54,8 @@ import PublicFormRestrito from './pages/Descarregamento/PublicFormRestrito';
 import LoadingSpinner from './components/LoadingSpinner';
 import { PublicFormOnlyGuard, PublicFormOnlyWrapper } from './components/PublicFormOnlyGuard';
 import ForcePasswordChangePage from './pages/ForcePasswordChangePage';
+import FinanceApprovals from './pages/FinanceApprovals';
+import CardSubscriptions from './pages/CardSubscriptions';
 
 const ProtectedRoute: React.FC<{
   children: React.ReactNode;
@@ -98,6 +100,13 @@ const PermissionRoute: React.FC<{ permission: string; children: React.ReactNode 
   const { loadingPermissions, hasPermission } = usePermissions();
   if (loadingPermissions) return <LoadingSpinner />;
   if (!hasPermission(permission)) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+
+const PermissionAnyRoute: React.FC<{ permissions: string[]; children: React.ReactNode }> = ({ permissions, children }) => {
+  const { loadingPermissions, hasAnyPermission } = usePermissions();
+  if (loadingPermissions) return <LoadingSpinner />;
+  if (!hasAnyPermission(...permissions)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
 
@@ -149,6 +158,22 @@ const AppRoutes: React.FC = () => {
         <Route path="tickets" element={<PermissionRoute permission="tickets.view"><Tickets /></PermissionRoute>} />
         <Route path="tickets/new" element={<CreateTicket />} />
         <Route path="tickets/:id" element={<TicketDetail />} />
+        <Route
+          path="finance-approvals"
+          element={
+            <PermissionRoute permission="chamados.finance_approval.approve">
+              <FinanceApprovals />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="card-subscriptions"
+          element={
+            <PermissionAnyRoute permissions={['chamados.subscriptions.view', 'chamados.subscriptions.self']}>
+              <CardSubscriptions />
+            </PermissionAnyRoute>
+          }
+        />
         <Route path="client-registrations" element={<PermissionRoute permission="registrations.view"><ClientRegistrations /></PermissionRoute>} />
         <Route path="client-registrations/new" element={<ClientRegistrationForm />} />
         <Route path="client-registrations/:id" element={<ClientRegistrationDetail />} />

@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
 import { Attachment, CreateAttachmentRequest } from '../../../shared/types';
 
@@ -61,6 +62,21 @@ export class AttachmentModel {
 
   static async deleteByTicketId(ticketId: number): Promise<void> {
     await dbRun('DELETE FROM attachments WHERE ticket_id = ?', [ticketId]);
+  }
+
+  /** Remove registros e apaga ficheiros físicos associados ao ticket. */
+  static async deleteAllForTicketWithFiles(ticketId: number): Promise<void> {
+    const attachments = await this.findByTicketId(ticketId);
+    for (const a of attachments) {
+      if (a.file_path && fs.existsSync(a.file_path)) {
+        try {
+          fs.unlinkSync(a.file_path);
+        } catch {
+          /* ignore */
+        }
+      }
+      await dbRun('DELETE FROM attachments WHERE id = ?', [a.id]);
+    }
   }
 
   static async deleteByMessageId(messageId: number): Promise<void> {

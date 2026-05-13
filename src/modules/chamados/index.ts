@@ -2,6 +2,8 @@ import { Router } from 'express';
 import ticketRoutes from './routes/tickets';
 import categoryRoutes from './routes/categories';
 import categoryAssignmentRoutes from './routes/categoryAssignments';
+import subscriptionRoutes from './routes/subscriptions';
+import categoryApproverRoutes from './routes/category-approvers';
 import attachmentRoutes from './routes/attachments';
 import notificationRoutes from './routes/notifications';
 import dashboardRoutes from './routes/dashboard';
@@ -17,6 +19,8 @@ export function registerChamadosRoutes(router: Router, uploadLimiter: any) {
   router.use('/tickets', ticketRoutes);
   router.use('/categories', categoryRoutes);
   router.use('/category-assignments', categoryAssignmentRoutes);
+  router.use('/subscriptions', subscriptionRoutes);
+  router.use('/category-approvers', categoryApproverRoutes);
   router.use('/attachments', uploadLimiter, attachmentRoutes);
   router.use('/notifications', notificationRoutes);
   router.use('/dashboard', dashboardRoutes);

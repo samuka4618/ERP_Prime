@@ -4,7 +4,7 @@ fetch('http://127.0.0.1:7543/ingest/405e7796-cce6-468f-b8e1-2439a4318f0e',{metho
 // #endregion
 module.exports = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/tests'],
+  setupFiles: ['<rootDir>/tests/jest-env.js'],
   testMatch: ['**/__tests__/**/*.test.ts', '**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: { '^.+\\.ts$': 'ts-jest' },

@@ -2,6 +2,39 @@ import { dbRun, dbGet, dbAll } from '../../../core/database/connection';
 import { sqlBooleanTrue } from '../../../core/database/sql-dialect';
 import { Category, CreateCategoryRequest, UpdateCategoryRequest, PaginationParams, PaginatedResponse } from '../../../shared/types';
 
+/** Parser reutilizado em categorias e no join de chamados (`TicketModel.findById`). */
+export function parseCategoryCustomFields(raw: unknown): Category['custom_fields'] {
+  let customFields: Category['custom_fields'] = undefined;
+  if (raw && typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) customFields = parsed;
+    } catch (e) {
+      console.error('Erro ao fazer parse de custom_fields:', e);
+    }
+  } else if (Array.isArray(raw)) {
+    customFields = raw;
+  }
+  return customFields;
+}
+
+function mapCategoryRow(category: any): Category {
+  return {
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    sla_first_response_hours: category.sla_first_response_hours,
+    sla_resolution_hours: category.sla_resolution_hours,
+    is_active: category.is_active === 1 || category.is_active === true,
+    custom_fields: parseCategoryCustomFields(category.custom_fields),
+    requires_approval: category.requires_approval === 1 || category.requires_approval === true,
+    approval_value_field: category.approval_value_field ?? null,
+    approval_type: (category.approval_type as Category['approval_type']) ?? 'none',
+    created_at: new Date(category.created_at),
+    updated_at: new Date(category.updated_at)
+  };
+}
+
 export class CategoryModel {
   static async create(categoryData: CreateCategoryRequest): Promise<Category> {
     // Converter custom_fields para JSON
@@ -11,15 +44,18 @@ export class CategoryModel {
 
     // Inserir a categoria
     await dbRun(
-      `INSERT INTO ticket_categories (name, description, sla_first_response_hours, sla_resolution_hours, is_active, custom_fields) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ticket_categories (name, description, sla_first_response_hours, sla_resolution_hours, is_active, custom_fields, requires_approval, approval_value_field, approval_type) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        categoryData.name, 
-        categoryData.description, 
-        categoryData.sla_first_response_hours, 
-        categoryData.sla_resolution_hours, 
+        categoryData.name,
+        categoryData.description,
+        categoryData.sla_first_response_hours,
+        categoryData.sla_resolution_hours,
         categoryData.is_active ?? true,
-        customFieldsJson
+        customFieldsJson,
+        categoryData.requires_approval ?? false,
+        categoryData.approval_value_field ?? null,
+        categoryData.approval_type ?? 'none'
       ]
     );
 
@@ -36,32 +72,7 @@ export class CategoryModel {
       throw new Error('Erro ao buscar categoria criada');
     }
 
-    // Parse custom_fields se existir
-    let customFields = undefined;
-    if (lastCategory.custom_fields && typeof lastCategory.custom_fields === 'string') {
-      try {
-        const parsed = JSON.parse(lastCategory.custom_fields);
-        if (Array.isArray(parsed)) {
-          customFields = parsed;
-        }
-      } catch (e) {
-        console.error('Erro ao fazer parse de custom_fields:', e);
-      }
-    } else if (Array.isArray(lastCategory.custom_fields)) {
-      customFields = lastCategory.custom_fields;
-    }
-
-    return {
-      id: lastCategory.id,
-      name: lastCategory.name,
-      description: lastCategory.description,
-      sla_first_response_hours: lastCategory.sla_first_response_hours,
-      sla_resolution_hours: lastCategory.sla_resolution_hours,
-      is_active: lastCategory.is_active,
-      custom_fields: customFields,
-      created_at: new Date(lastCategory.created_at),
-      updated_at: new Date(lastCategory.updated_at)
-    };
+    return mapCategoryRow(lastCategory);
   }
 
   static async findById(id: number): Promise<Category | null> {
@@ -72,35 +83,9 @@ export class CategoryModel {
 
     if (!category) return null;
 
-    // Parse custom_fields se existir
-    let customFields = undefined;
-    if (category.custom_fields && typeof category.custom_fields === 'string') {
-      try {
-        const parsed = JSON.parse(category.custom_fields);
-        if (Array.isArray(parsed)) {
-          customFields = parsed;
-        }
-      } catch (e) {
-        console.error('Erro ao fazer parse de custom_fields:', e);
-      }
-    } else if (Array.isArray(category.custom_fields)) {
-      customFields = category.custom_fields;
-    }
-
-    return {
-      id: category.id,
-      name: category.name,
-      description: category.description,
-      sla_first_response_hours: category.sla_first_response_hours,
-      sla_resolution_hours: category.sla_resolution_hours,
-      is_active: category.is_active,
-      custom_fields: customFields,
-      created_at: new Date(category.created_at),
-      updated_at: new Date(category.updated_at)
-    };
+    return mapCategoryRow(category);
   }
 
-  /** Buscar categoria por nome (para importação: detectar duplicados). */
   static async findByName(name: string): Promise<Category | null> {
     const category = await dbGet(
       'SELECT * FROM ticket_categories WHERE name = ?',
@@ -109,27 +94,7 @@ export class CategoryModel {
 
     if (!category) return null;
 
-    let customFields = undefined;
-    if (category.custom_fields && typeof category.custom_fields === 'string') {
-      try {
-        const parsed = JSON.parse(category.custom_fields);
-        if (Array.isArray(parsed)) customFields = parsed;
-      } catch (_) {}
-    } else if (Array.isArray(category.custom_fields)) {
-      customFields = category.custom_fields;
-    }
-
-    return {
-      id: category.id,
-      name: category.name,
-      description: category.description,
-      sla_first_response_hours: category.sla_first_response_hours,
-      sla_resolution_hours: category.sla_resolution_hours,
-      is_active: category.is_active === 1 || category.is_active === true,
-      custom_fields: customFields,
-      created_at: new Date(category.created_at),
-      updated_at: new Date(category.updated_at)
-    };
+    return mapCategoryRow(category);
   }
 
   static async findAll(params: PaginationParams): Promise<PaginatedResponse<Category>> {
@@ -155,34 +120,7 @@ export class CategoryModel {
       queryParams
     ) as { count: number };
 
-    const formattedCategories = categories.map((category: any) => {
-      // Parse custom_fields se existir
-      let customFields = undefined;
-      if (category.custom_fields && typeof category.custom_fields === 'string') {
-        try {
-          const parsed = JSON.parse(category.custom_fields);
-          if (Array.isArray(parsed)) {
-            customFields = parsed;
-          }
-        } catch (e) {
-          console.error('Erro ao fazer parse de custom_fields:', e);
-        }
-      } else if (Array.isArray(category.custom_fields)) {
-        customFields = category.custom_fields;
-      }
-
-      return {
-        id: category.id,
-        name: category.name,
-        description: category.description,
-        sla_first_response_hours: category.sla_first_response_hours,
-        sla_resolution_hours: category.sla_resolution_hours,
-        is_active: category.is_active,
-        custom_fields: customFields,
-        created_at: new Date(category.created_at),
-        updated_at: new Date(category.updated_at)
-      };
-    });
+    const formattedCategories = categories.map((category: any) => mapCategoryRow(category));
 
     return {
       data: formattedCategories,
@@ -202,28 +140,7 @@ export class CategoryModel {
       [maxRows]
     ) as any[];
 
-    return rows.map((row: any) => {
-      let customFields = undefined;
-      if (row.custom_fields && typeof row.custom_fields === 'string') {
-        try {
-          const parsed = JSON.parse(row.custom_fields);
-          if (Array.isArray(parsed)) customFields = parsed;
-        } catch (_) {}
-      } else if (Array.isArray(row.custom_fields)) {
-        customFields = row.custom_fields;
-      }
-      return {
-        id: row.id,
-        name: row.name,
-        description: row.description,
-        sla_first_response_hours: row.sla_first_response_hours,
-        sla_resolution_hours: row.sla_resolution_hours,
-        is_active: row.is_active === 1 || row.is_active === true,
-        custom_fields: customFields,
-        created_at: new Date(row.created_at),
-        updated_at: new Date(row.updated_at)
-      };
-    });
+    return rows.map((row: any) => mapCategoryRow(row));
   }
 
   static async findActive(): Promise<Category[]> {
@@ -231,37 +148,7 @@ export class CategoryModel {
       `SELECT * FROM ticket_categories WHERE is_active = ${sqlBooleanTrue()} ORDER BY name ASC`
     ) as Category[];
 
-    return categories.map((category: any) => {
-      // Parse custom_fields se existir
-      let customFields = undefined;
-      if (category.custom_fields && typeof category.custom_fields === 'string') {
-        try {
-          const parsed = JSON.parse(category.custom_fields);
-          // Validar se é um array válido
-          if (Array.isArray(parsed)) {
-            customFields = parsed;
-          }
-        } catch (e) {
-          console.error('Erro ao fazer parse de custom_fields:', e);
-          // Se falhar, deixar como undefined
-        }
-      } else if (Array.isArray(category.custom_fields)) {
-        // Se já for um array (caso raro), usar diretamente
-        customFields = category.custom_fields;
-      }
-
-      return {
-        id: category.id,
-        name: category.name,
-        description: category.description,
-        sla_first_response_hours: category.sla_first_response_hours,
-        sla_resolution_hours: category.sla_resolution_hours,
-        is_active: category.is_active,
-        custom_fields: customFields,
-        created_at: new Date(category.created_at),
-        updated_at: new Date(category.updated_at)
-      };
-    });
+    return categories.map((category: any) => mapCategoryRow(category));
   }
 
   static async update(id: number, categoryData: UpdateCategoryRequest): Promise<Category | null> {
@@ -299,6 +186,21 @@ export class CategoryModel {
         : null;
       fields.push('custom_fields = ?');
       values.push(customFieldsJson);
+    }
+
+    if (categoryData.requires_approval !== undefined) {
+      fields.push('requires_approval = ?');
+      values.push(categoryData.requires_approval);
+    }
+
+    if (categoryData.approval_value_field !== undefined) {
+      fields.push('approval_value_field = ?');
+      values.push(categoryData.approval_value_field);
+    }
+
+    if (categoryData.approval_type !== undefined) {
+      fields.push('approval_type = ?');
+      values.push(categoryData.approval_type);
     }
 
     if (fields.length === 0) {

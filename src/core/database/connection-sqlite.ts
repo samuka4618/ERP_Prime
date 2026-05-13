@@ -549,6 +549,229 @@ async function runSchemaMigrations(): Promise<void> {
          OR (u.role = 'attendant' AND ap.slug = 'default_attendant')
          OR (u.role = 'user' AND ap.slug = 'default_user')`
     );
+
+    await migrateFinanceCardSqlite();
+}
+
+/** Migração: status pending_finance_approval, categorias com aprovação, assinaturas cartão */
+async function migrateFinanceCardSqlite(): Promise<void> {
+  try {
+    const tsql = (await dbGet("SELECT sql FROM sqlite_master WHERE type='table' AND name='tickets'")) as { sql: string } | undefined;
+    if (tsql?.sql && !tsql.sql.includes('pending_finance_approval')) {
+      const cols = (await dbAll('PRAGMA table_info(tickets)')) as { name: string }[];
+      const hasCustom = cols.some((c) => c.name === 'custom_data');
+      await dbRun(`CREATE TABLE tickets_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        attendant_id INTEGER,
+        category_id INTEGER NOT NULL,
+        subject VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        status VARCHAR(30) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'pending_user', 'pending_third_party', 'pending_approval', 'pending_finance_approval', 'resolved', 'closed', 'overdue_first_response', 'overdue_resolution')),
+        priority VARCHAR(10) NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+        sla_first_response DATETIME NOT NULL,
+        sla_resolution DATETIME NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        closed_at DATETIME,
+        reopened_at DATETIME,
+        custom_data TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (attendant_id) REFERENCES users(id),
+        FOREIGN KEY (category_id) REFERENCES ticket_categories(id)
+      )`);
+      if (hasCustom) {
+        await dbRun(
+          `INSERT INTO tickets_new SELECT id, user_id, attendant_id, category_id, subject, description, status, priority, sla_first_response, sla_resolution, created_at, updated_at, closed_at, reopened_at, custom_data FROM tickets`
+        );
+      } else {
+        await dbRun(
+          `INSERT INTO tickets_new (id, user_id, attendant_id, category_id, subject, description, status, priority, sla_first_response, sla_resolution, created_at, updated_at, closed_at, reopened_at, custom_data)
+           SELECT id, user_id, attendant_id, category_id, subject, description, status, priority, sla_first_response, sla_resolution, created_at, updated_at, closed_at, reopened_at, NULL FROM tickets`
+        );
+      }
+      await dbRun('DROP TABLE tickets');
+      await dbRun('ALTER TABLE tickets_new RENAME TO tickets');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id)');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_tickets_attendant_id ON tickets(attendant_id)');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status)');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_tickets_category_id ON tickets(category_id)');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at)');
+      await dbRun(`CREATE TRIGGER IF NOT EXISTS update_tickets_updated_at 
+        AFTER UPDATE ON tickets
+        BEGIN
+          UPDATE tickets SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+        END`);
+      console.log('Migração SQLite: pending_finance_approval em tickets');
+    }
+
+    const catCols = (await dbAll('PRAGMA table_info(ticket_categories)')) as { name: string }[];
+    if (!catCols.some((c) => c.name === 'requires_approval')) {
+      await dbRun('ALTER TABLE ticket_categories ADD COLUMN requires_approval BOOLEAN DEFAULT 0');
+      await dbRun('ALTER TABLE ticket_categories ADD COLUMN approval_value_field VARCHAR(100)');
+      await dbRun("ALTER TABLE ticket_categories ADD COLUMN approval_type VARCHAR(30) DEFAULT 'none'");
+      console.log('Migração SQLite: colunas de aprovação em ticket_categories');
+    }
+
+    const tca = await dbGet("SELECT name FROM sqlite_master WHERE type='table' AND name='ticket_category_approvers'");
+    if (!tca) {
+      await dbRun(`
+        CREATE TABLE ticket_category_approvers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          category_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          valor_minimo DECIMAL(15,2) DEFAULT 0,
+          valor_maximo DECIMAL(15,2) DEFAULT 999999999.99,
+          priority INTEGER DEFAULT 0,
+          is_active BOOLEAN DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (category_id) REFERENCES ticket_categories(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `);
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_tca_category ON ticket_category_approvers(category_id)');
+      console.log('Migração SQLite: ticket_category_approvers criada');
+    }
+
+    const tap = await dbGet("SELECT name FROM sqlite_master WHERE type='table' AND name='ticket_approvals'");
+    if (!tap) {
+      await dbRun(`
+        CREATE TABLE ticket_approvals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          ticket_id INTEGER NOT NULL,
+          approver_id INTEGER NOT NULL,
+          decision VARCHAR(20) NOT NULL CHECK (decision IN ('approved','rejected')),
+          reason TEXT,
+          valor_referencia DECIMAL(15,2),
+          decided_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+          FOREIGN KEY (approver_id) REFERENCES users(id)
+        )
+      `);
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_ticket_approvals_ticket ON ticket_approvals(ticket_id)');
+      console.log('Migração SQLite: ticket_approvals criada');
+    }
+
+    const cs = await dbGet("SELECT name FROM sqlite_master WHERE type='table' AND name='card_subscriptions'");
+    if (!cs) {
+      await dbRun(`
+        CREATE TABLE card_subscriptions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          ticket_id INTEGER NOT NULL,
+          owner_user_id INTEGER NOT NULL,
+          platform VARCHAR(255) NOT NULL,
+          plan VARCHAR(255),
+          url VARCHAR(500),
+          login_username VARCHAR(255),
+          password_ciphertext TEXT,
+          password_iv VARCHAR(64),
+          password_auth_tag VARCHAR(64),
+          billing_cycle VARCHAR(20) CHECK (billing_cycle IN ('monthly','annual','one_time')),
+          amount DECIMAL(15,2) NOT NULL,
+          currency VARCHAR(3) DEFAULT 'BRL',
+          card_last4 VARCHAR(4),
+          next_renewal_date DATE,
+          status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','cancelled','suspended')),
+          cancelled_at DATETIME,
+          cancellation_reason TEXT,
+          notes TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (ticket_id) REFERENCES tickets(id),
+          FOREIGN KEY (owner_user_id) REFERENCES users(id)
+        )
+      `);
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_cs_status ON card_subscriptions(status)');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_cs_renewal ON card_subscriptions(next_renewal_date)');
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_cs_ticket ON card_subscriptions(ticket_id)');
+      console.log('Migração SQLite: card_subscriptions criada');
+    }
+
+    const csa = await dbGet("SELECT name FROM sqlite_master WHERE type='table' AND name='card_subscription_secret_access'");
+    if (!csa) {
+      await dbRun(`
+        CREATE TABLE card_subscription_secret_access (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          subscription_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          ip_address VARCHAR(64),
+          user_agent VARCHAR(500),
+          FOREIGN KEY (subscription_id) REFERENCES card_subscriptions(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+      `);
+      console.log('Migração SQLite: card_subscription_secret_access criada');
+    }
+
+    await dbRun(
+      `INSERT OR IGNORE INTO permissions (name, code, module, description) VALUES
+       ('Aprovar despesas (financeiro)', 'chamados.finance_approval.approve', 'tickets', 'Aprovar ou rejeitar chamados com despesa de cartão/assinatura.'),
+       ('Ver catálogo de assinaturas digitais', 'chamados.subscriptions.view', 'tickets', 'Listar todas as assinaturas e despesas recorrentes (visão operacional / atendentes).'),
+       ('Ver minhas assinaturas digitais', 'chamados.subscriptions.self', 'tickets', 'Listar apenas assinaturas dos chamados solicitados pelo próprio utilizador.'),
+       ('Revelar senha da assinatura', 'chamados.subscriptions.reveal_password', 'tickets', 'Revelar credencial da plataforma (auditado).'),
+       ('Gerenciar assinaturas', 'chamados.subscriptions.manage', 'tickets', 'Cancelar ou alterar status de assinaturas.')`
+    );
+
+    await dbRun(
+      `UPDATE permissions SET name = ?, description = ? WHERE code = ?`,
+      [
+        'Ver catálogo de assinaturas digitais',
+        'Listar todas as assinaturas e despesas recorrentes (visão operacional / atendentes).',
+        'chamados.subscriptions.view'
+      ]
+    );
+
+    await dbRun(
+      `INSERT OR IGNORE INTO role_permissions (role, permission_id, granted)
+       SELECT 'admin', id, 1 FROM permissions WHERE code LIKE 'chamados.%'`
+    );
+    await dbRun(
+      `INSERT OR IGNORE INTO profile_permissions (profile_id, permission_id, granted)
+       SELECT ap.id, p.id, 1
+       FROM access_profiles ap
+       CROSS JOIN permissions p
+       WHERE ap.slug = 'system_admin' AND p.code LIKE 'chamados.%'`
+    );
+    await dbRun(
+      `INSERT OR IGNORE INTO profile_permissions (profile_id, permission_id, granted)
+       SELECT ap.id, p.id, 1
+       FROM access_profiles ap
+       JOIN permissions p ON p.code = 'chamados.subscriptions.self'
+       WHERE ap.slug = 'default_user'`
+    );
+
+    const seedFields = [
+      { id: 'f1', name: 'plataforma', label: 'Plataforma / serviço', type: 'text', required: true, description: 'Ex.: Figma, ChatGPT Enterprise' },
+      { id: 'f2', name: 'plano', label: 'Plano desejado', type: 'text', required: true },
+      { id: 'f3', name: 'url', label: 'URL de login', type: 'text', required: false, placeholder: 'https://' },
+      { id: 'f4', name: 'login_plataforma', label: 'Usuário/e-mail na plataforma', type: 'text', required: true },
+      { id: 'f5', name: 'senha_plataforma', label: 'Senha na plataforma', type: 'text', required: true, description: 'Armazenada de forma segura após conclusão.' },
+      { id: 'f6', name: 'valor_mensal', label: 'Valor (referência para aprovação)', type: 'number', required: true },
+      {
+        id: 'f7',
+        name: 'ciclo_faturamento',
+        label: 'Ciclo',
+        type: 'select',
+        required: true,
+        options: ['monthly', 'annual', 'one_time']
+      },
+      { id: 'f8', name: 'justificativa', label: 'Justificativa / necessidade', type: 'textarea', required: true }
+    ];
+    const customFieldsJson = JSON.stringify(seedFields);
+    await dbRun(
+      `INSERT OR IGNORE INTO ticket_categories (name, description, sla_first_response_hours, sla_resolution_hours, is_active, custom_fields, requires_approval, approval_value_field, approval_type)
+       VALUES (?, ?, 4, 48, 0, ?, 1, 'valor_mensal', 'finance_card')`,
+      [
+        'Assinatura Digital - Cartão',
+        'Solicitação de nova assinatura paga com cartão corporativo. Fluxo: aprovação financeira → atendimento → registro da assinatura.',
+        customFieldsJson
+      ]
+    );
+    console.log('Migração SQLite: seed categoria Assinatura Digital - Cartão (se não existir)');
+  } catch (e) {
+    console.warn('Migração finance card (SQLite):', (e as Error).message);
+  }
 }
 
 export const executeSchema = async (): Promise<void> => {

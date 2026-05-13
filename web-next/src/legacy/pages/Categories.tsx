@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { apiService } from '../services/api';
-import { Category, CategoryField } from '../types';
+import { Category, CategoryField, User } from '../types';
 import { Tag, Plus, Edit, Trash2, X, Download, Upload, FileCheck, AlertCircle } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -10,7 +10,12 @@ interface NewCategory {
   description: string;
   sla_first_response_hours: number;
   sla_resolution_hours: number;
+  /** Se false, a categoria fica oculta na abertura de chamados até ativar na edição. */
+  is_active?: boolean;
   custom_fields?: CategoryField[];
+  requires_approval?: boolean;
+  approval_value_field?: string;
+  approval_type?: string;
 }
 
 /** Gera nome interno (slug) a partir do label: minúsculas, sem acentos, espaços → underscore. */
@@ -37,7 +42,11 @@ const Categories: React.FC = () => {
     description: '',
     sla_first_response_hours: 4,
     sla_resolution_hours: 24,
-    custom_fields: []
+    is_active: true,
+    custom_fields: [],
+    requires_approval: false,
+    approval_value_field: 'valor_mensal',
+    approval_type: 'none'
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const editFormRef = useRef<HTMLDivElement>(null);
@@ -62,9 +71,82 @@ const Categories: React.FC = () => {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingImport, setLoadingImport] = useState(false);
 
+  const [categoryApprovers, setCategoryApprovers] = useState<
+    Array<{ id: number; user_id: number; valor_minimo: number; valor_maximo: number; priority: number; user_name?: string }>
+  >([]);
+  const [approverDraft, setApproverDraft] = useState({
+    user_id: '',
+    valor_minimo: '0',
+    valor_maximo: '999999999.99',
+    priority: '0'
+  });
+  const [approverSearch, setApproverSearch] = useState('');
+  const [approverSuggestions, setApproverSuggestions] = useState<User[]>([]);
+  const [approverSuggestionsOpen, setApproverSuggestionsOpen] = useState(false);
+  const [approverUsersLoading, setApproverUsersLoading] = useState(false);
+  const [selectedApproverUser, setSelectedApproverUser] = useState<User | null>(null);
+  const approverComboRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (showEditCategory && editingCategory?.id) {
+      apiService
+        .getCategoryApprovers(editingCategory.id)
+        .then((rows) => setCategoryApprovers(rows as any))
+        .catch(() => setCategoryApprovers([]));
+    } else {
+      setCategoryApprovers([]);
+    }
+  }, [showEditCategory, editingCategory?.id]);
+
+  useEffect(() => {
+    setApproverSearch('');
+    setApproverSuggestions([]);
+    setApproverSuggestionsOpen(false);
+    setSelectedApproverUser(null);
+    setApproverDraft({
+      user_id: '',
+      valor_minimo: '0',
+      valor_maximo: '999999999.99',
+      priority: '0'
+    });
+  }, [editingCategory?.id]);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (approverComboRef.current && !approverComboRef.current.contains(e.target as Node)) {
+        setApproverSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  useEffect(() => {
+    if (!showEditCategory || !editingCategory?.requires_approval) return;
+    let cancelled = false;
+    setApproverUsersLoading(true);
+    const timer = window.setTimeout(() => {
+      apiService
+        .getUsers(1, 100, approverSearch.trim() ? { search: approverSearch } : undefined)
+        .then((r) => {
+          if (!cancelled) setApproverSuggestions(r.data);
+        })
+        .catch(() => {
+          if (!cancelled) setApproverSuggestions([]);
+        })
+        .finally(() => {
+          if (!cancelled) setApproverUsersLoading(false);
+        });
+    }, 280);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [approverSearch, showEditCategory, editingCategory?.requires_approval, editingCategory?.id]);
 
   // Quando abrir o formulário de edição, rolar até ele para ficar visível
   useEffect(() => {
@@ -76,8 +158,9 @@ const Categories: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await apiService.get('/categories');
-      // A API retorna { data: { data: [...], total: 7, page: 1, ... } } ou { data: [...] }
+      /** Incluir inativas: backend não filtra por is_active; usar limit alto para não “perder” categorias seed. */
+      const response = await apiService.get('/categories?page=1&limit=500');
+      // axios body após apiService.get: { message?, data: { data: [...], total, ... } }
       const categoriesArray = response.data?.data || response.data || [];
       setCategories(Array.isArray(categoriesArray) ? categoriesArray : []);
     } catch (error) {
@@ -86,6 +169,59 @@ const Categories: React.FC = () => {
       setCategories([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const removeApproverRow = async (approverId: number) => {
+    if (!window.confirm('Remover este aprovador?')) return;
+    try {
+      await apiService.deleteCategoryApprover(approverId);
+      setCategoryApprovers((prev) => prev.filter((a) => a.id !== approverId));
+      toast.success('Aprovador removido');
+    } catch {
+      toast.error('Erro ao remover aprovador');
+    }
+  };
+
+  const pickApproverUser = (u: User) => {
+    setApproverDraft((d) => ({ ...d, user_id: String(u.id) }));
+    setSelectedApproverUser(u);
+    setApproverSearch('');
+    setApproverSuggestionsOpen(false);
+  };
+
+  const clearApproverUser = () => {
+    setApproverDraft((d) => ({ ...d, user_id: '' }));
+    setSelectedApproverUser(null);
+  };
+
+  const addApproverRow = async () => {
+    if (!editingCategory?.id) return;
+    const uid = parseInt(approverDraft.user_id, 10);
+    if (isNaN(uid)) {
+      toast.error('Selecione um utilizador aprovador na lista (pesquise por nome ou e-mail).');
+      return;
+    }
+    try {
+      await apiService.createCategoryApprover(editingCategory.id, {
+        user_id: uid,
+        valor_minimo: parseFloat(approverDraft.valor_minimo) || 0,
+        valor_maximo: parseFloat(approverDraft.valor_maximo) || 0,
+        priority: parseInt(approverDraft.priority, 10) || 0
+      });
+      const rows = await apiService.getCategoryApprovers(editingCategory.id);
+      setCategoryApprovers(rows as any);
+      toast.success('Aprovador adicionado');
+      setApproverDraft({
+        user_id: '',
+        valor_minimo: '0',
+        valor_maximo: '999999999.99',
+        priority: '0'
+      });
+      setSelectedApproverUser(null);
+      setApproverSearch('');
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Erro ao adicionar aprovador');
     }
   };
 
@@ -260,7 +396,11 @@ const Categories: React.FC = () => {
         description: '',
         sla_first_response_hours: 4,
         sla_resolution_hours: 24,
-        custom_fields: []
+        is_active: true,
+        custom_fields: [],
+        requires_approval: false,
+        approval_value_field: 'valor_mensal',
+        approval_type: 'none'
       });
       setShowNewCategory(false);
       setErrors({});
@@ -298,7 +438,11 @@ const Categories: React.FC = () => {
         description: editingCategory.description,
         sla_first_response_hours: editingCategory.sla_first_response_hours,
         sla_resolution_hours: editingCategory.sla_resolution_hours,
-        custom_fields: cleanCustomFields
+        is_active: editingCategory.is_active,
+        custom_fields: cleanCustomFields,
+        requires_approval: Boolean(editingCategory.requires_approval),
+        approval_value_field: editingCategory.approval_value_field || null,
+        approval_type: editingCategory.approval_type || 'none'
       };
       await apiService.put(`/categories/${editingCategory.id}`, categoryData);
       
@@ -543,9 +687,14 @@ const Categories: React.FC = () => {
           {/* Formulário de Nova Categoria */}
           {showNewCategory && (
             <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 Criar Nova Categoria
               </h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300/95 mb-4 rounded-md border border-amber-300/70 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 px-3 py-2">
+                Logo abaixo dos SLAs aparece a secção{' '}
+                <strong>Aprovação financeira</strong>: marque se o chamado precisa de aprovador antes de ir para atendimento.
+                As <strong>faixas e utilizadores</strong> aprovadores configuram-se <strong>depois</strong>, ao editar esta categoria.
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -637,6 +786,83 @@ const Categories: React.FC = () => {
                     <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.sla_resolution_hours}</p>
                   )}
                 </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="inline-flex items-center gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200">
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-300 text-primary-600"
+                    checked={newCategory.is_active !== false}
+                    onChange={(e) =>
+                      setNewCategory((prev) => ({ ...prev, is_active: e.target.checked }))
+                    }
+                  />
+                  Categoria ativa (aparece ao abrir novo chamado; desmarque para rascunho / ativar mais tarde)
+                </label>
+              </div>
+
+              <div className="mt-6 rounded-lg border-2 border-amber-500/70 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/40 p-4 shadow-sm">
+                <h4 className="text-md font-semibold text-amber-950 dark:text-amber-50 mb-1">
+                  Aprovação financeira (opcional)
+                </h4>
+                <p className="text-xs text-amber-900/85 dark:text-amber-100/85 mb-3">
+                  Necessário para fluxo despesa cartão / assinatura digital.
+                </p>
+                <label className="flex items-center gap-2 mb-3">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(newCategory.requires_approval)}
+                    onChange={(e) => setNewCategory((prev) => ({ ...prev, requires_approval: e.target.checked }))}
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Exigir aprovação financeira ao abrir chamado</span>
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Campo numérico para faixa (nome interno)</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border rounded-md dark:bg-gray-800"
+                      value={newCategory.approval_value_field || ''}
+                      onChange={(e) => setNewCategory((p) => ({ ...p, approval_value_field: e.target.value }))}
+                      placeholder="ex: valor_mensal"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Tipo de fluxo</label>
+                    <select
+                      className="w-full px-3 py-2 border rounded-md dark:bg-gray-800"
+                      value={newCategory.approval_type || 'none'}
+                      onChange={(e) => {
+                        const approval_type = e.target.value;
+                        setNewCategory((p) =>
+                          approval_type === 'finance_card'
+                            ? {
+                                ...p,
+                                approval_type,
+                                requires_approval: true,
+                                approval_value_field: (p.approval_value_field || '').trim() || 'valor_mensal'
+                              }
+                            : { ...p, approval_type }
+                        );
+                      }}
+                    >
+                      <option value="none">Nenhum</option>
+                      <option value="finance_card">Cartão / assinatura digital</option>
+                    </select>
+                  </div>
+                </div>
+                {(newCategory.approval_type || 'none') === 'finance_card' && (
+                  <p className="text-xs text-amber-950/90 dark:text-amber-100/90 mt-3">
+                    Ao guardar com este fluxo, o sistema garante um campo numérico <strong>obrigatório</strong> (nome
+                    configurado acima ou <span className="font-mono">valor_mensal</span>). O solicitante informa esse
+                    valor na abertura para escolher a faixa do aprovador; o contrato efetivo é registrado pelo
+                    atendente ao finalizar o chamado.
+                  </p>
+                )}
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-3">
+                  Configure <strong>aprovadores por faixa</strong> ao <strong>editar</strong> esta categoria (após criar).
+                </p>
               </div>
 
               {/* Campos Customizados */}
@@ -846,8 +1072,23 @@ const Categories: React.FC = () => {
               <div key={category.id} className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                       {category.name}
+                      {!category.is_active && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200">
+                          Inativa
+                        </span>
+                      )}
+                      {category.requires_approval && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-amber-200 text-amber-900 dark:bg-amber-800/60 dark:text-amber-100">
+                          Aprovação financeira
+                        </span>
+                      )}
+                      {category.approval_type === 'finance_card' && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                          Cartão / assinatura
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       {category.description}
@@ -970,6 +1211,247 @@ const Categories: React.FC = () => {
                           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.sla_resolution_hours}</p>
                         )}
                       </div>
+                    </div>
+
+                    <div className="md:col-span-2 mt-2">
+                      <label className="inline-flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-primary-600"
+                          checked={Boolean(editingCategory.is_active)}
+                          onChange={(e) =>
+                            setEditingCategory((prev) =>
+                              prev ? { ...prev, is_active: e.target.checked } : null
+                            )
+                          }
+                        />
+                        Categoria ativa (disponível para novos chamados)
+                      </label>
+                    </div>
+
+                    <div className="mt-6 border-t pt-6">
+                      <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Aprovação financeira</h4>
+                      <label className="flex items-center gap-2 mb-3">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editingCategory.requires_approval)}
+                          onChange={(e) =>
+                            setEditingCategory((prev) =>
+                              prev ? { ...prev, requires_approval: e.target.checked } : null
+                            )
+                          }
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          Exigir aprovação financeira ao abrir chamado nesta categoria
+                        </span>
+                      </label>
+                      {editingCategory.requires_approval && (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">
+                                Campo numérico (nome interno) para faixa
+                              </label>
+                              <select
+                                className="w-full px-3 py-2 border rounded-md dark:bg-gray-800"
+                                value={editingCategory.approval_value_field || ''}
+                                onChange={(e) =>
+                                  setEditingCategory((prev) =>
+                                    prev ? { ...prev, approval_value_field: e.target.value } : null
+                                  )
+                                }
+                              >
+                                <option value="">Selecione</option>
+                                {(editingCategory.custom_fields || [])
+                                  .filter((f) => f.type === 'number' && f.name)
+                                  .map((f) => (
+                                    <option key={f.id} value={f.name}>
+                                      {f.label} ({f.name})
+                                    </option>
+                                  ))}
+                              </select>
+                              <p className="text-xs text-gray-500 mt-1">Use um campo numérico já definido acima (ex.: valor_mensal).</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Tipo de fluxo</label>
+                              <select
+                                className="w-full px-3 py-2 border rounded-md dark:bg-gray-800"
+                                value={editingCategory.approval_type || 'none'}
+                                onChange={(e) => {
+                                  const approval_type = e.target.value;
+                                  setEditingCategory((prev) => {
+                                    if (!prev) return null;
+                                    if (approval_type === 'finance_card') {
+                                      const field = (prev.approval_value_field || '').trim() || 'valor_mensal';
+                                      return {
+                                        ...prev,
+                                        approval_type,
+                                        requires_approval: true,
+                                        approval_value_field: field
+                                      };
+                                    }
+                                    return { ...prev, approval_type };
+                                  });
+                                }}
+                              >
+                                <option value="none">Nenhum</option>
+                                <option value="finance_card">Cartão / assinatura digital</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <h5 className="text-sm font-medium mb-1">Aprovadores por faixa</h5>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                              O valor informado pelo <strong>solicitante na abertura</strong> (ex.: campo{' '}
+                              <strong>valor_mensal</strong>) é comparado com o intervalo; o aprovador com menor{' '}
+                              <strong>prioridade</strong> (número mais baixo) é considerado primeiro. O aprovador não
+                              define valor; na finalização, o atendente registra plano efetivo, valor, moeda e ciclo.
+                            </p>
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 mb-3">
+                              <div className="lg:col-span-5 relative" ref={approverComboRef}>
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                  Utilizador aprovador
+                                </label>
+                                {selectedApproverUser ? (
+                                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-sm">
+                                    <span className="truncate flex-1 text-gray-900 dark:text-gray-100">
+                                      {selectedApproverUser.name}{' '}
+                                      <span className="text-gray-500 dark:text-gray-400">
+                                        ({selectedApproverUser.email})
+                                      </span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className="shrink-0 text-xs text-primary-600 hover:underline"
+                                      onClick={() => {
+                                        clearApproverUser();
+                                        setApproverSuggestionsOpen(true);
+                                      }}
+                                    >
+                                      Alterar
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <input
+                                      type="text"
+                                      autoComplete="off"
+                                      aria-label="Pesquisar utilizador por nome ou e-mail"
+                                      placeholder="Comece a escrever o nome ou o e-mail…"
+                                      className="w-full border rounded-md px-3 py-2 text-sm dark:bg-gray-900"
+                                      value={approverSearch}
+                                      onChange={(e) => {
+                                        setApproverSearch(e.target.value);
+                                        setApproverSuggestionsOpen(true);
+                                      }}
+                                      onFocus={() => setApproverSuggestionsOpen(true)}
+                                    />
+                                    {approverSuggestionsOpen && (
+                                      <ul
+                                        className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-lg text-sm"
+                                        role="listbox"
+                                      >
+                                        {approverUsersLoading && (
+                                          <li className="px-3 py-2 text-gray-500">A carregar…</li>
+                                        )}
+                                        {!approverUsersLoading && approverSuggestions.length === 0 && (
+                                          <li className="px-3 py-2 text-gray-500">Sem resultados.</li>
+                                        )}
+                                        {!approverUsersLoading &&
+                                          approverSuggestions.map((u) => (
+                                            <li key={u.id}>
+                                              <button
+                                                type="button"
+                                                className="w-full text-left px-3 py-2 hover:bg-primary-50 dark:hover:bg-gray-800"
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => pickApproverUser(u)}
+                                              >
+                                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                                  {u.name}
+                                                </span>
+                                                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                                                  {u.email}
+                                                </span>
+                                              </button>
+                                            </li>
+                                          ))}
+                                      </ul>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                              <div className="lg:col-span-2">
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                  Valor mínimo da faixa
+                                </label>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  className="w-full border rounded-md px-3 py-2 text-sm dark:bg-gray-900"
+                                  value={approverDraft.valor_minimo}
+                                  onChange={(e) => setApproverDraft((d) => ({ ...d, valor_minimo: e.target.value }))}
+                                />
+                                <p className="text-[10px] text-gray-500 mt-0.5">Inclusivo — ex.: 0</p>
+                              </div>
+                              <div className="lg:col-span-2">
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                  Valor máximo da faixa
+                                </label>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  className="w-full border rounded-md px-3 py-2 text-sm dark:bg-gray-900"
+                                  value={approverDraft.valor_maximo}
+                                  onChange={(e) => setApproverDraft((d) => ({ ...d, valor_maximo: e.target.value }))}
+                                />
+                                <p className="text-[10px] text-gray-500 mt-0.5">Inclusivo — ex.: 999999</p>
+                              </div>
+                              <div className="lg:col-span-2">
+                                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                  Prioridade
+                                </label>
+                                <input
+                                  type="number"
+                                  className="w-full border rounded-md px-3 py-2 text-sm dark:bg-gray-900"
+                                  value={approverDraft.priority}
+                                  onChange={(e) => setApproverDraft((d) => ({ ...d, priority: e.target.value }))}
+                                />
+                                <p className="text-[10px] text-gray-500 mt-0.5">Menor = avaliado primeiro</p>
+                              </div>
+                              <div className="lg:col-span-1 flex items-end">
+                                <button
+                                  type="button"
+                                  onClick={addApproverRow}
+                                  className="w-full px-3 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700"
+                                >
+                                  Adicionar
+                                </button>
+                              </div>
+                            </div>
+                            <ul className="text-sm space-y-1">
+                              {categoryApprovers.map((a) => (
+                                <li key={a.id} className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 py-1">
+                                  <span>
+                                    {a.user_name || `Usuário #${a.user_id}`} — {a.valor_minimo} a {a.valor_maximo} (prioridade{' '}
+                                    {a.priority})
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="text-red-600 text-xs"
+                                    onClick={() => removeApproverRow(a.id)}
+                                  >
+                                    remover
+                                  </button>
+                                </li>
+                              ))}
+                              {categoryApprovers.length === 0 && (
+                                <li className="text-gray-500 text-xs">Nenhum aprovador configurado.</li>
+                              )}
+                            </ul>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Campos Customizados - Edição */}

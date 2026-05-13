@@ -10,6 +10,7 @@ export enum TicketStatus {
   PENDING_USER = 'pending_user',
   PENDING_THIRD_PARTY = 'pending_third_party',
   PENDING_APPROVAL = 'pending_approval',
+  PENDING_FINANCE_APPROVAL = 'pending_finance_approval',
   RESOLVED = 'resolved',
   CLOSED = 'closed',
   OVERDUE_FIRST_RESPONSE = 'overdue_first_response',
@@ -67,6 +68,9 @@ export interface Category {
   sla_resolution_hours: number;
   is_active: boolean;
   custom_fields?: CategoryField[]; // Campos customizados do formulário
+  requires_approval?: boolean;
+  approval_value_field?: string | null;
+  approval_type?: 'none' | 'finance_card' | string;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -211,6 +215,9 @@ export interface CreateCategoryRequest {
   sla_resolution_hours: number;
   is_active?: boolean;
   custom_fields?: CategoryField[]; // Campos customizados do formulário
+  requires_approval?: boolean;
+  approval_value_field?: string | null;
+  approval_type?: 'none' | 'finance_card';
 }
 
 export interface UpdateCategoryRequest {
@@ -220,6 +227,9 @@ export interface UpdateCategoryRequest {
   sla_resolution_hours?: number;
   is_active?: boolean;
   custom_fields?: CategoryField[]; // Campos customizados do formulário
+  requires_approval?: boolean;
+  approval_value_field?: string | null;
+  approval_type?: 'none' | 'finance_card';
 }
 
 export interface CreateUserRequest {

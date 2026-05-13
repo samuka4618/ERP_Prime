@@ -4,6 +4,7 @@ import { Ticket, TicketStatus, CreateTicketRequest, UpdateTicketRequest, Paginat
 import { config } from '../../../config/database';
 import { CategoryAssignmentModel } from './CategoryAssignment';
 import { CategoryAssignmentRuleModel, resolveAttendantFromRules } from './CategoryAssignmentRule';
+import { parseCategoryCustomFields } from './Category';
 import { formatSystemDate, toISOFromDB } from '../../../shared/utils/dateUtils';
 
 // Função auxiliar para fazer parse do custom_data
@@ -50,25 +51,17 @@ export class TicketModel {
     const slaFirstResponse = new Date(now.getTime() + (category.sla_first_response_hours * 60 * 60 * 1000));
     const slaResolution = new Date(now.getTime() + (category.sla_resolution_hours * 60 * 60 * 1000));
 
-    // Atribuição: primeiro por regras de resposta (custom_data), depois por atribuições fixas
-    const assignments = await CategoryAssignmentModel.findByCategory(ticketData.category_id);
+    const requiresFinanceApproval =
+      category.requires_approval === 1 || category.requires_approval === true;
+
+    const initialStatus: string = requiresFinanceApproval ? 'pending_finance_approval' : 'open';
+
     let assignedAttendantId: number | null = null;
-
-    const rules = await CategoryAssignmentRuleModel.findByCategory(ticketData.category_id);
-    if (rules.length > 0 && ticketData.custom_data && Object.keys(ticketData.custom_data).length > 0) {
-      const ruleAttendantId = resolveAttendantFromRules(ticketData.custom_data, rules);
-      if (ruleAttendantId != null) {
-        const isAssigned = assignments.some(a => a.attendant_id === ruleAttendantId);
-        if (isAssigned) {
-          assignedAttendantId = ruleAttendantId;
-        }
-      }
-    }
-
-    if (assignedAttendantId == null && assignments.length > 0) {
-      if (assignments.length === 1) {
-        assignedAttendantId = assignments[0].attendant_id;
-      }
+    if (!requiresFinanceApproval) {
+      assignedAttendantId = await TicketModel.resolveAttendantForCategory(
+        ticketData.category_id,
+        ticketData.custom_data
+      );
     }
 
     // Converter custom_data para JSON
@@ -79,8 +72,8 @@ export class TicketModel {
     // Inserir o ticket
     await dbRun(
       `INSERT INTO tickets (user_id, category_id, subject, description, status, priority, sla_first_response, sla_resolution, attendant_id, custom_data) 
-       VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)`,
-      [userId, ticketData.category_id, ticketData.subject, ticketData.description, ticketData.priority || 'medium', slaFirstResponse, slaResolution, assignedAttendantId, customDataJson]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [userId, ticketData.category_id, ticketData.subject, ticketData.description, initialStatus, ticketData.priority || 'medium', slaFirstResponse, slaResolution, assignedAttendantId, customDataJson]
     );
 
     // Buscar o último ticket inserido
@@ -142,7 +135,11 @@ export class TicketModel {
               u.name as user_name, u.email as user_email,
               a.name as attendant_name, a.email as attendant_email,
               c.name as category_name, c.description as category_description,
-              c.sla_first_response_hours, c.sla_resolution_hours
+              c.sla_first_response_hours, c.sla_resolution_hours,
+              c.requires_approval as cat_requires_approval,
+              c.approval_value_field as cat_approval_value_field,
+              c.approval_type as cat_approval_type,
+              c.custom_fields as cat_custom_fields
        FROM tickets t
        LEFT JOIN users u ON t.user_id = u.id
        LEFT JOIN users a ON t.attendant_id = a.id
@@ -196,8 +193,12 @@ export class TicketModel {
         sla_first_response_hours: ticket.sla_first_response_hours,
         sla_resolution_hours: ticket.sla_resolution_hours,
         is_active: true,
+        custom_fields: parseCategoryCustomFields(ticket.cat_custom_fields),
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        requires_approval: Boolean(ticket.cat_requires_approval),
+        approval_value_field: ticket.cat_approval_value_field ?? undefined,
+        approval_type: (ticket.cat_approval_type as 'none' | 'finance_card' | undefined) || 'none'
       } : undefined
     };
   }
@@ -715,6 +716,7 @@ export class TicketModel {
       [TicketStatus.PENDING_USER]: 0,
       [TicketStatus.PENDING_THIRD_PARTY]: 0,
       [TicketStatus.PENDING_APPROVAL]: 0,
+      [TicketStatus.PENDING_FINANCE_APPROVAL]: 0,
       [TicketStatus.RESOLVED]: 0,
       [TicketStatus.CLOSED]: 0,
       [TicketStatus.OVERDUE_FIRST_RESPONSE]: 0,
@@ -834,10 +836,9 @@ export class TicketModel {
     return result.count;
   }
 
-
-
   static async delete(id: number): Promise<void> {
-    // Excluir dependências primeiro
+    // card_subscriptions referencia tickets sem ON DELETE CASCADE (Postgres/SQLite)
+    await dbRun('DELETE FROM card_subscriptions WHERE ticket_id = ?', [id]);
     await dbRun('DELETE FROM ticket_history WHERE ticket_id = ?', [id]);
     await dbRun('DELETE FROM notifications WHERE ticket_id = ?', [id]);
     
@@ -1029,5 +1030,28 @@ export class TicketModel {
     return activities
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, 10);
+  }
+
+  /** Mesma lógica de atribuição usada na criação do chamado. */
+  static async resolveAttendantForCategory(
+    categoryId: number,
+    customData: Record<string, any> | undefined
+  ): Promise<number | null> {
+    const assignments = await CategoryAssignmentModel.findByCategory(categoryId);
+    let assignedAttendantId: number | null = null;
+    const rules = await CategoryAssignmentRuleModel.findByCategory(categoryId);
+    if (rules.length > 0 && customData && Object.keys(customData).length > 0) {
+      const ruleAttendantId = resolveAttendantFromRules(customData, rules);
+      if (ruleAttendantId != null) {
+        const isAssigned = assignments.some((a) => a.attendant_id === ruleAttendantId);
+        if (isAssigned) {
+          assignedAttendantId = ruleAttendantId;
+        }
+      }
+    }
+    if (assignedAttendantId == null && assignments.length === 1) {
+      assignedAttendantId = assignments[0].attendant_id;
+    }
+    return assignedAttendantId;
   }
 }

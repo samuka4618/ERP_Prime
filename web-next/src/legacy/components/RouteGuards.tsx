@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../contexts/PermissionsContext';
 import LoadingSpinner from './LoadingSpinner';
 
 export const ProtectedRoute: React.FC<{
@@ -36,5 +37,26 @@ export const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children 
     return <Navigate to="/dashboard" replace />;
   }
 
+  return <>{children}</>;
+};
+
+/** Rota que exige permissão IAM; caso contrário redireciona para o dashboard. */
+export const PermissionRoute: React.FC<{ permission: string; children: React.ReactNode }> = ({
+  permission,
+  children,
+}) => {
+  const { loadingPermissions, hasPermission } = usePermissions();
+  if (loadingPermissions) return <LoadingSpinner />;
+  if (!hasPermission(permission)) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+
+export const PermissionAnyRoute: React.FC<{ permissions: string[]; children: React.ReactNode }> = ({
+  permissions,
+  children,
+}) => {
+  const { loadingPermissions, hasAnyPermission } = usePermissions();
+  if (loadingPermissions) return <LoadingSpinner />;
+  if (!hasAnyPermission(...permissions)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };

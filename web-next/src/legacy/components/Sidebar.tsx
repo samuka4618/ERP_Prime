@@ -21,6 +21,23 @@ import {
 import UserAvatar from './UserAvatar';
 import NavigationSettingsModal from './NavigationSettingsModal';
 import clsx from 'clsx';
+import { apiService } from '../services/api';
+
+/** Insere badge dinâmico no item de aprovações financeiras (total pendente). */
+function patchNavFinanceBadge(sections: NavSection[], pendingTotal: number | undefined): NavSection[] {
+  const walk = (items: NavItem[]): NavItem[] =>
+    items.map((it) => {
+      if (it.id === 'nav-finance-approvals') {
+        return {
+          ...it,
+          badge: pendingTotal != null && pendingTotal > 0 ? pendingTotal : undefined,
+        };
+      }
+      if (it.items?.length) return { ...it, items: walk(it.items) };
+      return it;
+    });
+  return sections.map((sec) => ({ ...sec, items: walk(sec.items) }));
+}
 
 interface SidebarProps {
   isOpen: boolean;
@@ -36,6 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, onClose, onToggl
   const { config } = useSystemConfig();
   const location = useLocation();
   const [navSettingsOpen, setNavSettingsOpen] = useState(false);
+  const [financePendingCount, setFinancePendingCount] = useState<number | undefined>(undefined);
 
   const systemName = config?.system_name || 'ERP PRIME';
   const systemSubtitle = config?.system_subtitle || 'Gestão Empresarial';
@@ -45,8 +63,35 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed, onClose, onToggl
     let s = filterNavByPermissions(NAV_SECTIONS, !!isAdmin, { hasPermission, hasAnyPermission });
     s = applyHiddenNavIds(s, new Set(preferences.sidebar.hiddenIds));
     s = orderNavSections(s, preferences.sidebar.sectionOrder);
+    s = patchNavFinanceBadge(s, financePendingCount);
     return s;
-  }, [isAdmin, hasPermission, hasAnyPermission, preferences.sidebar.hiddenIds, preferences.sidebar.sectionOrder]);
+  }, [
+    isAdmin,
+    hasPermission,
+    hasAnyPermission,
+    preferences.sidebar.hiddenIds,
+    preferences.sidebar.sectionOrder,
+    financePendingCount,
+  ]);
+
+  useEffect(() => {
+    if (!hasPermission('chamados.finance_approval.approve')) {
+      setFinancePendingCount(undefined);
+      return;
+    }
+    let cancelled = false;
+    apiService
+      .getPendingFinanceApprovals(1, 1)
+      .then((r) => {
+        if (!cancelled) setFinancePendingCount(r.total);
+      })
+      .catch(() => {
+        if (!cancelled) setFinancePendingCount(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasPermission, location.pathname, user?.id]);
 
   const navIndex = useMemo(() => buildNavIndex(navSectionsFiltered), [navSectionsFiltered]);
   const favorites = preferences.sidebar.favorites;

@@ -287,8 +287,15 @@ class ApiService {
   }
 
   // Usuários
-  async getUsers(page = 1, limit = 10): Promise<PaginatedResponse<User>> {
-    const response = await this.api.get<ApiResponse<PaginatedResponse<User>>>(`/users?page=${page}&limit=${limit}`);
+  async getUsers(
+    page = 1,
+    limit = 10,
+    filters?: { search?: string; role?: string }
+  ): Promise<PaginatedResponse<User>> {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (filters?.search?.trim()) params.set('search', filters.search.trim());
+    if (filters?.role) params.set('role', filters.role);
+    const response = await this.api.get<ApiResponse<PaginatedResponse<User>>>(`/users?${params.toString()}`);
     return response.data.data;
   }
 
@@ -728,6 +735,130 @@ class ApiService {
   async updateTicket(ticketId: number, data: any): Promise<Ticket> {
     const response = await this.api.put<ApiResponse<Ticket>>(`/tickets/${ticketId}`, data);
     return response.data.data;
+  }
+
+  async getPendingFinanceApprovals(page = 1, limit = 20): Promise<PaginatedResponse<Ticket>> {
+    const response = await this.api.get<ApiResponse<PaginatedResponse<Ticket>>>(
+      `/tickets/pending-finance-approval?page=${page}&limit=${limit}`
+    );
+    return response.data.data;
+  }
+
+  async financeApproveTicket(ticketId: number): Promise<Ticket> {
+    const response = await this.api.post<ApiResponse<{ ticket: Ticket }>>(
+      `/tickets/${ticketId}/finance-approve`,
+      {}
+    );
+    return response.data.data.ticket;
+  }
+
+  async financeRejectTicket(ticketId: number, reason: string): Promise<Ticket> {
+    const response = await this.api.post<ApiResponse<{ ticket: Ticket }>>(`/tickets/${ticketId}/finance-reject`, {
+      reason
+    });
+    return response.data.data.ticket;
+  }
+
+  async completeCardSubscription(
+    ticketId: number,
+    body: Record<string, unknown>
+  ): Promise<{ ticket: Ticket; subscription: unknown }> {
+    const response = await this.api.post<ApiResponse<{ ticket: Ticket; subscription: unknown }>>(
+      `/tickets/${ticketId}/complete-card-subscription`,
+      body
+    );
+    return response.data.data as { ticket: Ticket; subscription: unknown };
+  }
+
+  async getSubscriptionSummary(): Promise<{ totalMonthlyApprox: number; activeCount: number; renewals30d: number }> {
+    const response = await this.api.get<
+      ApiResponse<{ totalMonthlyApprox: number; activeCount: number; renewals30d: number }>
+    >('/subscriptions/summary');
+    return response.data.data;
+  }
+
+  async getSubscriptions(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    platform?: string;
+    owner?: string;
+    renewal_within_days?: number;
+  }): Promise<PaginatedResponse<any>> {
+    const sp = new URLSearchParams();
+    if (params?.page) sp.set('page', String(params.page));
+    if (params?.limit) sp.set('limit', String(params.limit));
+    if (params?.status) sp.set('status', params.status);
+    if (params?.platform) sp.set('platform', params.platform);
+    if (params?.owner) sp.set('owner', params.owner);
+    if (params?.renewal_within_days != null) sp.set('renewal_within_days', String(params.renewal_within_days));
+    const response = await this.api.get<ApiResponse<PaginatedResponse<unknown>>>(`/subscriptions?${sp.toString()}`);
+    return response.data.data;
+  }
+
+  async getSubscriptionById(id: number): Promise<any> {
+    const response = await this.api.get<ApiResponse<{ subscription: unknown }>>(`/subscriptions/${id}`);
+    return (response.data.data as any).subscription;
+  }
+
+  async revealSubscriptionPassword(id: number, currentPassword: string): Promise<string> {
+    const response = await this.api.post<ApiResponse<{ password: string }>>(`/subscriptions/${id}/reveal`, {
+      currentPassword
+    });
+    return response.data.data.password;
+  }
+
+  async cancelSubscription(id: number, reason: string): Promise<unknown> {
+    const response = await this.api.patch<ApiResponse<{ subscription: unknown }>>(`/subscriptions/${id}/cancel`, {
+      reason
+    });
+    return (response.data.data as any).subscription;
+  }
+
+  async getCategoryApprovers(categoryId: number): Promise<
+    Array<{
+      id: number;
+      user_id: number;
+      valor_minimo: number;
+      valor_maximo: number;
+      priority?: number;
+      user_name?: string;
+    }>
+  > {
+    const response = await this.api.get<ApiResponse<any[]>>(`/category-approvers/by-category/${categoryId}`);
+    return response.data.data || [];
+  }
+
+  async createCategoryApprover(
+    categoryId: number,
+    body: {
+      user_id: number;
+      valor_minimo?: number;
+      valor_maximo?: number;
+      priority?: number;
+      is_active?: boolean;
+    }
+  ): Promise<unknown> {
+    const response = await this.api.post<ApiResponse<unknown>>(`/category-approvers/by-category/${categoryId}`, body);
+    return response.data.data;
+  }
+
+  async updateCategoryApprover(
+    id: number,
+    body: Partial<{
+      user_id: number;
+      valor_minimo: number;
+      valor_maximo: number;
+      priority: number;
+      is_active: boolean;
+    }>
+  ): Promise<unknown> {
+    const response = await this.api.patch<ApiResponse<unknown>>(`/category-approvers/${id}`, body);
+    return response.data.data;
+  }
+
+  async deleteCategoryApprover(id: number): Promise<void> {
+    await this.api.delete(`/category-approvers/${id}`);
   }
 
   // Notificações

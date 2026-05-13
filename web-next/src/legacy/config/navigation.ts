@@ -24,6 +24,8 @@ import {
   Database,
   History,
   LayoutGrid,
+  Landmark,
+  CreditCard,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -76,6 +78,20 @@ export const NAV_SECTIONS: NavSection[] = [
         href: '/tickets',
         icon: Ticket,
         permissionAny: ['tickets.view'],
+      },
+      {
+        id: 'nav-finance-approvals',
+        name: 'Aprovações financeiras',
+        href: '/finance-approvals',
+        icon: Landmark,
+        permissionAny: ['chamados.finance_approval.approve'],
+      },
+      {
+        id: 'nav-card-subscriptions',
+        name: 'Assinaturas digitais',
+        href: '/card-subscriptions',
+        icon: CreditCard,
+        permissionAny: ['chamados.subscriptions.view', 'chamados.subscriptions.self'],
       },
       {
         id: 'nav-registrations',

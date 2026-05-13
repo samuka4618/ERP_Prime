@@ -8,6 +8,11 @@ export interface PermissionCatalogEntry {
 export const PERMISSION_CATALOG: PermissionCatalogEntry[] = [
   { name: 'Visualizar Dashboard', code: 'dashboard.view', module: 'administration', description: 'Permite acessar o dashboard principal.' },
   { name: 'Visualizar Chamados', code: 'tickets.view', module: 'tickets', description: 'Permite visualizar chamados.' },
+  { name: 'Aprovar despesas (financeiro)', code: 'chamados.finance_approval.approve', module: 'tickets', description: 'Aprovar ou rejeitar chamados com despesa de cartão/assinatura.' },
+  { name: 'Ver catálogo de assinaturas digitais', code: 'chamados.subscriptions.view', module: 'tickets', description: 'Listar todas as assinaturas e despesas recorrentes (visão operacional / atendentes).' },
+  { name: 'Ver minhas assinaturas digitais', code: 'chamados.subscriptions.self', module: 'tickets', description: 'Ver apenas assinaturas dos chamados abertos pelo próprio utilizador.' },
+  { name: 'Revelar senha da assinatura', code: 'chamados.subscriptions.reveal_password', module: 'tickets', description: 'Revelar credencial da plataforma (auditado).' },
+  { name: 'Gerenciar assinaturas', code: 'chamados.subscriptions.manage', module: 'tickets', description: 'Cancelar ou alterar status de assinaturas.' },
   { name: 'Criar Chamados', code: 'tickets.create', module: 'tickets', description: 'Permite criar chamados.' },
   { name: 'Editar Chamados', code: 'tickets.edit', module: 'tickets', description: 'Permite editar chamados.' },
   { name: 'Atribuir Chamados', code: 'tickets.assign', module: 'tickets', description: 'Permite atribuir chamados.' },

@@ -47,6 +47,9 @@ CREATE TABLE IF NOT EXISTS ticket_categories (
     sla_resolution_hours INTEGER NOT NULL DEFAULT 24,
     is_active BOOLEAN DEFAULT true,
     custom_fields TEXT,
+    requires_approval BOOLEAN DEFAULT false,
+    approval_value_field VARCHAR(100),
+    approval_type VARCHAR(30) DEFAULT 'none',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -79,14 +82,74 @@ CREATE TABLE IF NOT EXISTS tickets (
     category_id INTEGER NOT NULL REFERENCES ticket_categories(id),
     subject VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'pending_user', 'pending_third_party', 'pending_approval', 'resolved', 'closed', 'overdue_first_response', 'overdue_resolution')),
+    status VARCHAR(30) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'pending_user', 'pending_third_party', 'pending_approval', 'pending_finance_approval', 'resolved', 'closed', 'overdue_first_response', 'overdue_resolution')),
     priority VARCHAR(10) NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
     sla_first_response TIMESTAMP NOT NULL,
     sla_resolution TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     closed_at TIMESTAMP,
-    reopened_at TIMESTAMP
+    reopened_at TIMESTAMP,
+    custom_data TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ticket_category_approvers (
+    id SERIAL PRIMARY KEY,
+    category_id INTEGER NOT NULL REFERENCES ticket_categories(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    valor_minimo DECIMAL(15,2) DEFAULT 0,
+    valor_maximo DECIMAL(15,2) DEFAULT 999999999.99,
+    priority INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_tca_category ON ticket_category_approvers(category_id);
+
+CREATE TABLE IF NOT EXISTS ticket_approvals (
+    id SERIAL PRIMARY KEY,
+    ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    approver_id INTEGER NOT NULL REFERENCES users(id),
+    decision VARCHAR(20) NOT NULL CHECK (decision IN ('approved','rejected')),
+    reason TEXT,
+    valor_referencia DECIMAL(15,2),
+    decided_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_ticket_approvals_ticket ON ticket_approvals(ticket_id);
+
+CREATE TABLE IF NOT EXISTS card_subscriptions (
+    id SERIAL PRIMARY KEY,
+    ticket_id INTEGER NOT NULL REFERENCES tickets(id),
+    owner_user_id INTEGER NOT NULL REFERENCES users(id),
+    platform VARCHAR(255) NOT NULL,
+    plan VARCHAR(255),
+    url VARCHAR(500),
+    login_username VARCHAR(255),
+    password_ciphertext TEXT,
+    password_iv VARCHAR(64),
+    password_auth_tag VARCHAR(64),
+    billing_cycle VARCHAR(20) CHECK (billing_cycle IN ('monthly','annual','one_time')),
+    amount DECIMAL(15,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'BRL',
+    card_last4 VARCHAR(4),
+    next_renewal_date DATE,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','cancelled','suspended')),
+    cancelled_at TIMESTAMP,
+    cancellation_reason TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_cs_status ON card_subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_cs_renewal ON card_subscriptions(next_renewal_date);
+CREATE INDEX IF NOT EXISTS idx_cs_ticket ON card_subscriptions(ticket_id);
+
+CREATE TABLE IF NOT EXISTS card_subscription_secret_access (
+    id SERIAL PRIMARY KEY,
+    subscription_id INTEGER NOT NULL REFERENCES card_subscriptions(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(64),
+    user_agent VARCHAR(500)
 );
 
 CREATE TABLE IF NOT EXISTS ticket_history (

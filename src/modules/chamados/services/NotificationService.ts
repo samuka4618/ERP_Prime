@@ -2,6 +2,8 @@ import nodemailer from 'nodemailer';
 import { NotificationModel } from '../models/Notification';
 import { UserModel } from '../../../core/users/User';
 import { TicketModel } from '../models/Ticket';
+import { CategoryModel } from '../models/Category';
+import { TicketCategoryApproverModel } from '../models/TicketCategoryApprover';
 import { config } from '../../../config/database';
 import { Notification, TicketStatus } from '../../../shared/types';
 import type { NotificationTemplateKey } from '../../../shared/types';
@@ -9,6 +11,7 @@ import { PushNotificationService } from './PushNotificationService';
 import { NotificationTemplateModel } from '../../../core/system/NotificationTemplateModel';
 import { buildContextFor } from '../../../core/system/notificationContextBuilders';
 import { getClientRegistrationStatusLabel } from '../../cadastros/clientRegistrationStatusConfig';
+import { valorFromTicketCustomField } from '../utils/approvalAmount';
 
 export class NotificationService {
   private static transporter = nodemailer.createTransport({
@@ -178,6 +181,7 @@ export class NotificationService {
       [TicketStatus.PENDING_USER]: 'Pendente Usuário',
       [TicketStatus.PENDING_THIRD_PARTY]: 'Pendente Terceiros',
       [TicketStatus.PENDING_APPROVAL]: 'Aguardando Aprovação do Solicitante',
+      [TicketStatus.PENDING_FINANCE_APPROVAL]: 'Aguardando Aprovação Financeira',
       [TicketStatus.RESOLVED]: 'Resolvido',
       [TicketStatus.CLOSED]: 'Fechado',
       [TicketStatus.OVERDUE_FIRST_RESPONSE]: 'Atrasado - Primeira Resposta',
@@ -486,6 +490,84 @@ export class NotificationService {
         statusLabel: status,
       });
       await this.sendTemplatedEmail('approval_received', ticket.attendant.email, context);
+    }
+  }
+
+  /** Aprovador financeiro: e-mail + push quando um chamado entra em aprovação. */
+  static async notifyFinanceApprovalRequired(ticketId: number): Promise<void> {
+    try {
+      const ticket = await TicketModel.findById(ticketId);
+      if (!ticket) return;
+      const category = await CategoryModel.findById(ticket.category_id);
+      if (!category?.requires_approval) return;
+      const cd = ticket.custom_data || {};
+      const field = category.approval_value_field || 'valor_mensal';
+      const valor = valorFromTicketCustomField(cd as Record<string, unknown>, field);
+      if (valor === null) return;
+      const approverId = await TicketCategoryApproverModel.findApproverUserIdForValue(category.id, valor);
+      if (!approverId) return;
+      const approver = await UserModel.findById(approverId);
+      if (!approver) return;
+      await this.createNotification(
+        approverId,
+        ticketId,
+        'status_change',
+        'Aprovação financeira pendente',
+        `Chamado #${ticketId} — ${ticket.subject} aguarda sua aprovação (${category.name}).`
+      );
+      const ctx = buildContextFor('status_change', {
+        ticket,
+        oldStatusLabel: '',
+        newStatusLabel: 'Aguardando Aprovação Financeira',
+      });
+      await this.sendTemplatedEmail('status_change', approver.email, ctx);
+    } catch (e) {
+      console.error('notifyFinanceApprovalRequired', e);
+    }
+  }
+
+  /** Solicitante (e atendente, se já designado após aprovação) após aprovar/rejeitar financeiro. */
+  static async notifyFinanceApprovalDecision(
+    ticketId: number,
+    decision: 'approved' | 'rejected'
+  ): Promise<void> {
+    try {
+      const ticket = await TicketModel.findById(ticketId);
+      if (!ticket) return;
+      const isApp = decision === 'approved';
+      const msg = isApp
+        ? `Seu chamado #${ticketId} foi aprovado financeiramente e seguirá para atendimento.`
+        : `Seu chamado #${ticketId} foi rejeitado na aprovação financeira.`;
+      await this.createNotification(ticket.user_id, ticketId, 'status_change', 'Atualização da solicitação', msg);
+      if (ticket.attendant_id && isApp) {
+        await this.createNotification(
+          ticket.attendant_id,
+          ticketId,
+          'status_change',
+          'Novo chamado para você',
+          `O chamado #${ticketId} foi aprovado e está em atendimento.`
+        );
+      }
+    } catch (e) {
+      console.error('notifyFinanceApprovalDecision', e);
+    }
+  }
+
+  /** Alerta ao titular sobre renovação (dias restantes). */
+  static async notifySubscriptionRenewalSoon(subscriptionId: number, daysUntil: number): Promise<void> {
+    try {
+      const { CardSubscriptionModel } = await import('../models/CardSubscription');
+      const sub = await CardSubscriptionModel.findById(subscriptionId);
+      if (!sub) return;
+      await this.createNotification(
+        sub.owner_user_id,
+        sub.ticket_id || 0,
+        'sla_alert',
+        'Renovação de assinatura próxima',
+        `A assinatura ${sub.platform} renova em aproximadamente ${daysUntil} dia(s).`
+      );
+    } catch (e) {
+      console.error('notifySubscriptionRenewalSoon', e);
     }
   }
 

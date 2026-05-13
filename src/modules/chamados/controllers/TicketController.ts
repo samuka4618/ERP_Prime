@@ -4,13 +4,31 @@ import { TicketHistoryModel } from '../models/TicketHistory';
 import { NotificationService } from '../services/NotificationService';
 import { realtimeService } from '../services/RealtimeService';
 import { getWebSocketService } from '../services/WebSocketService';
-import { CreateTicketRequest, UpdateTicketRequest, TicketStatus } from '../../../shared/types';
+import { CreateTicketRequest, UpdateTicketRequest, TicketStatus, Ticket } from '../../../shared/types';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
-import { createTicketSchema, updateTicketSchema, addMessageSchema, ticketQuerySchema } from '../schemas/ticket';
+import { createTicketSchema, updateTicketSchema, addMessageSchema, ticketQuerySchema, completeCardSubscriptionSchema } from '../schemas/ticket';
 import Joi from 'joi';
 import { logger } from '../../../shared/utils/logger';
+import { CategoryModel } from '../models/Category';
+import { TicketCategoryApproverModel } from '../models/TicketCategoryApprover';
+import { CardSubscriptionModel, BillingCycle } from '../models/CardSubscription';
+import { AttachmentModel } from '../models/Attachment';
+import { valorFromTicketCustomField } from '../utils/approvalAmount';
 
 export class TicketController {
+  /** Aprovador financeiro (faixa de valor) pode visualizar o chamado antes da fila de atendentes. */
+  private static async userCanViewAsFinanceApprover(ticket: Ticket, userId: number): Promise<boolean> {
+    if (ticket.status !== TicketStatus.PENDING_FINANCE_APPROVAL) return false;
+    const category = await CategoryModel.findById(ticket.category_id);
+    if (!category?.requires_approval) return false;
+    const cd = ticket.custom_data || {};
+    const field = category.approval_value_field || 'valor_mensal';
+    const valor = valorFromTicketCustomField(cd as Record<string, unknown>, field);
+    if (valor === null) return false;
+    const ap = await TicketCategoryApproverModel.findApproverUserIdForValue(category.id, valor);
+    return ap === userId;
+  }
+
   static create = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.id;
     if (!userId) {
@@ -31,12 +49,41 @@ export class TicketController {
     logger.debug('Dados validados', value, 'TICKET');
 
     const ticketData = value as CreateTicketRequest;
+
+    const category = await CategoryModel.findById(ticketData.category_id);
+    if (!category) {
+      res.status(400).json({ error: 'Categoria não encontrada' });
+      return;
+    }
+
+    const approvalType = category.approval_type ?? 'none';
+    if (category.requires_approval && approvalType === 'finance_card') {
+      const field =
+        (category.approval_value_field && String(category.approval_value_field).trim()) ||
+        'valor_mensal';
+      const v = valorFromTicketCustomField(
+        ticketData.custom_data as Record<string, unknown> | undefined,
+        field
+      );
+      if (v === null || !Number.isFinite(v) || v < 0) {
+        res.status(400).json({
+          error: `Esta categoria exige valor numérico não negativo no campo «${field}» na abertura do chamado (valor de referência da assinatura, para definir o aprovador financeiro).`
+        });
+        return;
+      }
+    }
+
     const ticket = await TicketModel.create(userId, ticketData);
 
     // Notificações em background para não bloquear a resposta (evita timeout no front)
     NotificationService.notifyTicketCreated(ticket.id).catch((err: any) => {
       console.error('Erro ao enviar notificações do chamado (chamado foi criado):', err?.message || err);
     });
+    if (ticket.status === TicketStatus.PENDING_FINANCE_APPROVAL) {
+      NotificationService.notifyFinanceApprovalRequired(ticket.id).catch((err: any) => {
+        console.error('Erro ao notificar aprovação financeira:', err?.message || err);
+      });
+    }
 
     res.status(201).json({
       message: 'Chamado criado com sucesso',
@@ -86,11 +133,14 @@ export class TicketController {
 
     // Verificar permissões
     if (req.user?.role === 'user' && ticket.user_id !== req.user.id) {
-      res.status(403).json({ error: 'Acesso negado' });
-      return;
+      const fin = await TicketController.userCanViewAsFinanceApprover(ticket, req.user.id);
+      if (!fin) {
+        res.status(403).json({ error: 'Acesso negado' });
+        return;
+      }
     }
 
-    // Atendentes podem ver chamados atribuídos a eles ou sem atendente (para poderem se atribuir)
+    // Atendentes podem ver chamados atribuídos a eles ou sem atendente (fila)
     if (req.user?.role === 'attendant' && ticket.attendant_id !== req.user.id && ticket.attendant_id !== null) {
       res.status(403).json({ error: 'Acesso negado' });
       return;
@@ -636,6 +686,126 @@ export class TicketController {
     res.json({
       message: 'Chamado rejeitado e retornado para atendimento',
       data: { ticket: updatedTicket }
+    });
+  });
+
+  /** Registra assinatura com credenciais criptografadas e resolve o chamado (categoria finance_card). */
+  static completeCardSubscription = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'Não autenticado' });
+      return;
+    }
+    const ticketId = parseInt(req.params.id, 10);
+    if (isNaN(ticketId)) {
+      res.status(400).json({ error: 'ID inválido' });
+      return;
+    }
+
+    const { error, value } = completeCardSubscriptionSchema.validate(req.body || {});
+    if (error) {
+      res.status(400).json({ error: error.details[0]?.message || 'Dados inválidos' });
+      return;
+    }
+    const body = value as Record<string, unknown>;
+
+    const ticket = await TicketModel.findById(ticketId);
+    if (!ticket) {
+      res.status(404).json({ error: 'Chamado não encontrado' });
+      return;
+    }
+    const category = await CategoryModel.findById(ticket.category_id);
+    if (!category || category.approval_type !== 'finance_card') {
+      res.status(400).json({ error: 'Categoria sem fluxo de assinatura cartão' });
+      return;
+    }
+    if (ticket.status !== TicketStatus.IN_PROGRESS) {
+      res.status(400).json({ error: 'O chamado deve estar em atendimento' });
+      return;
+    }
+    if (req.user?.role !== 'admin' && req.user?.role !== 'attendant') {
+      res.status(403).json({ error: 'Acesso negado' });
+      return;
+    }
+    if (req.user?.role === 'attendant' && ticket.attendant_id !== userId) {
+      res.status(403).json({ error: 'Apenas o atendente designado pode registrar a assinatura' });
+      return;
+    }
+
+    const existing = await CardSubscriptionModel.findByTicketId(ticketId);
+    if (existing) {
+      res.status(400).json({ error: 'Assinatura já registrada para este chamado' });
+      return;
+    }
+
+    const cd = (ticket.custom_data || {}) as Record<string, unknown>;
+    const platform = (body.platform ?? cd.plataforma) as string | undefined;
+    const planVal = body.plan ?? cd.plano;
+    const urlVal = body.url ?? cd.url;
+    const login_username = (body.login_username ?? cd.login_plataforma) as string | undefined;
+    const pwd = (body.password_plain ?? cd.senha_plataforma ?? '') as string;
+    const amount = (body.amount !== undefined ? Number(body.amount) : Number(cd.valor_mensal)) as number;
+    const billingRaw = String(body.billing_cycle ?? cd.ciclo_faturamento ?? 'monthly');
+
+    if (!platform || !login_username || !pwd) {
+      res.status(400).json({
+        error: 'Informe plataforma, login da plataforma e senha (no corpo ou nos campos customizados do chamado)'
+      });
+      return;
+    }
+    if (Number.isNaN(amount) || amount <= 0) {
+      res.status(400).json({ error: 'Valor inválido' });
+      return;
+    }
+    const cycle: BillingCycle =
+      billingRaw === 'monthly' || billingRaw === 'annual' || billingRaw === 'one_time'
+        ? (billingRaw as BillingCycle)
+        : 'monthly';
+
+    await CardSubscriptionModel.createForTicket(ticketId, ticket.user_id, {
+      platform: String(platform),
+      plan: planVal != null && planVal !== '' ? String(planVal) : undefined,
+      url: urlVal != null && urlVal !== '' ? String(urlVal) : undefined,
+      login_username: String(login_username),
+      plainPassword: String(pwd),
+      billing_cycle: cycle,
+      amount,
+      currency: (body.currency as string) || 'BRL',
+      card_last4: body.card_last4 != null ? String(body.card_last4) : undefined,
+      next_renewal_date:
+        body.next_renewal_date != null && body.next_renewal_date !== ''
+          ? String(body.next_renewal_date)
+          : undefined,
+      notes: body.notes != null ? String(body.notes) : undefined
+    });
+
+    if (body.delete_attachments === true) {
+      await AttachmentModel.deleteAllForTicketWithFiles(ticketId);
+    }
+
+    const updated = await TicketModel.update(ticketId, { status: TicketStatus.RESOLVED });
+    await TicketHistoryModel.create(
+      ticketId,
+      userId,
+      'Assinatura digital registrada — chamado resolvido'
+    );
+    if (updated) {
+      realtimeService.sendTicketUpdate(
+        ticketId,
+        {
+          id: updated.id,
+          status: updated.status,
+          priority: updated.priority,
+          attendant_id: updated.attendant_id,
+          updated_at: updated.updated_at
+        },
+        userId
+      );
+    }
+    const subscription = await CardSubscriptionModel.findByTicketId(ticketId);
+    res.json({
+      message: 'Assinatura criada e chamado resolvido',
+      data: { ticket: updated, subscription }
     });
   });
 }

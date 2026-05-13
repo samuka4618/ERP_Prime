@@ -12,6 +12,12 @@ const statusOptions = [
   { value: 'in_progress', label: 'Em Andamento', color: 'bg-yellow-100 text-yellow-800', description: 'Chamado sendo atendido' },
   { value: 'pending_user', label: 'Aguardando Usuário', color: 'bg-blue-100 text-blue-800', description: 'Aguardando resposta do usuário' },
   { value: 'pending_third_party', label: 'Aguardando Terceiros', color: 'bg-purple-100 text-purple-800', description: 'Aguardando resposta de terceiros' },
+  {
+    value: 'pending_finance_approval',
+    label: 'Aprovação financeira',
+    color: 'bg-amber-200 text-amber-900',
+    description: 'Aguardando aprovação financeira (faixa de valor)'
+  },
   { value: 'pending_approval', label: 'Aguardando Aprovação', color: 'bg-yellow-200 text-yellow-900', description: 'Aguardando aprovação do solicitante' },
   { value: 'resolved', label: 'Resolvido', color: 'bg-green-100 text-green-800', description: 'Chamado resolvido' },
   { value: 'closed', label: 'Fechado', color: 'bg-gray-100 text-gray-800', description: 'Chamado fechado' },

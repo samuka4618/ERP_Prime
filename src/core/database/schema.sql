@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     category_id INTEGER NOT NULL,
     subject VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'pending_user', 'pending_third_party', 'pending_approval', 'resolved', 'closed', 'overdue_first_response', 'overdue_resolution')),
+    status VARCHAR(30) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'pending_user', 'pending_third_party', 'pending_approval', 'pending_finance_approval', 'resolved', 'closed', 'overdue_first_response', 'overdue_resolution')),
     priority VARCHAR(10) NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
     sla_first_response DATETIME NOT NULL,
     sla_resolution DATETIME NOT NULL,
@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     closed_at DATETIME,
     reopened_at DATETIME,
+    custom_data TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (attendant_id) REFERENCES users(id),
     FOREIGN KEY (category_id) REFERENCES ticket_categories(id)
@@ -115,8 +116,81 @@ CREATE TABLE IF NOT EXISTS ticket_categories (
     sla_resolution_hours INTEGER NOT NULL DEFAULT 24,
     is_active BOOLEAN DEFAULT 1,
     custom_fields TEXT,
+    requires_approval BOOLEAN DEFAULT 0,
+    approval_value_field VARCHAR(100),
+    approval_type VARCHAR(30) DEFAULT 'none',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Aprovadores por faixa de valor (categoria de chamado)
+CREATE TABLE IF NOT EXISTS ticket_category_approvers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    valor_minimo DECIMAL(15,2) DEFAULT 0,
+    valor_maximo DECIMAL(15,2) DEFAULT 999999999.99,
+    priority INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES ticket_categories(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_tca_category ON ticket_category_approvers(category_id);
+
+-- Auditoria de aprovação financeira no chamado
+CREATE TABLE IF NOT EXISTS ticket_approvals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER NOT NULL,
+    approver_id INTEGER NOT NULL,
+    decision VARCHAR(20) NOT NULL CHECK (decision IN ('approved','rejected')),
+    reason TEXT,
+    valor_referencia DECIMAL(15,2),
+    decided_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+    FOREIGN KEY (approver_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_ticket_approvals_ticket ON ticket_approvals(ticket_id);
+
+-- Assinaturas / despesas de cartão (entidade pós-conclusão do chamado)
+CREATE TABLE IF NOT EXISTS card_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER NOT NULL,
+    owner_user_id INTEGER NOT NULL,
+    platform VARCHAR(255) NOT NULL,
+    plan VARCHAR(255),
+    url VARCHAR(500),
+    login_username VARCHAR(255),
+    password_ciphertext TEXT,
+    password_iv VARCHAR(64),
+    password_auth_tag VARCHAR(64),
+    billing_cycle VARCHAR(20) CHECK (billing_cycle IN ('monthly','annual','one_time')),
+    amount DECIMAL(15,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'BRL',
+    card_last4 VARCHAR(4),
+    next_renewal_date DATE,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','cancelled','suspended')),
+    cancelled_at DATETIME,
+    cancellation_reason TEXT,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id),
+    FOREIGN KEY (owner_user_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_cs_status ON card_subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_cs_renewal ON card_subscriptions(next_renewal_date);
+CREATE INDEX IF NOT EXISTS idx_cs_ticket ON card_subscriptions(ticket_id);
+
+CREATE TABLE IF NOT EXISTS card_subscription_secret_access (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subscription_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(64),
+    user_agent VARCHAR(500),
+    FOREIGN KEY (subscription_id) REFERENCES card_subscriptions(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Tabela de configurações do sistema

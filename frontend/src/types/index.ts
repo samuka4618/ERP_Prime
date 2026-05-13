@@ -17,6 +17,9 @@ export interface Category {
   sla_resolution_hours: number;
   is_active: boolean;
   custom_fields?: CategoryField[];
+  requires_approval?: boolean;
+  approval_value_field?: string | null;
+  approval_type?: 'none' | 'finance_card' | string;
   created_at: Date;
   updated_at: Date;
 }
@@ -60,7 +63,17 @@ export interface Ticket {
   category?: Category;
   subject: string;
   description: string;
-  status: 'open' | 'in_progress' | 'pending_user' | 'pending_third_party' | 'pending_approval' | 'resolved' | 'closed';
+  status:
+    | 'open'
+    | 'in_progress'
+    | 'pending_user'
+    | 'pending_third_party'
+    | 'pending_approval'
+    | 'pending_finance_approval'
+    | 'resolved'
+    | 'closed'
+    | 'overdue_first_response'
+    | 'overdue_resolution';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   sla_first_response: string;
   sla_resolution: string;

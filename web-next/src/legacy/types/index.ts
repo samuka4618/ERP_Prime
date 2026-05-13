@@ -2,7 +2,7 @@ export interface CategoryField {
   id: string;
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'email' | 'date' | 'select' | 'file';
+  type: 'text' | 'textarea' | 'number' | 'email' | 'date' | 'select' | 'file' | 'password';
   required: boolean;
   placeholder?: string;
   options?: string[];

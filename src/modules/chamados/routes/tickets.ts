@@ -8,8 +8,7 @@ import {
   updateTicketSchema,
   assignTicketSchema,
   addMessageSchema,
-  ticketQuerySchema,
-  completeCardSubscriptionSchema
+  ticketQuerySchema
 } from '../schemas/ticket';
 import { UserRole } from '../../../shared/types';
 import { requirePermission, adminOrPermission } from '../../../core/permissions/middleware';
@@ -77,7 +76,6 @@ router.post(
   '/:id/complete-card-subscription',
   requirePermission('tickets.edit'),
   validateParams(paramsSchema),
-  validate(completeCardSubscriptionSchema),
   TicketController.completeCardSubscription
 );
 router.post('/:id/request-approval', requirePermission('tickets.edit'), validateParams(paramsSchema), TicketController.requestApproval);

@@ -43,6 +43,15 @@ export const addMessageSchema = Joi.object({
   attachment: Joi.string().optional()
 });
 
+/** Corpo opcional ao aprovar financeiramente quando a categoria é assinatura digital (valor/ciclo vêm só do aprovador). */
+export const financeApproveCardBodySchema = Joi.object({
+  billing_cycle: Joi.string().valid('monthly', 'annual', 'one_time').required(),
+  amount: Joi.number().positive().required(),
+  currency: Joi.string().length(3).optional(),
+  notes: Joi.string().allow('', null).max(5000).optional(),
+  delete_attachments: Joi.boolean().optional()
+});
+
 /** Conclusão do fluxo cartão: persiste assinatura criptografada e resolve o chamado. */
 export const completeCardSubscriptionSchema = Joi.object({
   platform: Joi.string().min(1).max(255).optional(),

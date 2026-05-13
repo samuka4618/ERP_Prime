@@ -4,7 +4,7 @@ const categoryFieldSchema = Joi.object({
   id: Joi.string().required(),
   name: Joi.string().required(),
   label: Joi.string().required(),
-  type: Joi.string().valid('text', 'textarea', 'number', 'email', 'date', 'select', 'file').required(),
+  type: Joi.string().valid('text', 'textarea', 'number', 'email', 'date', 'select', 'file', 'password').required(),
   required: Joi.boolean().default(false),
   /** Joi.string().optional() não aceita '' por defeito — o front envia placeholder/descrição vazios nos campos. */
   placeholder: Joi.string().allow('', null).max(500).optional(),

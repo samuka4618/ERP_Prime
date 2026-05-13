@@ -6,14 +6,13 @@ import { realtimeService } from '../services/RealtimeService';
 import { getWebSocketService } from '../services/WebSocketService';
 import { CreateTicketRequest, UpdateTicketRequest, TicketStatus, Ticket } from '../../../shared/types';
 import { asyncHandler } from '../../../shared/middleware/errorHandler';
-import { createTicketSchema, updateTicketSchema, addMessageSchema, ticketQuerySchema, completeCardSubscriptionSchema } from '../schemas/ticket';
+import { createTicketSchema, updateTicketSchema, addMessageSchema, ticketQuerySchema } from '../schemas/ticket';
 import Joi from 'joi';
 import { logger } from '../../../shared/utils/logger';
 import { CategoryModel } from '../models/Category';
 import { TicketCategoryApproverModel } from '../models/TicketCategoryApprover';
-import { CardSubscriptionModel, BillingCycle } from '../models/CardSubscription';
-import { AttachmentModel } from '../models/Attachment';
 import { valorFromTicketCustomField } from '../utils/approvalAmount';
+import { extractFinanceCardCredentials } from '../utils/financeCardCustomData';
 import { TicketApprovalModel } from '../models/TicketApproval';
 
 export class TicketController {
@@ -69,6 +68,14 @@ export class TicketController {
       if (v === null || !Number.isFinite(v) || v < 0) {
         res.status(400).json({
           error: `Esta categoria exige valor numérico não negativo no campo «${field}» na abertura do chamado (valor de referência da assinatura, para definir o aprovador financeiro).`
+        });
+        return;
+      }
+      const cs = ticketData.custom_data as Record<string, unknown> | undefined;
+      if (!extractFinanceCardCredentials(cs)) {
+        res.status(400).json({
+          error:
+            'Para assinatura digital, preencha plataforma ou serviço, utilizador/login na plataforma e senha (campos adicionais do chamado). Sem estes dados a aprovação financeira não pode concluir o registo.'
         });
         return;
       }
@@ -708,132 +715,11 @@ export class TicketController {
     });
   });
 
-  /** Registra assinatura com credenciais criptografadas e resolve o chamado (categoria finance_card). */
-  static completeCardSubscription = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.id;
-    if (!userId) {
-      res.status(401).json({ error: 'Não autenticado' });
-      return;
-    }
-    const ticketId = parseInt(req.params.id, 10);
-    if (isNaN(ticketId)) {
-      res.status(400).json({ error: 'ID inválido' });
-      return;
-    }
-
-    const { error, value } = completeCardSubscriptionSchema.validate(req.body || {});
-    if (error) {
-      res.status(400).json({ error: error.details[0]?.message || 'Dados inválidos' });
-      return;
-    }
-    const body = value as Record<string, unknown>;
-
-    const ticket = await TicketModel.findById(ticketId);
-    if (!ticket) {
-      res.status(404).json({ error: 'Chamado não encontrado' });
-      return;
-    }
-    const category = await CategoryModel.findById(ticket.category_id);
-    if (!category || category.approval_type !== 'finance_card') {
-      res.status(400).json({ error: 'Categoria sem fluxo de assinatura cartão' });
-      return;
-    }
-    if (ticket.status !== TicketStatus.IN_PROGRESS) {
-      res.status(400).json({ error: 'O chamado deve estar em atendimento' });
-      return;
-    }
-    if (req.user?.role !== 'admin' && req.user?.role !== 'attendant') {
-      res.status(403).json({ error: 'Acesso negado' });
-      return;
-    }
-    if (req.user?.role === 'attendant') {
-      const canAct = await TicketModel.attendantCanActWithCategoryPool(userId, {
-        attendant_id: ticket.attendant_id,
-        category_id: ticket.category_id
-      });
-      if (!canAct) {
-        res.status(403).json({
-          error:
-            'Apenas o atendente designado no chamado ou um técnico atribuído a esta categoria pode registar a assinatura'
-        });
-        return;
-      }
-    }
-
-    const existing = await CardSubscriptionModel.findByTicketId(ticketId);
-    if (existing) {
-      res.status(400).json({ error: 'Assinatura já registrada para este chamado' });
-      return;
-    }
-
-    const cd = (ticket.custom_data || {}) as Record<string, unknown>;
-    const platform = (body.platform ?? cd.plataforma) as string | undefined;
-    const planVal = body.plan ?? cd.plano;
-    const urlVal = body.url ?? cd.url;
-    const login_username = (body.login_username ?? cd.login_plataforma) as string | undefined;
-    const pwd = (body.password_plain ?? cd.senha_plataforma ?? '') as string;
-    const amount = (body.amount !== undefined ? Number(body.amount) : Number(cd.valor_mensal)) as number;
-    const billingRaw = String(body.billing_cycle ?? cd.ciclo_faturamento ?? 'monthly');
-
-    if (!platform || !login_username || !pwd) {
-      res.status(400).json({
-        error: 'Informe plataforma, login da plataforma e senha (no corpo ou nos campos customizados do chamado)'
-      });
-      return;
-    }
-    if (Number.isNaN(amount) || amount <= 0) {
-      res.status(400).json({ error: 'Valor inválido' });
-      return;
-    }
-    const cycle: BillingCycle =
-      billingRaw === 'monthly' || billingRaw === 'annual' || billingRaw === 'one_time'
-        ? (billingRaw as BillingCycle)
-        : 'monthly';
-
-    await CardSubscriptionModel.createForTicket(ticketId, ticket.user_id, {
-      platform: String(platform),
-      plan: planVal != null && planVal !== '' ? String(planVal) : undefined,
-      url: urlVal != null && urlVal !== '' ? String(urlVal) : undefined,
-      login_username: String(login_username),
-      plainPassword: String(pwd),
-      billing_cycle: cycle,
-      amount,
-      currency: (body.currency as string) || 'BRL',
-      card_last4: body.card_last4 != null ? String(body.card_last4) : undefined,
-      next_renewal_date:
-        body.next_renewal_date != null && body.next_renewal_date !== ''
-          ? String(body.next_renewal_date)
-          : undefined,
-      notes: body.notes != null ? String(body.notes) : undefined
-    });
-
-    if (body.delete_attachments === true) {
-      await AttachmentModel.deleteAllForTicketWithFiles(ticketId);
-    }
-
-    const updated = await TicketModel.update(ticketId, { status: TicketStatus.RESOLVED });
-    await TicketHistoryModel.create(
-      ticketId,
-      userId,
-      'Assinatura digital registrada — chamado resolvido'
-    );
-    if (updated) {
-      realtimeService.sendTicketUpdate(
-        ticketId,
-        {
-          id: updated.id,
-          status: updated.status,
-          priority: updated.priority,
-          attendant_id: updated.attendant_id,
-          updated_at: updated.updated_at
-        },
-        userId
-      );
-    }
-    const subscription = await CardSubscriptionModel.findByTicketId(ticketId);
-    res.json({
-      message: 'Assinatura criada e chamado resolvido',
-      data: { ticket: updated, subscription }
+  /** Descontinuado para assinatura digital: usar aprovação financeira com corpo (ciclo, valor, observações). */
+  static completeCardSubscription = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+    res.status(410).json({
+      error:
+        'A conclusão de assinatura digital é feita pelo aprovador financeiro ao aprovar o chamado (ciclo de faturamento, valor efetivo contratado e observações). Este endpoint não é mais utilizado.'
     });
   });
 }

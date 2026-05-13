@@ -10,6 +10,9 @@ import { TicketStatus, UserRole } from '../../../shared/types';
 import Joi from 'joi';
 import { dbAll } from '../../../core/database/connection';
 import { valorFromTicketCustomField } from '../utils/approvalAmount';
+import { financeApproveCardBodySchema } from '../schemas/ticket';
+import { finalizeFinanceCardSubscription } from '../services/financeCardSubscriptionFinalize';
+import { BillingCycle } from '../models/CardSubscription';
 
 const parseCustom = (raw: string | null | undefined): Record<string, any> | undefined => {
   if (!raw || typeof raw !== 'string') return undefined;
@@ -137,8 +140,58 @@ export class FinanceApprovalController {
       return;
     }
 
-    const attendantId = await TicketModel.resolveAttendantForCategory(ticket.category_id, cd ?? {});
+    if (category.approval_type === 'finance_card') {
+      const { error, value } = financeApproveCardBodySchema.validate(req.body || {}, {
+        stripUnknown: true,
+        abortEarly: false
+      });
+      if (error) {
+        res.status(400).json({
+          error: error.details[0]?.message || 'Informe ciclo de faturamento e valor efetivo contratado.'
+        });
+        return;
+      }
 
+      const billing_cycle = value.billing_cycle as BillingCycle;
+
+      let updatedFinance: typeof ticket | null = null;
+      let subscriptionOut: Awaited<
+        ReturnType<typeof finalizeFinanceCardSubscription>
+      >['subscription'];
+      try {
+        const fin = await finalizeFinanceCardSubscription({
+          ticketId,
+          ticket,
+          actorUserId: userId,
+          billing_cycle,
+          amount: Number(value.amount),
+          currency: value.currency ? String(value.currency) : undefined,
+          notes: value.notes ?? undefined,
+          delete_attachments: value.delete_attachments === true
+        });
+        updatedFinance = fin.updated;
+        subscriptionOut = fin.subscription;
+      } catch (e: any) {
+        res.status(400).json({ error: e?.message || 'Erro ao registrar assinatura' });
+        return;
+      }
+
+      await TicketApprovalModel.create({
+        ticket_id: ticketId,
+        approver_id: userId,
+        decision: 'approved',
+        valor_referencia: valor
+      });
+
+      NotificationService.notifyFinanceApprovalDecision(ticketId, 'approved').catch(() => {});
+      res.json({
+        message: 'Assinatura registrada e chamado resolvido',
+        data: { ticket: updatedFinance, subscription: subscriptionOut }
+      });
+      return;
+    }
+
+    const attendantId = await TicketModel.resolveAttendantForCategory(ticket.category_id, cd ?? {});
     await TicketApprovalModel.create({
       ticket_id: ticketId,
       approver_id: userId,

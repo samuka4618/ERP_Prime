@@ -955,6 +955,7 @@ const Categories: React.FC = () => {
                           <option value="date">Data</option>
                           <option value="select">Seleção</option>
                           <option value="file">Arquivo</option>
+                          <option value="password">Senha (oculta)</option>
                         </select>
                       </div>
                       <div className="flex items-center">
@@ -1544,6 +1545,7 @@ const Categories: React.FC = () => {
                                 <option value="date">Data</option>
                                 <option value="select">Seleção</option>
                                 <option value="file">Arquivo</option>
+                                <option value="password">Senha (oculta)</option>
                               </select>
                             </div>
                             <div className="flex items-center">

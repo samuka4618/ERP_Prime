@@ -746,7 +746,7 @@ async function migrateFinanceCardSqlite(): Promise<void> {
       { id: 'f2', name: 'plano', label: 'Plano desejado', type: 'text', required: true },
       { id: 'f3', name: 'url', label: 'URL de login', type: 'text', required: false, placeholder: 'https://' },
       { id: 'f4', name: 'login_plataforma', label: 'Usuário/e-mail na plataforma', type: 'text', required: true },
-      { id: 'f5', name: 'senha_plataforma', label: 'Senha na plataforma', type: 'text', required: true, description: 'Armazenada de forma segura após conclusão.' },
+      { id: 'f5', name: 'senha_plataforma', label: 'Senha na plataforma', type: 'password', required: true, description: 'Armazenada de forma segura após conclusão.' },
       { id: 'f6', name: 'valor_mensal', label: 'Valor (referência para aprovação)', type: 'number', required: true },
       {
         id: 'f7',

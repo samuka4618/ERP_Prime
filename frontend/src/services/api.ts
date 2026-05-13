@@ -734,12 +734,22 @@ class ApiService {
     return response.data.data;
   }
 
-  async financeApproveTicket(ticketId: number): Promise<Ticket> {
-    const response = await this.api.post<ApiResponse<{ ticket: Ticket }>>(
+  /** Aprovação financeira; em categorias cartão/assinatura envie ciclo de faturamento, valor efetivo e observações. */
+  async financeApproveTicket(
+    ticketId: number,
+    body?: {
+      billing_cycle: 'monthly' | 'annual' | 'one_time';
+      amount: number;
+      notes?: string | null;
+      currency?: string;
+      delete_attachments?: boolean;
+    }
+  ): Promise<{ ticket: Ticket; subscription?: unknown }> {
+    const response = await this.api.post<ApiResponse<{ ticket: Ticket; subscription?: unknown }>>(
       `/tickets/${ticketId}/finance-approve`,
-      {}
+      body ?? {}
     );
-    return response.data.data.ticket;
+    return response.data.data;
   }
 
   async financeRejectTicket(ticketId: number, reason: string): Promise<Ticket> {

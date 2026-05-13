@@ -71,48 +71,6 @@ function orderedCustomAnswers(ticket: Ticket): Array<{ key: string; label: strin
 
 type BillingCycleOption = 'monthly' | 'annual' | 'one_time';
 
-interface CardSubscriptionDraft {
-  platform: string;
-  plan: string;
-  url: string;
-  login_username: string;
-  password_plain: string;
-  billing_cycle: BillingCycleOption;
-  amount: string;
-  currency: string;
-  card_last4: string;
-  next_renewal_date: string;
-  notes: string;
-}
-
-function strFromCustomData(cd: Record<string, unknown> | undefined, key: string): string {
-  if (!cd || !Object.prototype.hasOwnProperty.call(cd, key)) return '';
-  const v = cd[key];
-  if (v === null || v === undefined) return '';
-  return String(v);
-}
-
-function subscriptionDraftFromTicket(ticket: Ticket): CardSubscriptionDraft {
-  const cd = (ticket.custom_data || {}) as Record<string, unknown>;
-  const cycleRaw = strFromCustomData(cd, 'ciclo_faturamento') || 'monthly';
-  const billing_cycle: BillingCycleOption =
-    cycleRaw === 'monthly' || cycleRaw === 'annual' || cycleRaw === 'one_time' ? cycleRaw : 'monthly';
-  const refAmount = strFromCustomData(cd, 'valor_mensal');
-  return {
-    platform: strFromCustomData(cd, 'plataforma'),
-    plan: strFromCustomData(cd, 'plano'),
-    url: strFromCustomData(cd, 'url'),
-    login_username: strFromCustomData(cd, 'login_plataforma'),
-    password_plain: strFromCustomData(cd, 'senha_plataforma'),
-    billing_cycle,
-    amount: refAmount,
-    currency: 'BRL',
-    card_last4: '',
-    next_renewal_date: '',
-    notes: ''
-  };
-}
-
 const TicketDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user, isAdmin, isAttendant } = useAuth();
@@ -126,22 +84,11 @@ const TicketDetail: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [deleteAttachmentsAfterComplete, setDeleteAttachmentsAfterComplete] = useState(false);
-  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
-  const [subscriptionDraft, setSubscriptionDraft] = useState<CardSubscriptionDraft>({
-    platform: '',
-    plan: '',
-    url: '',
-    login_username: '',
-    password_plain: '',
-    billing_cycle: 'monthly',
-    amount: '',
-    currency: 'BRL',
-    card_last4: '',
-    next_renewal_date: '',
-    notes: ''
-  });
-  const [completingSubscription, setCompletingSubscription] = useState(false);
+  const [financeApproveCardOpen, setFinanceApproveCardOpen] = useState(false);
+  const [financeApproveCardCycle, setFinanceApproveCardCycle] = useState<BillingCycleOption>('monthly');
+  const [financeApproveCardAmount, setFinanceApproveCardAmount] = useState('');
+  const [financeApproveCardNotes, setFinanceApproveCardNotes] = useState('');
+  const [financeApproveSubmitting, setFinanceApproveSubmitting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
 
@@ -355,16 +302,60 @@ const TicketDetail: React.FC = () => {
     }
   };
 
+  const openFinanceApproveCardModal = () => {
+    if (!ticket) return;
+    const cycleRaw =
+      typeof ticket.custom_data?.ciclo_faturamento === 'string'
+        ? ticket.custom_data.ciclo_faturamento
+        : 'monthly';
+    setFinanceApproveCardCycle(
+      cycleRaw === 'annual' || cycleRaw === 'one_time' ? cycleRaw : 'monthly'
+    );
+    const ref = approvalValueFromTicket(ticket);
+    setFinanceApproveCardAmount(ref != null ? String(ref) : '');
+    setFinanceApproveCardNotes('');
+    setFinanceApproveCardOpen(true);
+  };
+
   const handleFinanceApprove = async () => {
     if (!id || !ticket) return;
-
+    if (ticket.category?.approval_type === 'finance_card') {
+      openFinanceApproveCardModal();
+      return;
+    }
     try {
-      const updated = await apiService.financeApproveTicket(parseInt(id, 10));
+      const { ticket: updated } = await apiService.financeApproveTicket(parseInt(id, 10));
       setTicket(updated);
       toast.success('Aprovado financeiramente');
       fetchHistory();
     } catch (e: any) {
       toast.error(e.response?.data?.error || 'Erro ao aprovar');
+    }
+  };
+
+  const submitFinanceApproveCard = async () => {
+    if (!id || !ticket) return;
+    const amount = parseApprovalAmountInput(financeApproveCardAmount);
+    if (amount === null || amount <= 0) {
+      toast.error('Informe o valor efetivo contratado (número maior que zero).');
+      return;
+    }
+    try {
+      setFinanceApproveSubmitting(true);
+      const { ticket: updated } = await apiService.financeApproveTicket(parseInt(id, 10), {
+        billing_cycle: financeApproveCardCycle,
+        amount,
+        notes: financeApproveCardNotes.trim() || undefined
+      });
+      setTicket(updated);
+      setFinanceApproveCardOpen(false);
+      toast.success('Assinatura registrada e chamado resolvido');
+      fetchHistory();
+      fetchAttachments();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Erro ao aprovar');
+    } finally {
+      setFinanceApproveSubmitting(false);
     }
   };
 
@@ -383,64 +374,6 @@ const TicketDetail: React.FC = () => {
       fetchHistory();
     } catch (e: any) {
       toast.error(e.response?.data?.error || 'Erro ao rejeitar');
-    }
-  };
-
-  const openSubscriptionModal = () => {
-    if (!ticket) return;
-    setSubscriptionDraft(subscriptionDraftFromTicket(ticket));
-    setSubscriptionModalOpen(true);
-  };
-
-  const handleSubmitSubscriptionFromModal = async () => {
-    if (!id) return;
-    const platform = subscriptionDraft.platform.trim();
-    const login_username = subscriptionDraft.login_username.trim();
-    const pwd = subscriptionDraft.password_plain;
-    if (!platform || !login_username || !pwd) {
-      toast.error('Informe plataforma, usuário de login na plataforma e senha.');
-      return;
-    }
-    const amount = parseApprovalAmountInput(subscriptionDraft.amount.trim());
-    if (amount === null || amount <= 0) {
-      toast.error('Informe o valor efetivo da assinatura (número maior que zero).');
-      return;
-    }
-    const ccy = subscriptionDraft.currency.trim().toUpperCase();
-    if (ccy.length !== 3) {
-      toast.error('Moeda deve ter 3 letras (ex.: BRL).');
-      return;
-    }
-    const last4 = subscriptionDraft.card_last4.trim();
-    const payload: Record<string, unknown> = {
-      platform,
-      plan: subscriptionDraft.plan.trim() || undefined,
-      url: subscriptionDraft.url.trim() || undefined,
-      login_username,
-      password_plain: pwd,
-      billing_cycle: subscriptionDraft.billing_cycle,
-      amount,
-      currency: ccy,
-      delete_attachments: deleteAttachmentsAfterComplete
-    };
-    if (last4.length === 4) payload.card_last4 = last4;
-    if (subscriptionDraft.next_renewal_date.trim()) {
-      payload.next_renewal_date = subscriptionDraft.next_renewal_date.trim();
-    }
-    if (subscriptionDraft.notes.trim()) payload.notes = subscriptionDraft.notes.trim();
-
-    setCompletingSubscription(true);
-    try {
-      const out = await apiService.completeCardSubscription(parseInt(id, 10), payload);
-      setTicket(out.ticket as Ticket);
-      setSubscriptionModalOpen(false);
-      toast.success('Assinatura registrada e chamado resolvido');
-      fetchHistory();
-      fetchAttachments();
-    } catch (e: any) {
-      toast.error(e.response?.data?.error || 'Erro ao registrar assinatura');
-    } finally {
-      setCompletingSubscription(false);
     }
   };
 
@@ -836,9 +769,18 @@ const TicketDetail: React.FC = () => {
                 <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-100">Aprovação financeira</h3>
               </div>
               <p className="text-sm text-amber-900/90 dark:text-amber-100/90 mb-4">
-                Revise as informações abaixo. O solicitante já definiu plano e valor de referência na abertura; você
-                apenas aprova ou rejeita. O registro definitivo do contrato (plano, valor, moeda, ciclo) é feito pelo
-                atendente ao finalizar o chamado.
+                {ticket.category?.approval_type === 'finance_card' ? (
+                  <>
+                    Categoria de <strong>assinatura digital</strong>: plataforma e credenciais vêm da abertura do chamado.
+                    Ao aprovar, confirme o <strong>ciclo de faturamento</strong>, o <strong>valor efetivo contratado</strong> e,
+                    se quiser, <strong>observações</strong> — o chamado será resolvido e a assinatura registada.
+                  </>
+                ) : (
+                  <>
+                    Revise as informações abaixo. O solicitante já definiu o valor de referência na abertura; você apenas
+                    aprova ou rejeita pela faixa. Após a aprovação, o chamado segue para a fila de atendimento.
+                  </>
+                )}
               </p>
               {financeValorRefFormatted !== null ? (
                 <p className="text-sm mb-4 text-amber-950 dark:text-amber-100">
@@ -858,7 +800,10 @@ const TicketDetail: React.FC = () => {
                   onClick={handleFinanceApprove}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                 >
-                  <CheckCircle className="w-4 h-4" /> Aprovar despesa
+                  <CheckCircle className="w-4 h-4" />{' '}
+                  {ticket.category?.approval_type === 'finance_card'
+                    ? 'Aprovar e registrar assinatura'
+                    : 'Aprovar despesa'}
                 </button>
                 <button
                   type="button"
@@ -894,37 +839,6 @@ const TicketDetail: React.FC = () => {
               </button>
             </div>
           )}
-
-          {ticket.status === 'in_progress' &&
-            ticket.category?.approval_type === 'finance_card' &&
-            (isAdmin || isAttendant) && (
-              <div className="card p-6 border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
-                <h3 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100 mb-2">
-                  Concluir assinatura digital
-                </h3>
-                <p className="text-sm text-emerald-900/90 dark:text-emerald-100/80 mb-4">
-                  Ao concluir, informe no formulário o que foi efetivamente contratado (plataforma, credenciais da conta,
-                  valor e ciclo). Os dados do chamado aparecem pré-preenchidos quando existirem; a senha será armazenada de
-                  forma criptografada.
-                </p>
-                <label className="flex items-center gap-2 text-sm mb-4 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={deleteAttachmentsAfterComplete}
-                    onChange={(e) => setDeleteAttachmentsAfterComplete(e.target.checked)}
-                  />
-                  Remover anexos do chamado após criar a assinatura
-                </label>
-                <button
-                  type="button"
-                  onClick={openSubscriptionModal}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 font-medium"
-                >
-                  <CheckCircle className="w-5 h-5" />
-                  Registrar assinatura e marcar como resolvido
-                </button>
-              </div>
-            )}
 
           {/* Ticket Info */}
           <div className="card p-6">
@@ -982,159 +896,68 @@ const TicketDetail: React.FC = () => {
         </div>
       </div>
 
-      {subscriptionModalOpen && (
+      {financeApproveCardOpen && ticket && (
         <Modal
-          title="Registrar assinatura digital"
-          size="lg"
-          onClose={() => !completingSubscription && setSubscriptionModalOpen(false)}
-          closeOnOverlayClick={!completingSubscription}
+          title="Aprovar assinatura digital"
+          size="md"
+          onClose={() => !financeApproveSubmitting && setFinanceApproveCardOpen(false)}
+          closeOnOverlayClick={!financeApproveSubmitting}
         >
           <div className="space-y-4 text-sm">
             <p className="text-gray-600 dark:text-gray-400">
-              Preencha o que foi efetivamente contratado. Campos vindos da abertura do chamado podem aparecer já
-              preenchidos; ajuste se o plano ou valores finais forem diferentes.
+              Ciclo de faturamento efetivo, valor contratado e observações. Plataforma e credenciais usam os dados já
+              informados pelo solicitante na abertura.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Plataforma / serviço <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className="input w-full dark:bg-gray-900"
-                  value={subscriptionDraft.platform}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, platform: e.target.value }))}
-                  placeholder="Ex.: Figma, Salesforce"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">Plano contratado</label>
-                <input
-                  className="input w-full dark:bg-gray-900"
-                  value={subscriptionDraft.plan}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, plan: e.target.value }))}
-                  placeholder="Ex.: Business, Enterprise"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">URL de login</label>
-                <input
-                  className="input w-full dark:bg-gray-900"
-                  type="url"
-                  value={subscriptionDraft.url}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, url: e.target.value }))}
-                  placeholder="https://..."
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Usuário / e-mail na plataforma <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className="input w-full dark:bg-gray-900"
-                  value={subscriptionDraft.login_username}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, login_username: e.target.value }))}
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Senha da plataforma <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className="input w-full dark:bg-gray-900"
-                  type="password"
-                  value={subscriptionDraft.password_plain}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, password_plain: e.target.value }))}
-                  autoComplete="new-password"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">Ciclo de faturamento</label>
-                <select
-                  className="input w-full dark:bg-gray-900"
-                  value={subscriptionDraft.billing_cycle}
-                  onChange={(e) =>
-                    setSubscriptionDraft((d) => ({
-                      ...d,
-                      billing_cycle: e.target.value as BillingCycleOption
-                    }))
-                  }
-                >
-                  <option value="monthly">Mensal</option>
-                  <option value="annual">Anual</option>
-                  <option value="one_time">Pagamento único</option>
-                </select>
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Valor efetivo contratado <span className="text-red-500">*</span>
-                </label>
-                <input
-                  className="input w-full dark:bg-gray-900"
-                  inputMode="decimal"
-                  value={subscriptionDraft.amount}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, amount: e.target.value }))}
-                  placeholder="Ex.: 199,90 ou 249.99"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">Moeda (3 letras)</label>
-                <input
-                  className="input w-full uppercase dark:bg-gray-900"
-                  maxLength={3}
-                  value={subscriptionDraft.currency}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, currency: e.target.value }))}
-                  placeholder="BRL"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">Últimos 4 dígitos do cartão</label>
-                <input
-                  className="input w-full dark:bg-gray-900"
-                  maxLength={4}
-                  value={subscriptionDraft.card_last4}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, card_last4: e.target.value.replace(/\D/g, '') }))}
-                  placeholder="Opcional"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">Próxima renovação</label>
-                <input
-                  type="date"
-                  className="input w-full dark:bg-gray-900"
-                  value={subscriptionDraft.next_renewal_date}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, next_renewal_date: e.target.value }))}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">Observações</label>
-                <textarea
-                  className="input w-full dark:bg-gray-900"
-                  rows={3}
-                  value={subscriptionDraft.notes}
-                  onChange={(e) => setSubscriptionDraft((d) => ({ ...d, notes: e.target.value }))}
-                  placeholder="Notas internas (opcional)"
-                />
-              </div>
+            <div>
+              <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">Ciclo de faturamento</label>
+              <select
+                className="input w-full dark:bg-gray-900"
+                value={financeApproveCardCycle}
+                onChange={(e) => setFinanceApproveCardCycle(e.target.value as BillingCycleOption)}
+              >
+                <option value="monthly">Mensal</option>
+                <option value="annual">Anual</option>
+                <option value="one_time">Pagamento único</option>
+              </select>
             </div>
-            <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-600">
+            <div>
+              <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">
+                Valor efetivo contratado <span className="text-red-500">*</span>
+              </label>
+              <input
+                className="input w-full dark:bg-gray-900"
+                inputMode="decimal"
+                value={financeApproveCardAmount}
+                onChange={(e) => setFinanceApproveCardAmount(e.target.value)}
+                placeholder="Ex.: 199,90"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-gray-700 dark:text-gray-200 mb-1">Observações</label>
+              <textarea
+                className="input w-full dark:bg-gray-900"
+                rows={3}
+                value={financeApproveCardNotes}
+                onChange={(e) => setFinanceApproveCardNotes(e.target.value)}
+                placeholder="Opcional"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">
               <button
                 type="button"
-                className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200"
-                disabled={completingSubscription}
-                onClick={() => setSubscriptionModalOpen(false)}
+                disabled={financeApproveSubmitting}
+                className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600"
+                onClick={() => setFinanceApproveCardOpen(false)}
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-                disabled={completingSubscription}
-                onClick={handleSubmitSubscriptionFromModal}
+                disabled={financeApproveSubmitting}
+                className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+                onClick={submitFinanceApproveCard}
               >
-                {completingSubscription ? 'Registrando…' : 'Registrar e resolver chamado'}
+                {financeApproveSubmitting ? 'Processando…' : 'Confirmar'}
               </button>
             </div>
           </div>

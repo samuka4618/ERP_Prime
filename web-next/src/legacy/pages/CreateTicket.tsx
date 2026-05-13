@@ -372,7 +372,20 @@ const CreateTicket: React.FC = () => {
                           className="input w-full"
                         />
                       )}
-                      
+
+                      {field.type === 'password' && (
+                        <input
+                          type="password"
+                          id={`custom_${field.name}`}
+                          value={customFieldsData[field.name] || ''}
+                          onChange={(e) => handleCustomFieldChange(field.name, e.target.value)}
+                          placeholder={field.placeholder}
+                          required={field.required}
+                          autoComplete="new-password"
+                          className="input w-full"
+                        />
+                      )}
+
                       {field.type === 'date' && (
                         <input
                           type="date"

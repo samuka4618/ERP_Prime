@@ -555,7 +555,7 @@ async function migrateFinanceCardPostgres(client: PoolClient): Promise<void> {
       { id: 'f2', name: 'plano', label: 'Plano desejado', type: 'text', required: true },
       { id: 'f3', name: 'url', label: 'URL de login', type: 'text', required: false, placeholder: 'https://' },
       { id: 'f4', name: 'login_plataforma', label: 'Usuário/e-mail na plataforma', type: 'text', required: true },
-      { id: 'f5', name: 'senha_plataforma', label: 'Senha na plataforma', type: 'text', required: true },
+      { id: 'f5', name: 'senha_plataforma', label: 'Senha na plataforma', type: 'password', required: true },
       { id: 'f6', name: 'valor_mensal', label: 'Valor (referência para aprovação)', type: 'number', required: true },
       { id: 'f7', name: 'ciclo_faturamento', label: 'Ciclo', type: 'select', required: true, options: ['monthly', 'annual', 'one_time'] },
       { id: 'f8', name: 'justificativa', label: 'Justificativa / necessidade', type: 'textarea', required: true }

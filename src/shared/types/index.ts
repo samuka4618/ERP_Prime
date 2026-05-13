@@ -53,7 +53,7 @@ export interface CategoryField {
   id: string; // ID único do campo
   name: string; // Nome interno do campo (ex: 'payment_data', 'client_info')
   label: string; // Label exibido no formulário
-  type: 'text' | 'textarea' | 'number' | 'email' | 'date' | 'select' | 'file';
+  type: 'text' | 'textarea' | 'number' | 'email' | 'date' | 'select' | 'file' | 'password';
   required: boolean;
   placeholder?: string;
   options?: string[]; // Para campos do tipo select

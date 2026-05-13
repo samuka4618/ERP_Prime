@@ -5,6 +5,7 @@ import {
   AuthSession,
   User,
   Ticket,
+  TicketFinanceApproval,
   TicketHistory,
   Notification,
   DashboardStats,
@@ -677,9 +678,11 @@ class ApiService {
     return response.data.data;
   }
 
-  async getTicket(id: number): Promise<Ticket> {
-    const response = await this.api.get<ApiResponse<{ticket: Ticket}>>(`/tickets/${id}`);
-    return response.data.data.ticket;
+  async getTicket(id: number): Promise<{ ticket: Ticket; finance_approvals?: TicketFinanceApproval[] }> {
+    const response = await this.api.get<
+      ApiResponse<{ ticket: Ticket; finance_approvals?: TicketFinanceApproval[] }>
+    >(`/tickets/${id}`);
+    return response.data.data;
   }
 
   async createTicket(ticketData: CreateTicketRequest): Promise<Ticket> {

@@ -210,6 +210,7 @@ const CardSubscriptions: React.FC = () => {
               <th className="p-3">Ciclo</th>
               <th className="p-3">Próx. renovação</th>
               <th className="p-3">Status</th>
+              <th className="p-3">Aprovado por</th>
               <th className="p-3">Chamado</th>
               <th className="p-3">Ações</th>
             </tr>
@@ -226,6 +227,7 @@ const CardSubscriptions: React.FC = () => {
                 <td className="p-3">{r.billing_cycle}</td>
                 <td className="p-3">{r.next_renewal_date || '—'}</td>
                 <td className="p-3">{r.status}</td>
+                <td className="p-3 text-gray-700 dark:text-gray-300">{r.approved_by_name || '—'}</td>
                 <td className="p-3">
                   <Link className="text-primary-600 hover:underline" to={`/tickets/${r.ticket_id}`}>
                     #{r.ticket_id}
@@ -279,6 +281,11 @@ const CardSubscriptions: React.FC = () => {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               {detail?.platform} — confirme sua senha do ERP. O acesso é registrado em auditoria.
             </p>
+            {detail?.approved_by_name ? (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Aprovado por (financeiro): <strong>{detail.approved_by_name}</strong>
+              </p>
+            ) : null}
             <input
               type="password"
               className="w-full border rounded px-3 py-2 mb-4 dark:bg-gray-800"

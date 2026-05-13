@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Landmark
 } from 'lucide-react';
-import { Ticket, TicketHistory, Attachment, CategoryField } from '../types';
+import { Ticket, TicketFinanceApproval, TicketHistory, Attachment, CategoryField } from '../types';
 import { apiService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatusManager from '../components/StatusManager';
@@ -117,6 +117,7 @@ const TicketDetail: React.FC = () => {
   const { user, isAdmin, isAttendant } = useAuth();
   const { hasPermission } = usePermissions();
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [financeApprovals, setFinanceApprovals] = useState<TicketFinanceApproval[]>([]);
   const [history, setHistory] = useState<TicketHistory[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentsError, setAttachmentsError] = useState<string | null>(null);
@@ -190,8 +191,9 @@ const TicketDetail: React.FC = () => {
         toast.error('ID do chamado inválido');
         return;
       }
-      const data = await apiService.getTicket(ticketId);
-      setTicket(data);
+      const payload = await apiService.getTicket(ticketId);
+      setTicket(payload.ticket);
+      setFinanceApprovals(payload.finance_approvals ?? []);
     } catch (error) {
       toast.error('Erro ao carregar chamado');
     } finally {
@@ -934,6 +936,33 @@ const TicketDetail: React.FC = () => {
                 <label className="text-sm font-medium text-gray-500">Atendente</label>
                 <p className="mt-1 text-sm text-gray-900 dark:text-white">{ticket.attendant?.name || 'Não atribuído'}</p>
               </div>
+              {financeApprovals.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Aprovação financeira</label>
+                  <ul className="mt-1 space-y-2 text-sm">
+                    {financeApprovals.map((a) => (
+                      <li key={a.id} className="text-gray-900 dark:text-white">
+                        <span
+                          className={
+                            a.decision === 'approved'
+                              ? 'font-medium text-green-700 dark:text-green-400'
+                              : 'font-medium text-red-700 dark:text-red-400'
+                          }
+                        >
+                          {a.decision === 'approved' ? 'Aprovado' : 'Rejeitado'}
+                        </span>
+                        {' · '}
+                        {a.approver_name || `Utilizador #${a.approver_id}`}
+                        {' · '}
+                        <FormattedDate date={a.decided_at} />
+                        {a.reason ? (
+                          <span className="block text-xs text-gray-500 mt-0.5">Motivo: {a.reason}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-gray-500">Criado em</label>
                 <p className="mt-1 text-sm text-gray-900 dark:text-white">

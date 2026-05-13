@@ -55,6 +55,18 @@ export interface User {
   updated_at: string;
 }
 
+/** Registos em ticket_approvals (aprovação/rejeição financeira por chamado). */
+export interface TicketFinanceApproval {
+  id: number;
+  ticket_id: number;
+  approver_id: number;
+  approver_name: string | null;
+  decision: 'approved' | 'rejected';
+  reason?: string | null;
+  valor_referencia?: number | null;
+  decided_at: string;
+}
+
 export interface Ticket {
   id: number;
   user_id: number;

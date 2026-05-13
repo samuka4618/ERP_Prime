@@ -14,6 +14,7 @@ import { TicketCategoryApproverModel } from '../models/TicketCategoryApprover';
 import { CardSubscriptionModel, BillingCycle } from '../models/CardSubscription';
 import { AttachmentModel } from '../models/Attachment';
 import { valorFromTicketCustomField } from '../utils/approvalAmount';
+import { TicketApprovalModel } from '../models/TicketApproval';
 
 export class TicketController {
   /** Aprovador financeiro (faixa de valor) pode visualizar o chamado antes da fila de atendentes. */
@@ -146,9 +147,21 @@ export class TicketController {
       return;
     }
 
+    const financeApprovals = await TicketApprovalModel.findByTicket(ticketId);
+    const finance_approvals = financeApprovals.map((a) => ({
+      id: a.id,
+      ticket_id: a.ticket_id,
+      approver_id: a.approver_id,
+      approver_name: a.approver_name ?? null,
+      decision: a.decision,
+      reason: a.reason ?? null,
+      valor_referencia: a.valor_referencia ?? null,
+      decided_at: a.decided_at instanceof Date ? a.decided_at.toISOString() : String(a.decided_at)
+    }));
+
     res.json({
       message: 'Chamado obtido com sucesso',
-      data: { ticket }
+      data: { ticket, finance_approvals }
     });
   });
 
